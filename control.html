@@ -1,37 +1,138 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b4f6c"><meta name="description" content="Tasmanian Oyster Company Smithton environmental and stock control dashboard"><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="styles.css"><title>TOC Smithton Control</title></head><body><header class="topbar"><div><div class="eyebrow">TASMANIAN OYSTER COMPANY</div><h1>Smithton Control</h1></div><button id="notifyBtn" class="button secondary">Enable alerts</button></header><main class="container"><section class="status-grid"><article class="card hero"><div class="card-head"><div><span class="label">Environmental status</span><h2 id="statusText">Awaiting readings</h2></div><span id="statusDot" class="status-dot neutral"></span></div><div class="metric-row"><div><span>Salinity</span><strong id="salinityValue">—</strong><small>ppt</small></div><div><span>7-day rainfall</span><strong id="rainValue">—</strong><small>mm</small></div><div><span>Next 24h</span><strong id="rain24Value">—</strong><small>mm</small></div></div><p id="lastUpdated" class="muted">No readings entered yet.</p><div id="saveStatus" aria-live="polite"></div></article></section><section class="grid two"><article class="card"><div class="card-head"><h2>Manual salinity</h2><span class="badge">Smithton</span></div><form id="salinityForm"><label>Salinity (ppt)<input id="salinityInput" type="number" step="0.1" min="0" placeholder="Enter reading" required></label><label>Environmental minimum<input id="salinityMin" type="number" step="0.1" min="0" placeholder="Optional"></label><label>Environmental maximum<input id="salinityMax" type="number" step="0.1" min="0" placeholder="Optional"></label><button class="button" type="submit">Save salinity</button></form></article><article class="card"><div class="card-head"><h2>Rainfall alert control</h2><span class="badge">7 day forecast</span></div><form id="rainForm"><label>Alert threshold (mm / 24h)<input id="rainThreshold" type="number" step="0.1" min="0" placeholder="Enter threshold" required></label><label>Alert threshold (mm / 7 days)<input id="rain7Threshold" type="number" step="0.1" min="0" placeholder="Optional"></label><button class="button" type="submit">Save thresholds</button></form><p class="hint">Set thresholds to your approved environmental-control limits.</p></article></section><section class="card"><div class="card-head"><div><h2>Smithton 7-day rainfall forecast</h2><p class="muted">Forecast supplied by Open-Meteo.</p></div><button id="refreshWeather" class="button secondary">Refresh</button></div><div id="forecast" class="forecast"><div class="loading">Loading forecast…</div></div></section><section class="grid two"><article class="card"><div class="card-head"><h2>Sites</h2><span class="badge">Farm control</span></div><div class="site-grid" id="sites"></div></article><article class="card"><div class="card-head"><h2>Stock movement</h2><span class="badge">Quick entry</span></div><form id="stockForm"><label>Site<select id="siteInput"></select></label><label>Size<input id="sizeInput" placeholder="e.g. 40mm" required></label><label>Quantity<input id="qtyInput" type="number" min="1" step="1" required></label><label>Movement<select id="movementInput"><option>Input</option><option>Transfer In</option><option>Transfer Out</option><option>Sale</option></select></label><button class="button" type="submit">Add movement</button></form></article></section><section class="card"><div class="card-head"><h2>Recent stock movements</h2><button id="clearMovements" class="button danger">Clear local data</button></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Site</th><th>Size</th><th>Qty</th><th>Movement</th></tr></thead><tbody id="movementTable"></tbody></table></div></section></main><footer>TOC Smithton Control • Local device data + live Smithton rainfall forecast</footer><script>
-const KEY="toc-smithton-control-v4";
-const SITES=["Boomer Bay","Pittwater","LSP","Pipeclay","SCL"];
-const WEATHER={lat:-40.84,lon:145.12};
-let state={salinity:null,salinityMin:null,salinityMax:null,rainThreshold:null,rain7Threshold:null,movements:[],forecast:[]};
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b4f6c">
+<meta name="description" content="Tasmanian Oyster Company Smithton environmental control dashboard">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase-config.js"></script>
+<title>TOC Smithton Control</title>
+<style>
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.grid2{grid-template-columns:1fr}}
+.readonly-input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #c8d3d8;border-radius:9px;font-size:16px;background:#f1f5f7;color:#243b49}
+label{display:block;font-weight:700;margin:12px 0}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div><div class="eyebrow">TASMANIAN OYSTER COMPANY</div><h1>Smithton Control</h1></div>
+  <button id="notifyBtn" class="button secondary" type="button">Alerts OFF</button>
+</header>
+
+<main class="container">
+<section class="status-grid">
+<article class="card hero">
+  <div class="card-head"><div><span class="label">Environmental status</span><h2 id="statusText">Awaiting readings</h2></div><span id="statusDot" class="status-dot neutral"></span></div>
+  <div class="metric-row">
+    <div><span>Salinity</span><strong id="salinityValue">—</strong><small>ppt</small></div>
+    <div><span>Previous 7-day rainfall</span><strong id="rainValue">—</strong><small>mm</small></div>
+    <div><span>Duck River</span><strong id="riverValue">—</strong><small>m³/s</small></div>
+  </div>
+  <p id="lastUpdated" class="muted">Connecting to central control…</p>
+  <div id="saveStatus" aria-live="polite"></div>
+</article>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Environmental controls</h2><span class="badge">Read-only</span></div>
+  <div class="grid2">
+    <label>Salinity (ppt)<input id="salinityInput" class="readonly-input" type="number" disabled></label>
+    <label>Salinity minimum (ppt)<input id="salinityMin" class="readonly-input" type="number" disabled></label>
+    <label>Salinity maximum (ppt)<input id="salinityMax" class="readonly-input" type="number" disabled></label>
+    <label>24h rainfall limit (mm)<input id="rainThreshold" class="readonly-input" type="number" disabled></label>
+    <label>7-day rainfall limit (mm)<input id="rain7Threshold" class="readonly-input" type="number" disabled></label>
+    <label>Duck River limit (m³/s)<input value="5.5" class="readonly-input" type="number" disabled></label>
+  </div>
+  <p class="hint">Central environmental settings. Read-only — no changes can be made from this page.</p>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <div><h2>Smithton 7-day rainfall forecast</h2><p class="muted">Forecast supplied by Open-Meteo.</p></div>
+    <button id="refreshWeather" class="button secondary" type="button">Refresh</button>
+  </div>
+  <div id="forecast" class="forecast"><div class="loading">Loading forecast…</div></div>
+</section>
+</main>
+
+<footer>TOC Smithton Control • Central read-only environmental control</footer>
+
+<script>
+"use strict";
 const $=id=>document.getElementById(id);
-function load(){try{const x=localStorage.getItem(KEY);if(x)state=Object.assign(state,JSON.parse(x));}catch(e){}}
-function saveNow(){try{localStorage.setItem(KEY,JSON.stringify(state));return true}catch(e){return false}}
-function status(msg,ok){const el=$("saveStatus");el.textContent=msg;el.className=ok?"save-ok":"save-error";el.style.display="block"}
+const WEATHER={lat:-40.84,lon:145.12};
+let central={salinity:null,salinityMin:null,salinityMax:null,rain24:null,rain7:null};
+let forecast=[];
+let alertEnabled=false;
+const ALERT_KEY="toc-smithton-alerts-v1";
+
+function status(msg,ok){
+  const e=$("saveStatus"); e.textContent=msg; e.className=ok?"save-ok":"save-error"; e.style.display="block";
+}
+
 function render(){
- $("sites").innerHTML=SITES.map(s=>'<div class="site">'+s+"</div>").join("");
- $("siteInput").innerHTML=SITES.map(s=>"<option>"+s+"</option>").join("");
- $("salinityInput").value=state.salinity??"";
- $("salinityMin").value=state.salinityMin??"";
- $("salinityMax").value=state.salinityMax??"";
- $("rainThreshold").value=state.rainThreshold??"";
- $("rain7Threshold").value=state.rain7Threshold??"";
- $("salinityValue").textContent=state.salinity==null?"—":Number(state.salinity).toFixed(1);
- $("rainValue").textContent=state.forecast.length?state.forecast.reduce((a,b)=>a+b.rain,0).toFixed(1):"—";
- $("rain24Value").textContent=state.forecast.length?state.forecast[0].rain.toFixed(1):"—";
- $("statusText").textContent=state.salinity==null&&!state.forecast.length?"Awaiting readings":"Within configured limits";
- $("statusDot").className="status-dot ok";
- $("movementTable").innerHTML=state.movements.length?state.movements.slice(0,50).map(x=>"<tr><td>"+new Date(x.date).toLocaleString("en-AU")+"</td><td>"+x.site+"</td><td>"+x.size+"</td><td>"+x.qty.toLocaleString()+"</td><td>"+x.movement+"</td></tr>").join(""):'<tr><td colspan="5" class="muted">No movements entered.</td></tr>';
+  $("salinityInput").value=central.salinity==null?"":central.salinity;
+  $("salinityMin").value=central.salinityMin==null?"":central.salinityMin;
+  $("salinityMax").value=central.salinityMax==null?"":central.salinityMax;
+  $("rainThreshold").value=central.rain24==null?"":central.rain24;
+  $("rain7Threshold").value=central.rain7==null?"":central.rain7;
+  $("salinityValue").textContent=central.salinity==null?"—":Number(central.salinity).toFixed(1);
+  $("rainValue").textContent=forecast.length?forecast.reduce((a,b)=>a+b.rain,0).toFixed(1):"—";
+  $("statusText").textContent=central.salinity==null?"Awaiting readings":"Central control connected";
+  $("statusDot").className="status-dot "+(central.salinity==null?"neutral":"ok");
 }
-function bind(){
- $("salinityForm").onsubmit=function(e){e.preventDefault();state.salinity=Number($("salinityInput").value);state.salinityMin=$("salinityMin").value===""?null:Number($("salinityMin").value);state.salinityMax=$("salinityMax").value===""?null:Number($("salinityMax").value);status(saveNow()?"SAVED ✓":"SAVE FAILED",saveNow());render();};
- $("rainForm").onsubmit=function(e){e.preventDefault();state.rainThreshold=Number($("rainThreshold").value);state.rain7Threshold=$("rain7Threshold").value===""?null:Number($("rain7Threshold").value);status(saveNow()?"SAVED ✓":"SAVE FAILED",saveNow());render();};
- $("stockForm").onsubmit=function(e){e.preventDefault();state.movements.unshift({date:new Date().toISOString(),site:$("siteInput").value,size:$("sizeInput").value.trim(),qty:Number($("qtyInput").value),movement:$("movementInput").value});const ok=saveNow();status(ok?"SAVED ✓":"SAVE FAILED",ok);e.target.reset();render();};
- $("clearMovements").onclick=function(){if(confirm("Clear locally stored stock movements?")){state.movements=[];const ok=saveNow();status(ok?"CLEARED ✓":"SAVE FAILED",ok);render();}};
- $("refreshWeather").onclick=loadWeather;
+
+async function loadCentral(){
+  try{
+    const r=await supabase.from("control_settings").select("salinity,salinity_min,salinity_max,rain_24h_limit,rain_7d_limit,updated_at").eq("id",1).maybeSingle();
+    if(r.error)throw r.error;
+    if(r.data){
+      const d=r.data;
+      central.salinity=d.salinity; central.salinityMin=d.salinity_min; central.salinityMax=d.salinity_max;
+      central.rain24=d.rain_24h_limit; central.rain7=d.rain_7d_limit;
+      render();
+      $("lastUpdated").textContent=d.updated_at?"Central settings updated "+new Date(d.updated_at).toLocaleString("en-AU"):"Central control connected ✓";
+      status("CENTRAL CONTROL CONNECTED ✓",true);
+    }
+  }catch(e){status("CENTRAL CONTROL UNAVAILABLE",false);}
 }
+
 async function loadWeather(){
- $("forecast").innerHTML='<div class="loading">Loading Smithton forecast…</div>';
- try{const u="https://api.open-meteo.com/v1/forecast?latitude="+WEATHER.lat+"&longitude="+WEATHER.lon+"&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Australia%2FHobart&forecast_days=7";const r=await fetch(u);const d=await r.json();state.forecast=d.daily.time.map((date,i)=>({date:date,rain:Number(d.daily.precipitation_sum[i]||0),max:d.daily.temperature_2m_max[i],min:d.daily.temperature_2m_min[i]}));saveNow();$("forecast").innerHTML=state.forecast.map(x=>'<div class="day"><div class="date">'+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+'</div><div class="rain">'+x.rain.toFixed(1)+" mm</div><div class="range">"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div></div>").join("");render();}catch(e){$("forecast").innerHTML='<div class="loading">Forecast unavailable — tap Refresh.</div>'}
+  $("forecast").innerHTML='<div class="loading">Loading Smithton forecast…</div>';
+  try{
+    const u="https://api.open-meteo.com/v1/forecast?latitude="+WEATHER.lat+"&longitude="+WEATHER.lon+"&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Australia%2FHobart&forecast_days=7";
+    const r=await fetch(u,{cache:"no-store"}); const d=await r.json();
+    forecast=d.daily.time.map((date,i)=>({date,rain:Number(d.daily.precipitation_sum[i]||0),max:d.daily.temperature_2m_max[i],min:d.daily.temperature_2m_min[i]}));
+    $("forecast").innerHTML=forecast.map(x=>'<div class="day"><div class="date">'+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+'</div><div class="rain">'+x.rain.toFixed(1)+" mm</div><div class="range">"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div></div>").join("");
+    render();
+  }catch(e){$("forecast").innerHTML='<div class="loading">Forecast unavailable — tap Refresh.</div>';}
 }
-load();render();bind();loadWeather();
-</script></body></html>
+
+function updateNotifyButton(){
+  $("notifyBtn").textContent=alertEnabled?"Alerts ON ✓":"Alerts OFF";
+}
+
+async function setupAlerts(){
+  try{alertEnabled=localStorage.getItem(ALERT_KEY)==="on";}catch(e){}
+  updateNotifyButton();
+  $("notifyBtn").onclick=async function(){
+    if(alertEnabled){alertEnabled=false;try{localStorage.setItem(ALERT_KEY,"off");}catch(e){}updateNotifyButton();status("ALERTS OFF",true);return;}
+    if(!("Notification" in window)){status("ALERTS NOT SUPPORTED",false);return;}
+    const p=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;
+    if(p!=="granted"){status("ALERTS BLOCKED — allow notifications in Chrome settings",false);return;}
+    alertEnabled=true;try{localStorage.setItem(ALERT_KEY,"on");}catch(e){}
+    updateNotifyButton();status("ALERTS ON ✓ — setting stays on until you turn it off.",true);
+  };
+}
+
+$("refreshWeather").onclick=loadWeather;
+const supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
+render();setupAlerts();loadCentral();loadWeather();
+setInterval(loadCentral,30000);
+</script>
+</body>
+</html>
