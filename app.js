@@ -1,13 +1,17 @@
-const KEY="toc-smithton-control-v2";
+const KEY="toc-smithton-control-v3";
+const DB_NAME="toc-smithton-control";
+const DB_VERSION=1;
 const SITES=["Boomer Bay","Pittwater","LSP","Pipeclay","SCL"];
 const WEATHER={lat:-40.84,lon:145.12};
 const DEFAULT={salinity:null,salinityMin:null,salinityMax:null,rainThreshold:null,rain7Threshold:null,movements:[],forecast:[]};
-let state=loadState();
+let state={...DEFAULT};
+let dbReady=null;
 const $=id=>document.getElementById(id);
-function loadState(){try{const raw=localStorage.getItem(KEY);return raw?{...DEFAULT,...JSON.parse(raw)}:{...DEFAULT}}catch(e){return {...DEFAULT}}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state));return true}catch(e){return false}}
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains("state"))r.result.createObjectStore("state")};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+async function loadState(){try{dbReady=dbReady||openDB();const db=await dbReady;const tx=db.transaction("state","readonly");const req=tx.objectStore("state").get("main");return await new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result?{...DEFAULT,...req.result}:null);req.onerror=()=>reject(req.error)})}catch(e){try{const raw=localStorage.getItem(KEY);return raw?{...DEFAULT,...JSON.parse(raw)}:null}catch(_){return null}}}
+async function save(){try{dbReady=dbReady||openDB();const db=await dbReady;await new Promise((resolve,reject)=>{const tx=db.transaction("state","readwrite");tx.objectStore("state").put(state,"main");tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});try{localStorage.setItem(KEY,JSON.stringify(state))}catch(_){};return true}catch(e){try{localStorage.setItem(KEY,JSON.stringify(state));return true}catch(_){return false}}}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
-function flashSaved(ok=true){let el=$("saveStatus");if(!el)return;el.textContent=ok?"Saved on this device":"Could not save on this device";el.className=ok?"save-ok":"save-error";setTimeout(()=>{el.textContent="";el.className=""},2500)}
+function flashSaved(ok=true){let el=$("saveStatus");if(!el)return;el.textContent=ok?"Saved to this device":"Save failed";el.className=ok?"save-ok":"save-error";setTimeout(()=>{el.textContent="";el.className=""},2500)}
 function init(){
  $("sites").innerHTML=SITES.map(s=>'<div class="site">'+esc(s)+'</div>').join("");
  $("siteInput").innerHTML=SITES.map(s=>'<option>'+esc(s)+'</option>').join("");
@@ -53,4 +57,4 @@ function renderForecast(){$("forecast").innerHTML=state.forecast.length?state.fo
 function renderMovements(){$("movementTable").innerHTML=state.movements.length?state.movements.slice(0,50).map(x=>'<tr><td>'+new Date(x.date).toLocaleString("en-AU")+'</td><td>'+esc(x.site)+'</td><td>'+esc(x.size)+'</td><td>'+x.qty.toLocaleString()+'</td><td>'+esc(x.movement)+'</td></tr>').join(""):'<tr><td colspan="5" class="muted">No movements entered.</td></tr>'}
 async function enableAlerts(){if(!("Notification"in window)){alert("Notifications are not supported on this browser.");return}const p=await Notification.requestPermission();$("notifyBtn").textContent=p==="granted"?"Alerts enabled":"Alerts blocked";if(p==="granted")checkAlerts()}
 function checkAlerts(){if(!("Notification"in window)||Notification.permission!=="granted")return;const alerts=[];if(state.forecast.length&&state.rainThreshold!=null&&state.forecast[0].rain>=state.rainThreshold)alerts.push("Smithton rainfall is at or above your 24h threshold.");const total7=state.forecast.reduce((a,b)=>a+b.rain,0);if(state.forecast.length&&state.rain7Threshold!=null&&total7>=state.rain7Threshold)alerts.push("Smithton 7-day rainfall is at or above your threshold.");if(state.salinity!=null&&state.salinityMin!=null&&state.salinity<state.salinityMin)alerts.push("Manual salinity is below your configured minimum.");if(state.salinity!=null&&state.salinityMax!=null&&state.salinity>state.salinityMax)alerts.push("Manual salinity is above your configured maximum.");const sig=alerts.join("|");if(sig&&sig!==localStorage.getItem("toc-last-alert")){new Notification("TOC Smithton Control",{body:alerts.join(" ")});localStorage.setItem("toc-last-alert",sig)}}
-init();
+(async()=>{state=await loadState()||{...DEFAULT};init()})();
