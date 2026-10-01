@@ -18,8 +18,8 @@
   <div class="card-head"><div><span class="label">Environmental status</span><h2 id="statusText">Awaiting readings</h2></div><span id="statusDot" class="status-dot neutral"></span></div>
   <div class="metric-row">
     <div><span>Salinity</span><strong id="salinityValue">—</strong><small>ppt</small></div>
-    <div><span>7-day rainfall</span><strong id="rainValue">—</strong><small>mm</small></div>
-    <div><span>Next 24h</span><strong id="rain24Value">—</strong><small>mm</small></div>
+    <div><span>Previous 24h rainfall</span><strong id="rain24Value">—</strong><small>mm</small></div>
+    <div><span>7-day rainfall total</span><strong id="rainValue">—</strong><small>mm</small></div>
   </div>
   <p id="lastUpdated" class="muted">No readings entered yet.</p>
   <div id="saveStatus" aria-live="polite"></div>
@@ -60,7 +60,7 @@ function load(){
   try{var raw=localStorage.getItem(KEY);if(raw){var saved=JSON.parse(raw);Object.assign(state,saved);}}catch(e){}
 }
 function alertNow(title,body,tag){try{if(!("Notification" in window)||Notification.permission!=="granted")return;if("serviceWorker" in navigator){navigator.serviceWorker.ready.then(function(reg){reg.showNotification(title,{body:body,tag:tag});});}}catch(e){}}
-function checkAlerts(){var sal=Number(state.salinity);var r24=state.forecast.length?Number(state.forecast[0].rain||0):0;var r7=state.forecast.reduce(function(a,x){return a+Number(x.rain||0);},0);var low=state.salinity!==""&&sal<32.5;var high24=r24>25;var high7=r7>40;if(low&&!state.lastAlerts.salinity){alertNow("SALINITY ALERT","Salinity is "+sal.toFixed(1)+" ppt — below 32.5 ppt minimum.","salinity-alert");}if(high24&&!state.lastAlerts.rain24){alertNow("24-HOUR RAINFALL ALERT","Rainfall is "+r24.toFixed(1)+" mm — above 25 mm limit.","rain24-alert");}if(high7&&!state.lastAlerts.rain7){alertNow("7-DAY RAINFALL ALERT","7-day rainfall is "+r7.toFixed(1)+" mm — above 40 mm limit.","rain7-alert");}state.lastAlerts={salinity:low,rain24:high24,rain7:high7};save();}
+function checkAlerts(){var sal=Number(state.salinity);var r24=state.forecast.length?Number(state.forecast[0].rain||0):0;var r7=state.forecast.reduce(function(a,x){return a+Number(x.rain||0);},0);var low=state.salinity!==""&&sal<32.5;var high24=previous24Total>25;var high7=r7>40;if(low&&!state.lastAlerts.salinity){alertNow("SALINITY ALERT","Salinity is "+sal.toFixed(1)+" ppt — below 32.5 ppt minimum.","salinity-alert");}if(high24&&!state.lastAlerts.rain24){alertNow("24-HOUR RAINFALL ALERT","Rainfall is "+r24.toFixed(1)+" mm — above 25 mm limit.","rain24-alert");}if(high7&&!state.lastAlerts.rain7){alertNow("7-DAY RAINFALL ALERT","7-day rainfall is "+r7.toFixed(1)+" mm — above 40 mm limit.","rain7-alert");}state.lastAlerts={salinity:low,rain24:high24,rain7:high7};save();}
 function save(){
   try{localStorage.setItem(KEY,JSON.stringify(state));return true;}catch(e){return false;}
 }
@@ -78,7 +78,7 @@ function render(){
   el("salinityValue").textContent=state.salinity===""?"—":Number(state.salinity).toFixed(1);
   var total=state.forecast.reduce(function(a,x){return a+Number(x.rain||0);},0);
   el("rainValue").textContent=state.forecast.length?total.toFixed(1):"—";
-  el("rain24Value").textContent=state.forecast.length?Number(state.forecast[0].rain||0).toFixed(1):"—";
+  el("rain24Value").textContent=previous24Total.toFixed(1);
   el("statusText").textContent=state.salinity===""?"Awaiting readings":"Reading saved";
 }
 async function weather(){
@@ -96,11 +96,11 @@ async function weather(){
     var results=await Promise.all([fetch(histUrl,{cache:"no-store"}),fetch(forecastUrl,{cache:"no-store"})]);
     if(!results[0].ok||!results[1].ok)throw new Error("rainfall");
     var hist=await results[0].json(), fc=await results[1].json();
-    var previousTotal=0;
-    for(var i=0;i<hist.hourly.time.length;i++) previousTotal+=Number(hist.hourly.precipitation[i]||0);
+    var previousTotal=0;\n    var previous24Total=0;
+    for(var i=0;i<hist.hourly.time.length;i++){ var mm=Number(hist.hourly.precipitation[i]||0); previousTotal+=mm; }\n    var cutoff24=new Date(end);cutoff24.setDate(cutoff24.getDate()-1);\n    for(var j=0;j<hist.hourly.time.length;j++){ var ht=new Date(hist.hourly.time[j].replace(" ","T")+":00+10:00"); if(ht>cutoff24&&ht<=end) previous24Total+=Number(hist.hourly.precipitation[j]||0); }
     var future=fc.daily.time.map(function(date,i){return {date:date,rain:Number(fc.daily.precipitation_sum[i]||0),max:fc.daily.temperature_2m_max[i],min:fc.daily.temperature_2m_min[i]};});
     var forecastTotal=future.reduce(function(a,x){return a+x.rain;},0);
-    state.forecast=[{date:isoDate(end),rain:forecastTotal}];
+    state.forecast=[{date:isoDate(end),rain:previousTotal}];
     save();render();checkAlerts();
     box.innerHTML="<div class='rain-summary'><div class='day'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+previousTotal.toFixed(1)+" mm</div><div class='range'>Observed rainfall total</div></div></div>"+future.map(function(x){
       return "<div class='day'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div></div>";
