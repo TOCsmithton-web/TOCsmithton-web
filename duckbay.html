@@ -141,47 +141,44 @@ function render(){
 }
 function isoDate(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 async function weather(){
-  var box=el("forecast");
-  box.innerHTML="<div class='loading'>Loading Smithton rainfall…</div>";
+  var box=el("forecast");box.innerHTML="<div class='loading'>Loading Smithton rainfall…</div>";
   try{
-    // Use one Open-Meteo endpoint for both recent observed rainfall and the 7-day forecast.
-    // This avoids the archive service failing when recent dates are not yet published.
-    var url="https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&hourly=precipitation&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&past_days=7&forecast_days=7&timezone=Australia%2FHobart";
-    var response=await fetch(url,{cache:"no-store"});
-    if(!response.ok)throw new Error("Open-Meteo HTTP "+response.status);
-    var data=await response.json();
-    if(!data.hourly||!data.hourly.precipitation||!data.daily)throw new Error("Incomplete weather data");
-
-    var hourly=data.hourly.precipitation.map(function(v){return Number(v||0);});
-    previous24Total=hourly.slice(-24).reduce(function(a,b){return a+b;},0);
-    previous7Total=hourly.slice(-168).reduce(function(a,b){return a+b;},0);
-
-    var future=data.daily.time.map(function(date,i){
-      return {
-        date:date,
-        rain:Number(data.daily.precipitation_sum[i]||0),
-        max:data.daily.temperature_2m_max[i],
-        min:data.daily.temperature_2m_min[i]
-      };
-    });
-
-    save();
-    render();
-    checkAlerts();
-
-    box.innerHTML="<div class='day'><div class='date'>Previous 7 days</div><div class='rain'>"+previous7Total.toFixed(1)+" mm</div><div class='range'>Observed rainfall total</div></div>"+
-      future.map(function(x){
-        return "<div class='day'><div class='date'>"+new Date(x.date+"T12:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div></div>";
-      }).join("");
+    // Keep the original 9am rainfall layout. Historical rainfall is taken from
+    // Open-Meteo archive data; forecast is kept separate so forecast values
+    // cannot accidentally be counted as observed rainfall.
+    var nowParts=Object.fromEntries(new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Hobart",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).filter(function(p){return p.type!=="literal";}).map(function(p){return [p.type,p.value];}));
+    var localNowUtc=new Date(Date.UTC(Number(nowParts.year),Number(nowParts.month)-1,Number(nowParts.day),Number(nowParts.hour),Number(nowParts.minute)));
+    var endDate=new Date(localNowUtc);
+    endDate.setUTCHours(9,0,0,0);
+    if(localNowUtc<endDate)endDate.setUTCDate(endDate.getUTCDate()-1);
+    var startDate=new Date(endDate);startDate.setUTCDate(startDate.getUTCDate()-7);
+    var cutoff24=new Date(endDate);cutoff24.setUTCDate(cutoff24.getUTCDate()-1);
+    var endKey=isoDate(endDate)+"T09:00";
+    var startKey=isoDate(startDate)+"T09:00";
+    var cutoff24Key=isoDate(cutoff24)+"T09:00";
+    var histUrl="https://archive-api.open-meteo.com/v1/archive?latitude=-40.84&longitude=145.12&start_date="+isoDate(startDate)+"&end_date="+isoDate(endDate)+"&hourly=precipitation&timezone=Australia%2FHobart";
+    var forecastUrl="https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Australia%2FHobart&forecast_days=7";
+    var results=await Promise.all([fetch(histUrl,{cache:"no-store"}),fetch(forecastUrl,{cache:"no-store"})]);
+    if(!results[0].ok||!results[1].ok)throw new Error("rainfall");
+    var hist=await results[0].json();
+    var fc=await results[1].json();
+    previous7Total=0;previous24Total=0;
+    for(var i=0;i<hist.hourly.time.length;i++){
+      var rain=Number(hist.hourly.precipitation[i]||0);
+      var key=String(hist.hourly.time[i]).replace(" ","T").slice(0,16);
+      if(key>startKey&&key<=endKey)previous7Total+=rain;
+      if(key>cutoff24Key&&key<=endKey)previous24Total+=rain;
+    }
+    var future=fc.daily.time.map(function(date,i){return {date:date,rain:Number(fc.daily.precipitation_sum[i]||0),max:fc.daily.temperature_2m_max[i],min:fc.daily.temperature_2m_min[i]};});
+    save();render();checkAlerts();
+    box.innerHTML="<div class='day'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+previous7Total.toFixed(1)+" mm</div><div class='range'>Observed rainfall total</div></div>"+future.map(function(x){
+      return "<div class='day'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div></div>";
+    }).join("");
   }catch(e){
-    previous24Total=0;
-    previous7Total=0;
-    render();
-    box.innerHTML="<div class='loading'>Weather unavailable — tap Refresh.</div>";
-    console.error("Smithton weather:",e);
+    box.innerHTML="<div class='loading'>Rainfall unavailable — tap Refresh.</div>";
+    console.error("Smithton rainfall:",e);
   }
 }
-
 async function riverFlow(){
   var fallback={flow:7.027,timestamp:"2026-10-01T20:00:00+10:00",updated:"2026-10-01T20:05:00+10:00",source:"Tasmania Water Information Portal"};
   try{
