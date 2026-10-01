@@ -1,0 +1,46 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b4f6c"><meta name="description" content="Tasmanian Oyster Company Smithton environmental and stock control dashboard"><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="styles.css"><title>TOC Smithton Control</title></head><body><header class="topbar"><div><div class="eyebrow">TASMANIAN OYSTER COMPANY</div><h1>Smithton Control</h1></div><button id="notifyBtn" class="button secondary">Enable alerts</button></header><main class="container"><section class="status-grid"><article class="card hero"><div class="card-head"><div><span class="label">Environmental status</span><h2 id="statusText">Awaiting readings</h2></div><span id="statusDot" class="status-dot neutral"></span></div><div class="metric-row"><div><span>Salinity</span><strong id="salinityValue">—</strong><small>ppt</small></div><div><span>7-day rainfall</span><strong id="rainValue">—</strong><small>mm</small></div><div><span>Next 24h</span><strong id="rain24Value">—</strong><small>mm</small></div></div><p id="lastUpdated" class="muted">No readings entered yet.</p><div id="saveStatus" aria-live="polite"></div></article></section><section class="grid two"><article class="card"><div class="card-head"><h2>Manual salinity</h2><span class="badge">Smithton</span></div><form id="salinityForm"><label>Salinity (ppt)<input id="salinityInput" type="number" step="0.1" min="0" placeholder="Enter reading" required></label><label>Environmental minimum<input id="salinityMin" type="number" step="0.1" min="0" placeholder="Optional"></label><label>Environmental maximum<input id="salinityMax" type="number" step="0.1" min="0" placeholder="Optional"></label><button class="button" type="submit">Save salinity</button></form></article><article class="card"><div class="card-head"><h2>Rainfall alert control</h2><span class="badge">7 day forecast</span></div><form id="rainForm"><label>Alert threshold (mm / 24h)<input id="rainThreshold" type="number" step="0.1" min="0" placeholder="Enter threshold" required></label><label>Alert threshold (mm / 7 days)<input id="rain7Threshold" type="number" step="0.1" min="0" placeholder="Optional"></label><button class="button" type="submit">Save thresholds</button></form><p class="hint">Set thresholds to your approved environmental-control limits.</p></article></section><section class="card"><div class="card-head"><div><h2>Smithton 7-day rainfall forecast</h2><p class="muted">Forecast supplied by Open-Meteo.</p></div><button id="refreshWeather" class="button secondary">Refresh</button></div><div id="forecast" class="forecast"><div class="loading">Loading forecast…</div></div></section><section class="grid two"><article class="card"><div class="card-head"><h2>Sites</h2><span class="badge">Farm control</span></div><div class="site-grid" id="sites"></div></article><article class="card"><div class="card-head"><h2>Stock movement</h2><span class="badge">Quick entry</span></div><form id="stockForm"><label>Site<select id="siteInput"></select></label><label>Size<input id="sizeInput" placeholder="e.g. 40mm" required></label><label>Quantity<input id="qtyInput" type="number" min="1" step="1" required></label><label>Movement<select id="movementInput"><option>Input</option><option>Transfer In</option><option>Transfer Out</option><option>Sale</option></select></label><button class="button" type="submit">Add movement</button></form></article></section><section class="card"><div class="card-head"><h2>Recent stock movements</h2><button id="clearMovements" class="button danger">Clear local data</button></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Site</th><th>Size</th><th>Qty</th><th>Movement</th></tr></thead><tbody id="movementTable"></tbody></table></div></section></main><footer>TOC Smithton Control • Local device data + live Smithton rainfall forecast</footer><script>
+(function(){
+  try{navigator.serviceWorker&&navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(x=>x.unregister()));}
+  catch(e){}
+  try{if(window.caches){caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}}catch(e){}
+})();
+const KEY="toc-smithton-control-v5";
+const SITES=["Boomer Bay","Pittwater","LSP","Pipeclay","SCL"];
+let state={salinity:"",salinityMin:"",salinityMax:"",rainThreshold:"",rain7Threshold:"",movements:[],forecast:[]};
+const $=id=>document.getElementById(id);
+function load(){try{const x=localStorage.getItem(KEY);if(x)state=Object.assign(state,JSON.parse(x));}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));return true}catch(e){return false}}
+function show(msg,ok){const e=$("saveStatus");if(e){e.textContent=msg;e.style.display="block";e.style.padding="10px";e.style.marginTop="10px";e.style.fontWeight="700";e.style.background=ok?"#dff5e8":"#fde2e2";e.style.color=ok?"#176b3b":"#9d2727";}}
+function render(){
+  $("sites").innerHTML=SITES.map(s=>"<div class='site'>"+s+"</div>").join("");
+  $("siteInput").innerHTML=SITES.map(s=>"<option value='"+s+"'>"+s+"</option>").join("");
+  $("salinityInput").value=state.salinity;
+  $("salinityMin").value=state.salinityMin;
+  $("salinityMax").value=state.salinityMax;
+  $("rainThreshold").value=state.rainThreshold;
+  $("rain7Threshold").value=state.rain7Threshold;
+  $("salinityValue").textContent=state.salinity===""?"—":Number(state.salinity).toFixed(1);
+  $("rainValue").textContent=state.forecast.length?state.forecast.reduce((a,b)=>a+b.rain,0).toFixed(1):"—";
+  $("rain24Value").textContent=state.forecast.length?state.forecast[0].rain.toFixed(1):"—";
+  $("movementTable").innerHTML=state.movements.length?state.movements.slice(0,50).map(x=>"<tr><td>"+new Date(x.date).toLocaleString("en-AU")+"</td><td>"+x.site+"</td><td>"+x.size+"</td><td>"+Number(x.qty).toLocaleString()+"</td><td>"+x.movement+"</td></tr>").join(""):"<tr><td colspan='5' class='muted'>No movements entered.</td></tr>";
+  $("statusText").textContent=state.salinity===""?"Awaiting readings":"Reading saved";
+}
+function init(){
+  $("salinityForm").addEventListener("submit",function(e){e.preventDefault();state.salinity=$("salinityInput").value;state.salinityMin=$("salinityMin").value;state.salinityMax=$("salinityMax").value;show(save()?"SAVED ✓":"SAVE FAILED",save());render();});
+  $("rainForm").addEventListener("submit",function(e){e.preventDefault();state.rainThreshold=$("rainThreshold").value;state.rain7Threshold=$("rain7Threshold").value;show(save()?"SAVED ✓":"SAVE FAILED",save());render();});
+  $("stockForm").addEventListener("submit",function(e){e.preventDefault();state.movements.unshift({date:new Date().toISOString(),site:$("siteInput").value,size:$("sizeInput").value,qty:$("qtyInput").value,movement:$("movementInput").value});const ok=save();show(ok?"SAVED ✓":"SAVE FAILED",ok);$("sizeInput").value="";$("qtyInput").value="";render();});
+  $("clearMovements").addEventListener("click",function(){state.movements=[];const ok=save();show(ok?"CLEARED ✓":"SAVE FAILED",ok);render();});
+  $("refreshWeather").addEventListener("click",weather);
+}
+async function weather(){
+  $("forecast").innerHTML="<div class='loading'>Loading Smithton forecast…</div>";
+  try{
+    const u="https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Australia%2FHobart&forecast_days=7";
+    const r=await fetch(u,{cache:"no-store"});const d=await r.json();
+    state.forecast=d.daily.time.map((date,i)=>({date,rain:Number(d.daily.precipitation_sum[i]||0),max:d.daily.temperature_2m_max[i],min:d.daily.temperature_2m_min[i]}));
+    save();
+    $("forecast").innerHTML=state.forecast.map(x=>"<div class='day'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div></div>").join("");
+  }catch(e){$("forecast").innerHTML="<div class='loading'>Forecast unavailable — tap Refresh.</div>";}
+}
+load();render();init();show("APP READY ✓",true);weather();
+</script></body></html>
