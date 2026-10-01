@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite">CHECKING ENVIRONMENTAL CONTROLS</div>
 <header class="topbar">
   <div><div class="eyebrow">TASMANIAN OYSTER COMPANY</div><h1>Smithton Control</h1></div>
   <button id="notifyBtn" class="button secondary" type="button">Enable alerts</button>
@@ -66,7 +67,24 @@ var KEY="toc-smithton-control-v6";
 var state={salinity:"",salinityMin:"32.5",salinityMax:"",rainThreshold:"25",rain7Threshold:"40",forecast:[],lastAlerts:{salinity:false,rain24:false,rain7:false}};
 var previous24Total=0;
 var previous7Total=0;
-function el(id){return document.getElementById(id);}
+function el(id){return document.getElementById(id);}function updateBayBanner(){
+  var salText=state.salinity;
+  var sal=Number(salText);
+  var min=Number(state.salinityMin);
+  var max=Number(state.salinityMax);
+  var salOk=salText!==""&&isFinite(sal);
+  if(state.salinityMin!==""&&isFinite(min)&&sal<min)salOk=false;
+  if(state.salinityMax!==""&&isFinite(max)&&sal>max)salOk=false;
+  var rain24Ok=isFinite(previous24Total)&&previous24Total<=Number(state.rainThreshold||0);
+  var rain7Ok=isFinite(previous7Total)&&previous7Total<=Number(state.rain7Threshold||0);
+  var riverOk=isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<=5.5;
+  var ready=salText!==""&&isFinite(previous24Total)&&isFinite(previous7Total)&&isFinite(Number(window.riverCurrentFlow));
+  var open=ready&&salOk&&rain24Ok&&rain7Ok&&riverOk;
+  var b=el("bayBanner");
+  if(!b)return;
+  b.className="bay-banner "+(ready?(open?"open":"closed"):"waiting");
+  b.innerHTML=ready?(open?"DUCK BAY OPEN":"DUCK BAY CLOSED"):"CHECKING ENVIRONMENTAL CONTROLS";
+}
 function load(){try{var raw=localStorage.getItem(KEY);if(raw){Object.assign(state,JSON.parse(raw));}}catch(e){}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));return true;}catch(e){return false;}}
 function status(msg,ok){var e=el("saveStatus");if(!e)return;e.textContent=msg;e.style.display="block";e.style.padding="10px";e.style.marginTop="10px";e.style.fontWeight="700";e.style.background=ok?"#dff5e8":"#fde2e2";e.style.color=ok?"#176b3b":"#9d2727";}
@@ -91,6 +109,7 @@ function render(){
   el("rainValue").textContent=previous7Total?previous7Total.toFixed(1):"—";
   el("rain24Value").textContent=previous24Total.toFixed(1);
   el("statusText").textContent=state.salinity===""?"Awaiting readings":"Reading saved";
+  updateBayBanner();
 }
 function isoDate(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 async function weather(){
