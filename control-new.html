@@ -13,7 +13,6 @@ function load(){try{const x=localStorage.getItem(KEY);if(x)state=Object.assign(s
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));return true}catch(e){return false}}
 function show(msg,ok){const e=$("saveStatus");if(e){e.textContent=msg;e.style.display="block";e.style.padding="10px";e.style.marginTop="10px";e.style.fontWeight="700";e.style.background=ok?"#dff5e8":"#fde2e2";e.style.color=ok?"#176b3b":"#9d2727";}}
 function render(){
-  $("siteInput").innerHTML=SITES.map(s=>"<option value='"+s+"'>"+s+"</option>").join("");
   $("salinityInput").value=state.salinity;
   $("salinityMin").value=state.salinityMin;
   $("salinityMax").value=state.salinityMax;
