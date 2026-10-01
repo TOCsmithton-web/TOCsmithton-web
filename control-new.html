@@ -123,4 +123,9 @@ function init(){
 load();render();init();status("APP READY ✓",true);weather();setInterval(weather,3600000);
 })();
 </script>
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});
+}
+</script>
 </body></html>
