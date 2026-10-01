@@ -20,14 +20,14 @@ function init(){
  $("salinityInput").value=state.salinity??"";
  $("salinityMin").value=state.salinityMin??"";
  $("salinityMax").value=state.salinityMax??"";
- $("salinityForm").addEventListener("submit",e=>{e.preventDefault();state.salinity=Number($("salinityInput").value);state.salinityMin=$("salinityMin").value===""?null:Number($("salinityMin").value);state.salinityMax=$("salinityMax").value===""?null:Number($("salinityMax").value);flashSaved(save());renderStatus();checkAlerts()});
- $("rainForm").addEventListener("submit",e=>{e.preventDefault();state.rainThreshold=Number($("rainThreshold").value);state.rain7Threshold=$("rain7Threshold").value===""?null:Number($("rain7Threshold").value);flashSaved(save());renderStatus();checkAlerts()});
- $("stockForm").addEventListener("submit",e=>{e.preventDefault();state.movements.unshift({date:new Date().toISOString(),site:$("siteInput").value,size:$("sizeInput").value.trim(),qty:Number($("qtyInput").value),movement:$("movementInput").value});flashSaved(save());renderMovements();e.target.reset()});
- $("clearMovements").addEventListener("click",()=>{if(confirm("Clear locally stored stock movements?")){state.movements=[];flashSaved(save());renderMovements()}});
+ $("salinityForm").addEventListener("submit",async e=>{e.preventDefault();state.salinity=Number($("salinityInput").value);state.salinityMin=$("salinityMin").value===""?null:Number($("salinityMin").value);state.salinityMax=$("salinityMax").value===""?null:Number($("salinityMax").value);flashSaved(await save());renderStatus();checkAlerts()});
+ $("rainForm").addEventListener("submit",async e=>{e.preventDefault();state.rainThreshold=Number($("rainThreshold").value);state.rain7Threshold=$("rain7Threshold").value===""?null:Number($("rain7Threshold").value);flashSaved(await save());renderStatus();checkAlerts()});
+ $("stockForm").addEventListener("submit",async e=>{e.preventDefault();state.movements.unshift({date:new Date().toISOString(),site:$("siteInput").value,size:$("sizeInput").value.trim(),qty:Number($("qtyInput").value),movement:$("movementInput").value});flashSaved(await save());renderMovements();e.target.reset()});
+ $("clearMovements").addEventListener("click",async()=>{if(confirm("Clear locally stored stock movements?")){state.movements=[];flashSaved(await save());renderMovements()}});
  $("refreshWeather").addEventListener("click",loadWeather);
  $("notifyBtn").addEventListener("click",enableAlerts);
  renderStatus();renderMovements();renderForecast();loadWeather();
- if("serviceWorker"in navigator)navigator.serviceWorker.register("./sw.js?v=2").catch(()=>{});
+ 
 }
 function renderStatus(){
  $("salinityValue").textContent=state.salinity==null?"—":state.salinity.toFixed(1);
