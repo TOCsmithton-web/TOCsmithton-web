@@ -51,8 +51,6 @@ function init(){
   }
   $("salinityForm").addEventListener("submit",function(e){e.preventDefault();state.salinity=$("salinityInput").value;state.salinityMin=$("salinityMin").value;state.salinityMax=$("salinityMax").value;show(save()?"SAVED ✓":"SAVE FAILED",save());render();});
   $("rainForm").addEventListener("submit",function(e){e.preventDefault();state.rainThreshold=$("rainThreshold").value;state.rain7Threshold=$("rain7Threshold").value;show(save()?"SAVED ✓":"SAVE FAILED",save());render();});
-  $("stockForm").addEventListener("submit",function(e){e.preventDefault();state.movements.unshift({date:new Date().toISOString(),site:$("siteInput").value,size:$("sizeInput").value,qty:$("qtyInput").value,movement:$("movementInput").value});const ok=save();show(ok?"SAVED ✓":"SAVE FAILED",ok);$("sizeInput").value="";$("qtyInput").value="";render();});
-  $("clearMovements").addEventListener("click",function(){state.movements=[];const ok=save();show(ok?"CLEARED ✓":"SAVE FAILED",ok);render();});
   $("refreshWeather").addEventListener("click",weather);
 }
 async function weather(){
