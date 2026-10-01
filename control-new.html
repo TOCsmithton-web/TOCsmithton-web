@@ -91,9 +91,14 @@ function el(id){return document.getElementById(id);}function updateBayBanner(){
       b.style.boxShadow=bright?"0 0 28px #ff0000":"0 0 4px #7a0000";
     },450);
   }else{
-    b.style.backgroundColor="#16823b";
-    b.style.opacity="1";
-    b.style.boxShadow="0 0 10px #16823b";
+    var green=false;
+    window.bayFlashTimer=setInterval(function(){
+      green=!green;
+      b.style.backgroundColor=green?"#16823b":"#07551f";
+      b.style.color="#fff";
+      b.style.opacity=green?"1":"0.55";
+      b.style.boxShadow=green?"0 0 28px #16823b":"0 0 4px #07551f";
+    },600);
   }
 }
 function load(){try{var raw=localStorage.getItem(KEY);if(raw){Object.assign(state,JSON.parse(raw));}}catch(e){}}
