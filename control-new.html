@@ -18,7 +18,7 @@
   <div class="card-head"><div><span class="label">Environmental status</span><h2 id="statusText">Awaiting readings</h2></div><span id="statusDot" class="status-dot neutral"></span></div>
   <div class="metric-row">
     <div><span>Salinity</span><strong id="salinityValue">—</strong><small>ppt</small></div>
-    <div><span>Previous 7-day rainfall</span><strong id="rainValue">—</strong><small>mm</small></div>
+    <div><span>7-day rainfall</span><strong id="rainValue">—</strong><small>mm</small></div>
     <div><span>Next 24h</span><strong id="rain24Value">—</strong><small>mm</small></div>
   </div>
   <p id="lastUpdated" class="muted">No readings entered yet.</p>
@@ -34,7 +34,7 @@
 <button class="button" type="submit">Save salinity</button>
 </form></article>
 
-<article class="card"><div class="card-head"><h2>Rainfall alert control</h2><span class="badge">Previous 7 days to 9am</span></div>
+<article class="card"><div class="card-head"><h2>Rainfall alert control</h2><span class="badge">Previous 7 days + next 7 days</span></div>
 <form id="rainForm">
 <label>Alert threshold (mm / 24h)<input id="rainThreshold" type="number" step="0.1" min="0" placeholder="Enter threshold" required></label>
 <label>Alert threshold (mm / 7 days)<input id="rain7Threshold" type="number" step="0.1" min="0" placeholder="Optional"></label>
@@ -44,7 +44,7 @@
 </article>
 </section>
 
-<section class="card"><div class="card-head"><div><h2>Smithton rainfall — previous 7 days to 9am</h2><p class="muted">Observed rainfall supplied by Open-Meteo.</p></div><button id="refreshWeather" class="button secondary" type="button">Refresh</button></div>
+<section class="card"><div class="card-head"><div><h2>Smithton rainfall — previous 7 days + next 7 days</h2><p class="muted">Observed rainfall supplied by Open-Meteo.</p></div><button id="refreshWeather" class="button secondary" type="button">Refresh</button></div>
 <div id="forecast" class="forecast"><div class="loading">Loading forecast…</div></div>
 </section>
 </main>
@@ -86,26 +86,25 @@ async function weather(){
   try{
     var now=new Date();
     var localNow=new Date(now.toLocaleString("en-US",{timeZone:"Australia/Hobart"}));
-    var end=new Date(localNow);
-    end.setHours(9,0,0,0);
+    var end=new Date(localNow);end.setHours(9,0,0,0);
     if(localNow<end) end.setDate(end.getDate()-1);
     var startDate=new Date(end);startDate.setDate(startDate.getDate()-7);
+    var futureEnd=new Date(end);futureEnd.setDate(futureEnd.getDate()+7);
     function isoDate(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
-    var u="https://archive-api.open-meteo.com/v1/archive?latitude=-40.84&longitude=145.12&start_date="+isoDate(startDate)+"&end_date="+isoDate(end)+"&hourly=precipitation&timezone=Australia%2FHobart";
-    var response=await fetch(u,{cache:"no-store"});
-    if(!response.ok)throw new Error("rainfall");
-    var d=await response.json();
-    var total=0;
-    var daily=[];
-    for(var i=0;i<d.hourly.time.length;i++){
-      var t=new Date(d.hourly.time[i].replace(" ","T")+":00+10:00");
-      if(t>startDate&&t<=end){
-        total+=Number(d.hourly.precipitation[i]||0);
-      }
-    }
-    state.forecast=[{date:isoDate(end),rain:total}];
+    var histUrl="https://archive-api.open-meteo.com/v1/archive?latitude=-40.84&longitude=145.12&start_date="+isoDate(startDate)+"&end_date="+isoDate(end)+"&hourly=precipitation&timezone=Australia%2FHobart";
+    var forecastUrl="https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Australia%2FHobart&forecast_days=7";
+    var results=await Promise.all([fetch(histUrl,{cache:"no-store"}),fetch(forecastUrl,{cache:"no-store"})]);
+    if(!results[0].ok||!results[1].ok)throw new Error("rainfall");
+    var hist=await results[0].json(), fc=await results[1].json();
+    var previousTotal=0;
+    for(var i=0;i<hist.hourly.time.length;i++) previousTotal+=Number(hist.hourly.precipitation[i]||0);
+    var future=fc.daily.time.map(function(date,i){return {date:date,rain:Number(fc.daily.precipitation_sum[i]||0),max:fc.daily.temperature_2m_max[i],min:fc.daily.temperature_2m_min[i]};});
+    var forecastTotal=future.reduce(function(a,x){return a+x.rain;},0);
+    state.forecast=[{date:isoDate(end),rain:forecastTotal}];
     save();render();checkAlerts();
-    box.innerHTML="<div class='day'><div class='date'>"+startDate.toLocaleDateString("en-AU",{day:"numeric",month:"short"})+" 9am → "+end.toLocaleDateString("en-AU",{day:"numeric",month:"short"})+" 9am</div><div class='rain'>"+total.toFixed(1)+" mm</div><div class='range'>Previous 7 days</div></div>";
+    box.innerHTML="<div class='rain-summary'><div class='day'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+previousTotal.toFixed(1)+" mm</div><div class='range'>Observed rainfall</div></div><div class='day'><div class='date'>Next 7 days</div><div class='rain'>"+forecastTotal.toFixed(1)+" mm</div><div class='range'>Forecast rainfall</div></div></div>"+future.map(function(x){
+      return "<div class='day'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div></div>";
+    }).join("");
   }catch(e){box.innerHTML="<div class='loading'>Rainfall unavailable — tap Refresh.</div>";}
 }
 function init(){
