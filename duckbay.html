@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b4f6c">
+<title>TOC Smithton Control</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite">CHECKING ENVIRONMENTAL CONTROLS</div>
+<header class="topbar">
+  <div><div class="eyebrow">TASMANIAN OYSTER COMPANY</div><h1>Smithton Control</h1></div>
+  <button id="notifyBtn" class="button secondary" type="button">Enable alerts</button>
+</header>
+<main class="container">
+<section class="status-grid"><article class="card hero">
+  <div class="card-head"><div><span class="label">Environmental status</span><h2 id="statusText">Awaiting readings</h2></div><span id="statusDot" class="status-dot neutral"></span></div>
+  <div class="metric-row">
+    <div><span>Salinity</span><strong id="salinityValue">—</strong><small>ppt</small></div>
+    <div><span>Previous 24h rainfall</span><strong id="rain24Value">—</strong><small>mm</small></div>
+    <div><span>Previous 7-day rainfall</span><strong id="rainValue">—</strong><small>mm</small></div>
+  </div>
+  <p id="lastUpdated" class="muted">No readings entered yet.</p>
+  <div id="saveStatus" aria-live="polite"></div>
+</article></section>
+
+<section class="grid two">
+<article class="card"><div class="card-head"><h2>Manual salinity</h2><span class="badge">Smithton</span></div>
+<form id="salinityForm">
+<label>Salinity (ppt)<input id="salinityInput" type="number" step="0.1" min="0" placeholder="Enter reading" required></label>
+<label>Environmental minimum<input id="salinityMin" type="number" step="0.1" min="0" placeholder="Optional"></label>
+<label>Environmental maximum<input id="salinityMax" type="number" step="0.1" min="0" placeholder="Optional"></label>
+<button class="button" type="submit">Save salinity</button>
+</form></article>
+
+<article class="card"><div class="card-head"><h2>Rainfall alert control</h2><span class="badge">Previous 7 days + next 7 days</span></div>
+<form id="rainForm">
+<label>Alert threshold (mm / 24h)<input id="rainThreshold" type="number" step="0.1" min="0" placeholder="Enter threshold" required></label>
+<label>Alert threshold (mm / 7 days)<input id="rain7Threshold" type="number" step="0.1" min="0" placeholder="Optional"></label>
+<button class="button" type="submit">Save thresholds</button>
+</form>
+<p class="hint">Set thresholds to your approved environmental-control limits.</p>
+</article>
+</section>
+
+<section class="card">
+<div class="card-head"><div><h2>Duck River — Scotchtown</h2><p class="muted">BOM streamflow gauge 314214 • Environmental control: 5.5 m³/s</p></div></div>
+<div class="metric-row">
+<div><span>Current flow</span><strong id="riverFlow">—</strong><small>m³/s</small></div>
+<div><span>Control limit</span><strong>5.5</strong><small>m³/s</small></div>
+</div>
+<div id="riverStatus" class="hint">Loading river flow…</div>
+</section>
+
+<section class="card"><div class="card-head"><div><h2>Smithton rainfall — previous 7 days + next 7 days</h2><p class="muted">Previous 7-day total is observed rainfall; the next 7 days are forecast rainfall supplied by Open-Meteo.</p></div><button id="refreshWeather" class="button secondary" type="button">Refresh</button></div>
+<div id="forecast" class="forecast"><div class="loading">Loading forecast…</div></div>
+</section>
+</main>
+<footer>TOC Smithton Control • Local device data + live Smithton rainfall forecast</footer>
+
+<script>
+(function(){
+"use strict";
+var KEY="toc-smithton-control-v6";
+var state={salinity:"",salinityMin:"32.5",salinityMax:"",rainThreshold:"25",rain7Threshold:"40",forecast:[],lastAlerts:{salinity:false,rain24:false,rain7:false}};
+var previous24Total=0;
+var previous7Total=0;
+function el(id){return document.getElementById(id);}function updateBayBanner(){
+  var sal=Number(state.salinity), min=Number(state.salinityMin), max=Number(state.salinityMax);
+  var salOk=state.salinity!==""&&isFinite(sal);
+  if(salOk&&state.salinityMin!==""&&isFinite(min)&&sal<min)salOk=false;
+  if(salOk&&state.salinityMax!==""&&isFinite(max)&&sal>max)salOk=false;
+  var rain24Ok=isFinite(previous24Total)&&previous24Total<=Number(state.rainThreshold||25);
+  var rain7Ok=isFinite(previous7Total)&&previous7Total<=Number(state.rain7Threshold||40);
+  var riverOk=isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<=5.5;
+  var open=salOk&&rain24Ok&&rain7Ok&&riverOk;
+  var b=el("bayBanner"); if(!b)return;
+  b.className="bay-banner "+(open?"open":"closed");
+  b.textContent=open?"DUCK BAY OPEN":"DUCK BAY CLOSED";
+  if(window.bayFlashTimer)clearInterval(window.bayFlashTimer);
+  b.style.opacity="1";
+  if(!open){
+    var bright=false;
+    window.bayFlashTimer=setInterval(function(){
+      bright=!bright;
+      b.style.backgroundColor=bright?"#ff0000":"#7a0000";
+      b.style.color="#fff";
+      b.style.opacity=bright?"1":"0.45";
+      b.style.boxShadow=bright?"0 0 28px #ff0000":"0 0 4px #7a0000";
+    },450);
+  }else{
+    b.style.backgroundColor="#16823b";
+    b.style.opacity="1";
+    b.style.boxShadow="0 0 10px #16823b";
+  }
+}
+function load(){try{var raw=localStorage.getItem(KEY);if(raw){Object.assign(state,JSON.parse(raw));}}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));return true;}catch(e){return false;}}
+function status(msg,ok){var e=el("saveStatus");if(!e)return;e.textContent=msg;e.style.display="block";e.style.padding="10px";e.style.marginTop="10px";e.style.fontWeight="700";e.style.background=ok?"#dff5e8":"#fde2e2";e.style.color=ok?"#176b3b":"#9d2727";}
+function alertNow(title,body,tag){if(!("Notification" in window)||Notification.permission!=="granted")return;if("serviceWorker" in navigator){navigator.serviceWorker.ready.then(function(reg){reg.showNotification(title,{body:body,tag:tag});}).catch(function(){});}}
+function checkAlerts(){
+  var sal=Number(state.salinity);
+  var low=state.salinity!==""&&sal<Number(state.salinityMin||32.5);
+  var high24=previous24Total>Number(state.rainThreshold||25);
+  var high7=previous7Total>Number(state.rain7Threshold||40);
+  if(low&&!state.lastAlerts.salinity)alertNow("SALINITY ALERT","Salinity is "+sal.toFixed(1)+" ppt — below minimum.","salinity-alert");
+  if(high24&&!state.lastAlerts.rain24)alertNow("24-HOUR RAINFALL ALERT","Previous 24-hour rainfall is "+previous24Total.toFixed(1)+" mm.","rain24-alert");
+  if(high7&&!state.lastAlerts.rain7)alertNow("7-DAY RAINFALL ALERT","Previous 7-day rainfall is "+previous7Total.toFixed(1)+" mm.","rain7-alert");
+  state.lastAlerts={salinity:low,rain24:high24,rain7:high7};save();
+}
+function render(){
+  el("salinityInput").value=state.salinity||"";
+  el("salinityMin").value=state.salinityMin||"";
+  el("salinityMax").value=state.salinityMax||"";
+  el("rainThreshold").value=state.rainThreshold||"";
+  el("rain7Threshold").value=state.rain7Threshold||"";
+  el("salinityValue").textContent=state.salinity===""?"—":Number(state.salinity).toFixed(1);
+  el("rainValue").textContent=previous7Total?previous7Total.toFixed(1):"—";
+  el("rain24Value").textContent=previous24Total.toFixed(1);
+  el("statusText").textContent=state.salinity===""?"Awaiting readings":"Reading saved";
+  updateBayBanner();
+}
+function isoDate(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+async function weather(){
+  var box=el("forecast");box.innerHTML="<div class='loading'>Loading Smithton rainfall…</div>";
+  try{
+    var now=new Date();
+    var localNow=new Date(now.toLocaleString("en-US",{timeZone:"Australia/Hobart"}));
+    var end=new Date(localNow);end.setHours(9,0,0,0);
+    if(localNow<end)end.setDate(end.getDate()-1);
+    var startDate=new Date(end);startDate.setDate(startDate.getDate()-7);
+    var histUrl="https://archive-api.open-meteo.com/v1/archive?latitude=-40.84&longitude=145.12&start_date="+isoDate(startDate)+"&end_date="+isoDate(end)+"&hourly=precipitation&timezone=Australia%2FHobart";
+    var forecastUrl="https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Australia%2FHobart&forecast_days=7";
+    var results=await Promise.all([fetch(histUrl,{cache:"no-store"}),fetch(forecastUrl,{cache:"no-store"})]);
+    if(!results[0].ok||!results[1].ok)throw new Error("rainfall");
+    var hist=await results[0].json();
+    var fc=await results[1].json();
+    previous7Total=0;previous24Total=0;
+    var cutoff24=new Date(end);cutoff24.setDate(cutoff24.getDate()-1);
+    for(var i=0;i<hist.hourly.time.length;i++){
+      var rain=Number(hist.hourly.precipitation[i]||0);
+      var t=new Date(hist.hourly.time[i].replace(" ","T")+":00+10:00");
+      if(t>startDate&&t<=end)previous7Total+=rain;
+      if(t>cutoff24&&t<=end)previous24Total+=rain;
+    }
+    var future=fc.daily.time.map(function(date,i){return {date:date,rain:Number(fc.daily.precipitation_sum[i]||0),max:fc.daily.temperature_2m_max[i],min:fc.daily.temperature_2m_min[i]};});
+    save();render();checkAlerts();
+    box.innerHTML="<div class='day'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+previous7Total.toFixed(1)+" mm</div><div class='range'>Observed rainfall total</div></div>"+future.map(function(x){
+      return "<div class='day'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div></div>";
+    }).join("");
+  }catch(e){box.innerHTML="<div class='loading'>Rainfall unavailable — tap Refresh.</div>";}
+}
+async function riverFlow(){
+  var fallback={flow:7.027,timestamp:"2026-10-01T20:00:00+10:00",updated:"2026-10-01T20:05:00+10:00",source:"Tasmania Water Information Portal"};
+  try{
+    var response=await fetch("./river.json?ts="+Date.now(),{cache:"no-store"});
+    if(response.ok){var d=await response.json();if(isFinite(Number(d.flow)))fallback=d;}
+  }catch(e){}
+  var v=Number(fallback.flow);
+  el("riverFlow").textContent=v.toFixed(3);
+  el("riverStatus").textContent=v>5.5?"RIVER FLOW ALERT — above 5.5 m³/s":"Within environmental control limit";
+  el("riverStatus").style.color=v>5.5?"#9d2727":"#176b3b";
+  var when=fallback.updated||fallback.timestamp;
+  if(when)el("riverStatus").textContent+=" • Reading "+new Date(when).toLocaleString("en-AU");
+  if(v>5.5&&window.riverAlertState!==true){
+    alertNow("DUCK RIVER FLOW ALERT","Duck River flow is "+v.toFixed(3)+" m³/s — above the 5.5 m³/s limit.","river-flow-alert");
+  }
+  window.riverCurrentFlow=v;
+  window.riverAlertState=v>5.5;
+  updateBayBanner();
+}
+function init(){
+  el("salinityForm").addEventListener("submit",function(e){e.preventDefault();state.salinity=el("salinityInput").value;state.salinityMin=el("salinityMin").value;state.salinityMax=el("salinityMax").value;var ok=save();render();checkAlerts();status(ok?"SAVED ✓":"SAVE FAILED",ok);});
+  el("rainForm").addEventListener("submit",function(e){e.preventDefault();state.rainThreshold=el("rainThreshold").value;state.rain7Threshold=el("rain7Threshold").value;var ok=save();render();checkAlerts();status(ok?"SAVED ✓":"SAVE FAILED",ok);});
+  el("refreshWeather").addEventListener("click",weather);
+  el("notifyBtn").addEventListener("click",async function(){if(!("Notification" in window)){status("ALERTS NOT SUPPORTED",false);return;}try{var p=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(p!=="granted"){status("ALERTS BLOCKED — allow notifications in Chrome settings",false);return;}var reg=await navigator.serviceWorker.ready;await reg.showNotification("TOC Smithton Control",{body:"Environmental alerts are enabled on this device.",tag:"toc-test"});el("notifyBtn").textContent="Alerts enabled ✓";status("ALERTS ENABLED ✓",true);}catch(e){status("ALERT SETUP FAILED",false);}});
+}
+load();render();init();status("APP READY ✓",true);weather();riverFlow();setInterval(weather,3600000);setInterval(riverFlow,3600000);
+})();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});
+}
+</script>
+</body></html>
