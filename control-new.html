@@ -7,7 +7,6 @@
   }catch(e){}
 })();
 const KEY="toc-smithton-control-v5";
-const SITES=["Boomer Bay","Pittwater","LSP","Pipeclay","SCL"];
 let state={salinity:"",salinityMin:"",salinityMax:"",rainThreshold:"",rain7Threshold:"",movements:[],forecast:[]};
 const $=id=>document.getElementById(id);
 function load(){try{const x=localStorage.getItem(KEY);if(x)state=Object.assign(state,JSON.parse(x));}catch(e){}}
