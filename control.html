@@ -9,7 +9,7 @@ let state={...DEFAULT};
 let dbReady=null;
 const $=id=>document.getElementById(id);
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains("state"))r.result.createObjectStore("state")};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
-async function loadState(){try{const raw=localStorage.getItem(KEY);if(raw)return {...DEFAULT,...JSON.parse(raw)}}catch(e){}try{dbReady=dbReady||openDB();const db=await dbReady;const req=db.transaction("state","readonly").objectStore("state").get("main");return await new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result?{...DEFAULT,...req.result}:null);req.onerror=()=>reject(req.error)})}catch(e){return null}}
+async function loadState(){try{const raw=localStorage.getItem(KEY);if(raw)return {...DEFAULT,...JSON.parse(raw)}}catch(e){}return null}
 async function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){return false} try{dbReady=dbReady||openDB();const db=await dbReady;await new Promise((resolve,reject)=>{const tx=db.transaction("state","readwrite");tx.objectStore("state").put(state,"main");tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});return true}catch(e){try{localStorage.setItem(KEY,JSON.stringify(state));return true}catch(_){return false}}}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 function flashSaved(ok=true){let el=$("saveStatus");if(!el)return;el.textContent=ok?"Saved to this device":"Save failed";el.className=ok?"save-ok":"save-error";setTimeout(()=>{el.textContent="";el.className=""},2500)}
