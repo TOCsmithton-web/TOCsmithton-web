@@ -83,7 +83,7 @@ async function showSession(session){
 $("loginBtn").onclick=async function(){
   var email=$("email").value.trim();
   if(!email){msg("authMsg","Enter your email address.",false);return;}
-  var r=await supabase.auth.signInWithOtp({email:email,options:{emailRedirectTo:location.origin+location.pathname}});
+  var r=await supabase.auth.signInWithOtp({email:email,options:{emailRedirectTo:"https://tocsmithton-web.github.io/TOCsmithton-web/admin.html"}});
   if(r.error)msg("authMsg",r.error.message,false);
   else msg("authMsg","Login link sent. Check your email and open the link on this device.",true);
 };
