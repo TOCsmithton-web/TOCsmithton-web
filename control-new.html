@@ -23,7 +23,6 @@ function render(){
   $("salinityValue").textContent=state.salinity===""?"—":Number(state.salinity).toFixed(1);
   $("rainValue").textContent=state.forecast.length?state.forecast.reduce((a,b)=>a+b.rain,0).toFixed(1):"—";
   $("rain24Value").textContent=state.forecast.length?state.forecast[0].rain.toFixed(1):"—";
-  $("movementTable").innerHTML=state.movements.length?state.movements.slice(0,50).map(x=>"<tr><td>"+new Date(x.date).toLocaleString("en-AU")+"</td><td>"+x.site+"</td><td>"+x.size+"</td><td>"+Number(x.qty).toLocaleString()+"</td><td>"+x.movement+"</td></tr>").join(""):"<tr><td colspan='5' class='muted'>No movements entered.</td></tr>";
   $("statusText").textContent=state.salinity===""?"Awaiting readings":"Reading saved";
 }
 function init(){
