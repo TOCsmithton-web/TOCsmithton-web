@@ -45,10 +45,10 @@ jobs:
               for k,w in [("instant",10),("15min",9),("5min",9),("30min",8),("hour",7),("merged",4),("dailymean",-20),("daily", -10)]:
                   if k in n: s+=w
               return s
-          series=sorted(series,key=score,reverse=True)
-          ts=series[0]
+          series=sorted(series,key=lambda x:(score(x),str(x.get("ts_name","")).lower()),reverse=True)
+          ts=next((x for x in series if x.get("ts_id") or x.get("ts_id_name")),None)
+          if not ts: raise SystemExit("BOM returned no usable discharge time series")
           tsid=ts.get("ts_id") or ts.get("ts_id_name")
-          if not tsid: raise SystemExit("BOM returned no ts_id")
           now=datetime.datetime.now(datetime.timezone.utc)
           frm=(now-datetime.timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
           to=now.strftime("%Y-%m-%dT%H:%M:%SZ")
