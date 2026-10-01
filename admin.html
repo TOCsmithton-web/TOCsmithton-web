@@ -7,6 +7,7 @@
 <title>TOC Smithton — Administrator</title>
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase-config.js"></script>
 <style>
 body{background:#eef4f7}.admin-wrap{max-width:760px;margin:0 auto;padding:18px}
 .admin-card{background:#fff;border-radius:18px;padding:20px;margin:14px 0;box-shadow:0 3px 14px rgba(0,0,0,.08)}
@@ -57,9 +58,7 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 <script>
 (function(){
 "use strict";
-var SUPABASE_URL="https://gyzxsugnlobxlvqjevhh.supabase.co";
-var SUPABASE_PUBLISHABLE_KEY="YOUR_PUBLISHABLE_KEY";
-var supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
 var $=function(id){return document.getElementById(id);};
 function msg(id,text,ok){$(id).textContent=text;$(id).style.color=ok?"#176b3b":"#9d2727";}
 async function loadSettings(){
