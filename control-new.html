@@ -102,7 +102,7 @@ async function weather(){
     var forecastTotal=future.reduce(function(a,x){return a+x.rain;},0);
     state.forecast=[{date:isoDate(end),rain:forecastTotal}];
     save();render();checkAlerts();
-    box.innerHTML="<div class='rain-summary'><div class='day'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+previousTotal.toFixed(1)+" mm</div><div class='range'>Observed rainfall</div></div><div class='day'><div class='date'>Next 7 days</div><div class='rain'>"+forecastTotal.toFixed(1)+" mm</div><div class='range'>Forecast rainfall</div></div></div>"+future.map(function(x){
+    box.innerHTML="<div class='rain-summary'><div class='day'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+previousTotal.toFixed(1)+" mm</div><div class='range'>Observed rainfall total</div></div></div>"+future.map(function(x){
       return "<div class='day'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div></div>";
     }).join("");
   }catch(e){box.innerHTML="<div class='loading'>Rainfall unavailable — tap Refresh.</div>";}
