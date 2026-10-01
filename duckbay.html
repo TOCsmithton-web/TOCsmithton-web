@@ -28,20 +28,17 @@
   <div id="saveStatus" aria-live="polite"></div>
 </article></section>
 
-<section class="grid two">
-<article class="card"><div class="card-head"><h2>Environmental controls</h2><span class="badge">Central settings</span></div>
-<div class="metric-row">
-<div><span>Salinity minimum</span><strong id="salinityMinDisplay">—</strong><small>ppt</small></div>
-<div><span>Salinity maximum</span><strong id="salinityMaxDisplay">—</strong><small>ppt</small></div>
-<div><span>24h rainfall limit</span><strong id="rain24LimitDisplay">—</strong><small>mm</small></div>
-<div><span>7-day rainfall limit</span><strong id="rain7LimitDisplay">—</strong><small>mm</small></div>
+<section class="card">
+<div class="card-head"><h2>Environmental controls</h2><span class="badge">Read-only</span></div>
+<div class="grid2">
+<label>Salinity (ppt)<input id="salinityDisplay" type="number" disabled></label>
+<label>Salinity minimum (ppt)<input id="salinityMinDisplay" type="number" disabled></label>
+<label>Salinity maximum (ppt)<input id="salinityMaxDisplay" type="number" disabled></label>
+<label>24h rainfall limit (mm)<input id="rain24LimitDisplay" type="number" disabled></label>
+<label>7-day rainfall limit (mm)<input id="rain7LimitDisplay" type="number" disabled></label>
+<label>Duck River limit (m³/s)<input value="5.5" type="number" disabled></label>
 </div>
-<p class="hint">Settings are centrally controlled. This page is read-only.</p></article>
-<article class="card"><div class="card-head"><h2>Access</h2><span class="badge">Read-only</span></div>
-<p>All users see the same central environmental readings and controls.</p>
-<p class="hint">Only the authenticated administrator can change settings.</p>
-
-</article>
+<p class="hint">Central environmental settings. Read-only — no changes can be made from this page.</p>
 </section>
 
 <section class="card">
@@ -131,10 +128,11 @@ function checkAlerts(){
   state.lastAlerts={salinity:low,rain24:high24,rain7:high7};save();
 }
 function render(){
-  if(el("salinityMinDisplay"))el("salinityMinDisplay").textContent=state.salinityMin||"—";
-  if(el("salinityMaxDisplay"))el("salinityMaxDisplay").textContent=state.salinityMax||"—";
-  if(el("rain24LimitDisplay"))el("rain24LimitDisplay").textContent=state.rainThreshold||"—";
-  if(el("rain7LimitDisplay"))el("rain7LimitDisplay").textContent=state.rain7Threshold||"—";
+  if(el("salinityDisplay"))el("salinityDisplay").value=state.salinity||"";
+  if(el("salinityMinDisplay"))el("salinityMinDisplay").value=state.salinityMin||"";
+  if(el("salinityMaxDisplay"))el("salinityMaxDisplay").value=state.salinityMax||"";
+  if(el("rain24LimitDisplay"))el("rain24LimitDisplay").value=state.rainThreshold||"";
+  if(el("rain7LimitDisplay"))el("rain7LimitDisplay").value=state.rain7Threshold||"";
   el("salinityValue").textContent=state.salinity===""?"—":Number(state.salinity).toFixed(1);
   el("rainValue").textContent=previous7Total?previous7Total.toFixed(1):"—";
   el("rain24Value").textContent=previous24Total.toFixed(1);
