@@ -54,12 +54,12 @@
 (function(){
 "use strict";
 var KEY="toc-smithton-control-v6";
-var state={salinity:"",salinityMin:"",salinityMax:"",rainThreshold:"",rain7Threshold:"",forecast:[]};
+var state={salinity:"",salinityMin:"32.5",salinityMax:"",rainThreshold:"25",rain7Threshold:"40",forecast:[],lastAlerts:{salinity:false,rain24:false,rain7:false}};
 function el(id){return document.getElementById(id);}
 function load(){
   try{var raw=localStorage.getItem(KEY);if(raw){var saved=JSON.parse(raw);Object.assign(state,saved);}}catch(e){}
 }
-function save(){
+function alertNow(title,body,tag){try{if(!("Notification" in window)||Notification.permission!=="granted")return;if("serviceWorker" in navigator){navigator.serviceWorker.ready.then(function(reg){reg.showNotification(title,{body:body,tag:tag});});}}catch(e){}}\nfunction checkAlerts(){var sal=Number(state.salinity);var r24=state.forecast.length?Number(state.forecast[0].rain||0):0;var r7=state.forecast.reduce(function(a,x){return a+Number(x.rain||0);},0);var low=state.salinity!==""&&sal<32.5;var high24=r24>25;var high7=r7>40;if(low&&!state.lastAlerts.salinity){alertNow("SALINITY ALERT","Salinity is "+sal.toFixed(1)+" ppt — below 32.5 ppt minimum.","salinity-alert");}if(high24&&!state.lastAlerts.rain24){alertNow("24-HOUR RAINFALL ALERT","Rainfall is "+r24.toFixed(1)+" mm — above 25 mm limit.","rain24-alert");}if(high7&&!state.lastAlerts.rain7){alertNow("7-DAY RAINFALL ALERT","7-day rainfall is "+r7.toFixed(1)+" mm — above 40 mm limit.","rain7-alert");}state.lastAlerts={salinity:low,rain24:high24,rain7:high7};save();}\nfunction save(){
   try{localStorage.setItem(KEY,JSON.stringify(state));return true;}catch(e){return false;}
 }
 function status(msg,ok){
@@ -97,7 +97,7 @@ function init(){
   el("salinityForm").addEventListener("submit",function(e){
     e.preventDefault();
     state.salinity=el("salinityInput").value;state.salinityMin=el("salinityMin").value;state.salinityMax=el("salinityMax").value;
-    var ok=save();render();status(ok?"SAVED ✓":"SAVE FAILED",ok);
+    var ok=save();render();checkAlerts();status(ok?"SAVED ✓":"SAVE FAILED",ok);
   });
   el("rainForm").addEventListener("submit",function(e){
     e.preventDefault();
@@ -118,7 +118,7 @@ function init(){
     }catch(e){status("ALERT SETUP FAILED",false);}
   });
 }
-load();render();init();status("APP READY ✓",true);weather();
+load();render();init();status("APP READY ✓",true);weather();setInterval(weather,3600000);
 })();
 </script>
 </body></html>
