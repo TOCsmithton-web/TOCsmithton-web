@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b4f6c">
+<title>TOC Smithton — Administrator</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{background:#eef4f7}.admin-wrap{max-width:760px;margin:0 auto;padding:18px}
+.admin-card{background:#fff;border-radius:18px;padding:20px;margin:14px 0;box-shadow:0 3px 14px rgba(0,0,0,.08)}
+.admin-card h2{margin-top:0}.small{font-size:.9rem;color:#52636d}.mono{font-family:monospace;word-break:break-all;background:#f3f6f8;padding:10px;border-radius:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:600px){.grid2{grid-template-columns:1fr}}
+label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #c8d3d8;border-radius:9px;font-size:16px}
+</style>
+</head>
+<body>
+<div class="admin-wrap">
+<div class="admin-card">
+<div class="eyebrow">TASMANIAN OYSTER COMPANY</div>
+<h1>Smithton Control — Administrator</h1>
+<p class="small">Only an authenticated user whose ID is in the Supabase <b>admin_users</b> table can save changes.</p>
+<div id="authArea">
+<label>Your email address<input id="email" type="email" autocomplete="email" placeholder="Enter your email"></label>
+<button id="loginBtn" class="button" type="button">Send secure login link</button>
+<p id="authMsg" class="small"></p>
+</div>
+<div id="userArea" style="display:none">
+<p>Signed in as <b id="userEmail"></b></p>
+<p class="small">Your Supabase user ID:</p>
+<div id="userId" class="mono"></div>
+<button id="copyId" class="button secondary" type="button">Copy user ID</button>
+<button id="logoutBtn" class="button secondary" type="button">Sign out</button>
+</div>
+</div>
+
+<div id="editor" class="admin-card" style="display:none">
+<h2>Central environmental controls</h2>
+<div class="grid2">
+<label>Salinity (ppt)<input id="salinity" type="number" step="0.1" min="0"></label>
+<label>Salinity minimum (ppt)<input id="salinityMin" type="number" step="0.1" min="0"></label>
+<label>Salinity maximum (ppt)<input id="salinityMax" type="number" step="0.1" min="0"></label>
+<label>24h rainfall limit (mm)<input id="rain24" type="number" step="0.1" min="0"></label>
+<label>7-day rainfall limit (mm)<input id="rain7" type="number" step="0.1" min="0"></label>
+<label>Duck River limit (m³/s)<input value="5.5" disabled></label>
+</div>
+<button id="saveBtn" class="button" type="button">Save central settings</button>
+<p id="saveMsg" class="small"></p>
+</div>
+
+<div class="admin-card">
+<a class="button secondary" href="./duckbay.html" style="display:inline-block;text-decoration:none">Back to Duck Bay control</a>
+</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+var SUPABASE_URL="https://gyzxsugnlobxlvqjevhh.supabase.co";
+var SUPABASE_PUBLISHABLE_KEY="YOUR_PUBLISHABLE_KEY";
+var supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+var $=function(id){return document.getElementById(id);};
+function msg(id,text,ok){$(id).textContent=text;$(id).style.color=ok?"#176b3b":"#9d2727";}
+async function loadSettings(){
+  var r=await supabase.from("control_settings").select("*").eq("id",1).maybeSingle();
+  if(r.error){msg("saveMsg","Could not load central settings: "+r.error.message,false);return;}
+  var d=r.data||{};
+  $("salinity").value=d.salinity==null?"":d.salinity;
+  $("salinityMin").value=d.salinity_min==null?"":d.salinity_min;
+  $("salinityMax").value=d.salinity_max==null?"":d.salinity_max;
+  $("rain24").value=d.rain_24h_limit==null?"":d.rain_24h_limit;
+  $("rain7").value=d.rain_7d_limit==null?"":d.rain_7d_limit;
+}
+async function showSession(session){
+  if(!session){$("authArea").style.display="block";$("userArea").style.display="none";$("editor").style.display="none";return;}
+  var u=session.user;
+  $("authArea").style.display="none";$("userArea").style.display="block";$("editor").style.display="block";
+  $("userEmail").textContent=u.email||"Authenticated user";
+  $("userId").textContent=u.id;
+  await loadSettings();
+}
+$("loginBtn").onclick=async function(){
+  var email=$("email").value.trim();
+  if(!email){msg("authMsg","Enter your email address.",false);return;}
+  var r=await supabase.auth.signInWithOtp({email:email,options:{emailRedirectTo:location.origin+location.pathname}});
+  if(r.error)msg("authMsg",r.error.message,false);
+  else msg("authMsg","Login link sent. Check your email and open the link on this device.",true);
+};
+$("logoutBtn").onclick=async function(){await supabase.auth.signOut();location.reload();};
+$("copyId").onclick=async function(){try{await navigator.clipboard.writeText($("userId").textContent);msg("saveMsg","User ID copied.",true);}catch(e){}};
+$("saveBtn").onclick=async function(){
+  var payload={
+    salinity:$("salinity").value===""?null:Number($("salinity").value),
+    salinity_min:$("salinityMin").value===""?null:Number($("salinityMin").value),
+    salinity_max:$("salinityMax").value===""?null:Number($("salinityMax").value),
+    rain_24h_limit:$("rain24").value===""?null:Number($("rain24").value),
+    rain_7d_limit:$("rain7").value===""?null:Number($("rain7").value),
+    updated_at:new Date().toISOString()
+  };
+  var r=await supabase.from("control_settings").update(payload).eq("id",1);
+  if(r.error)msg("saveMsg","SAVE BLOCKED: "+r.error.message+". If this is your first login, add your user ID to admin_users in Supabase SQL Editor.",false);
+  else msg("saveMsg","CENTRAL SETTINGS SAVED ✓",true);
+};
+supabase.auth.getSession().then(function(r){showSession(r.data.session);});
+supabase.auth.onAuthStateChange(function(event,session){showSession(session);});
+})();
+</script>
+</body>
+</html>
