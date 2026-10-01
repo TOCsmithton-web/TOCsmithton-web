@@ -1,0 +1,85 @@
+name: Update Duck River Flow
+
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-river:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch BOM river flow
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, urllib.parse, urllib.request, datetime, re
+          base="https://www.bom.gov.au/waterdata/services"
+          def get(params):
+              u=base+"?"+urllib.parse.urlencode(params)
+              req=urllib.request.Request(u,headers={"User-Agent":"TOCsmithton-web/1.0"})
+              with urllib.request.urlopen(req,timeout=30) as r:
+                  return json.load(r)
+          listing=get({"service":"kisters","type":"QueryServices","format":"json","request":"getTimeseriesList","parametertype_name":"Water Course Discharge","station_no":"14214"})
+          raw=json.dumps(listing)
+          series=[]
+          def walk(x):
+              if isinstance(x,dict):
+                  if "ts_id" in x or "ts_name" in x:
+                      series.append(x)
+                  for v in x.values(): walk(v)
+              elif isinstance(x,list):
+                  for v in x: walk(v)
+          walk(listing)
+          if not series:
+              raise SystemExit("No Duck River discharge time series returned by BOM")
+          def score(x):
+              n=str(x.get("ts_name","")).lower()
+              s=0
+              for k,w in [("instant",10),("15min",9),("5min",9),("30min",8),("hour",7),("merged",4),("dailymean",-20),("daily", -10)]:
+                  if k in n: s+=w
+              return s
+          series=sorted(series,key=score,reverse=True)
+          ts=series[0]
+          tsid=ts.get("ts_id") or ts.get("ts_id_name")
+          if not tsid: raise SystemExit("BOM returned no ts_id")
+          now=datetime.datetime.now(datetime.timezone.utc)
+          frm=(now-datetime.timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
+          to=now.strftime("%Y-%m-%dT%H:%M:%SZ")
+          vals=get({"service":"kisters","type":"QueryServices","format":"json","request":"getTimeseriesValues","ts_id":tsid,"from":frm,"to":to,"returnfields":"Timestamp,Value,Quality Code"})
+          points=[]
+          def collect(x):
+              if isinstance(x,dict):
+                  if "Timestamp" in x and "Value" in x: points.append(x)
+                  for v in x.values(): collect(v)
+              elif isinstance(x,list):
+                  for v in x: collect(v)
+          collect(vals)
+          good=[]
+          for p in points:
+              try:
+                  v=float(p["Value"])
+                  if v==v and v not in (999999,): good.append((p["Timestamp"],v))
+              except: pass
+          if not good: raise SystemExit("No valid Duck River flow values returned by BOM")
+          timestamp,value=good[-1]
+          out={"station":"Duck River at Scotchtown","station_no":"314214","flow":value,"timestamp":timestamp,"limit":5.5,"source":"BOM Water Data Online"}
+          with open("river.json","w") as f: json.dump(out,f,separators=(",",":"))
+          print(json.dumps(out))
+          PY
+
+      - name: Commit river data
+        shell: bash
+        run: |
+          git config user.name "TOC Smithton Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add river.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Update Duck River flow data"
+          git push
