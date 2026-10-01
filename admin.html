@@ -14,6 +14,7 @@ body{background:#eef4f7}.admin-wrap{max-width:760px;margin:0 auto;padding:18px}
 .admin-card h2{margin-top:0}.small{font-size:.9rem;color:#52636d}.mono{font-family:monospace;word-break:break-all;background:#f3f6f8;padding:10px;border-radius:8px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:600px){.grid2{grid-template-columns:1fr}}
 label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #c8d3d8;border-radius:9px;font-size:16px}
+.notice{padding:12px;border-radius:10px;background:#eef4f7;margin-top:12px}
 </style>
 </head>
 <body>
@@ -21,19 +22,21 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 <div class="admin-card">
 <div class="eyebrow">TASMANIAN OYSTER COMPANY</div>
 <h1>Smithton Control — Administrator</h1>
-<p class="small">Only an authenticated user whose ID is in the Supabase <b>admin_users</b> table can save changes.</p>
+<p class="small">Only your authenticated Supabase account, whose ID is in the <b>admin_users</b> table, can save changes.</p>
+
 <div id="authArea">
-<label>Your email address<input id="email" type="email" autocomplete="email" placeholder="Enter your email"></label>
-<button id="loginBtn" class="button" type="button">Send secure login link</button>
+<button id="githubBtn" class="button" type="button">Sign in with GitHub</button>
 <p id="authMsg" class="small"></p>
+<div class="notice small">Use the same GitHub account you used for this Supabase project. This avoids the email-login rate limit.</div>
 </div>
+
 <div id="userArea" style="display:none">
 <p>Signed in as <b id="userEmail"></b></p>
 <p class="small">Your Supabase user ID:</p>
 <div id="userId" class="mono"></div>
 <button id="copyId" class="button secondary" type="button">Copy user ID</button>
-<button id="claimBtn" class="button" type="button">Activate my admin access</button>
 <button id="logoutBtn" class="button secondary" type="button">Sign out</button>
+<p id="accessMsg" class="small"></p>
 </div>
 </div>
 
@@ -61,7 +64,18 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 "use strict";
 var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
 var $=function(id){return document.getElementById(id);};
-function msg(id,text,ok){$(id).textContent=text;$(id).style.color=ok?"#176b3b":"#9d2727";}
+
+function msg(id,text,ok){
+  $(id).textContent=text;
+  $(id).style.color=ok?"#176b3b":"#9d2727";
+}
+
+async function isAdmin(user){
+  if(!user)return false;
+  var r=await supabase.from("admin_users").select("user_id").eq("user_id",user.id).maybeSingle();
+  return !r.error && !!r.data;
+}
+
 async function loadSettings(){
   var r=await supabase.from("control_settings").select("*").eq("id",1).maybeSingle();
   if(r.error){msg("saveMsg","Could not load central settings: "+r.error.message,false);return;}
@@ -72,30 +86,57 @@ async function loadSettings(){
   $("rain24").value=d.rain_24h_limit==null?"":d.rain_24h_limit;
   $("rain7").value=d.rain_7d_limit==null?"":d.rain_7d_limit;
 }
+
 async function showSession(session){
-  if(!session){$("authArea").style.display="block";$("userArea").style.display="none";$("editor").style.display="none";return;}
+  if(!session){
+    $("authArea").style.display="block";
+    $("userArea").style.display="none";
+    $("editor").style.display="none";
+    return;
+  }
+
   var u=session.user;
-  $("authArea").style.display="none";$("userArea").style.display="block";$("editor").style.display="block";
+  $("authArea").style.display="none";
+  $("userArea").style.display="block";
   $("userEmail").textContent=u.email||"Authenticated user";
   $("userId").textContent=u.id;
-  await loadSettings();
+
+  var admin=await isAdmin(u);
+  if(admin){
+    $("editor").style.display="block";
+    msg("accessMsg","ADMIN ACCESS CONFIRMED ✓",true);
+    await loadSettings();
+  }else{
+    $("editor").style.display="none";
+    msg("accessMsg","READ-ONLY ACCOUNT — this account is not authorised to edit Smithton Control.",false);
+  }
 }
-$("loginBtn").onclick=async function(){
-  var email=$("email").value.trim();
-  if(!email){msg("authMsg","Enter your email address.",false);return;}
-  var r=await supabase.auth.signInWithOtp({email:email,options:{emailRedirectTo:"https://tocsmithton-web.github.io/TOCsmithton-web/admin.html"}});
-  if(r.error)msg("authMsg",r.error.message,false);
-  else msg("authMsg","Login link sent. Check your email and open the link on this device.",true);
+
+$("githubBtn").onclick=async function(){
+  $("githubBtn").disabled=true;
+  msg("authMsg","Opening GitHub sign-in...",true);
+  var r=await supabase.auth.signInWithOAuth({
+    provider:"github",
+    options:{redirectTo:window.location.href}
+  });
+  if(r.error){
+    $("githubBtn").disabled=false;
+    msg("authMsg",r.error.message,false);
+  }
 };
-$("logoutBtn").onclick=async function(){await supabase.auth.signOut();location.reload();};
-$("copyId").onclick=async function(){try{await navigator.clipboard.writeText($("userId").textContent);msg("saveMsg","User ID copied.",true);}catch(e){}};
-$("claimBtn").onclick=async function(){
-  var u=(await supabase.auth.getUser()).data.user;
-  if(!u)return;
-  var r=await supabase.from("admin_users").insert({user_id:u.id});
-  if(r.error){msg("saveMsg","Admin activation not available yet: "+r.error.message,false);}
-  else {msg("saveMsg","ADMIN ACCESS ACTIVATED ✓",true);$("claimBtn").style.display="none";}
+
+$("logoutBtn").onclick=async function(){
+  await supabase.auth.signOut();
+  location.reload();
 };
+
+$("copyId").onclick=async function(){
+  try{
+    await navigator.clipboard.writeText($("userId").textContent);
+    msg("accessMsg","User ID copied.",true);
+  }catch(e){}
+};
+
 $("saveBtn").onclick=async function(){
   var payload={
     salinity:$("salinity").value===""?null:Number($("salinity").value),
@@ -106,9 +147,10 @@ $("saveBtn").onclick=async function(){
     updated_at:new Date().toISOString()
   };
   var r=await supabase.from("control_settings").update(payload).eq("id",1);
-  if(r.error)msg("saveMsg","SAVE BLOCKED: "+r.error.message+". If this is your first login, add your user ID to admin_users in Supabase SQL Editor.",false);
+  if(r.error)msg("saveMsg","SAVE BLOCKED: "+r.error.message,false);
   else msg("saveMsg","CENTRAL SETTINGS SAVED ✓",true);
 };
+
 supabase.auth.getSession().then(function(r){showSession(r.data.session);});
 supabase.auth.onAuthStateChange(function(event,session){showSession(session);});
 })();
