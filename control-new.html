@@ -124,27 +124,22 @@ async function weather(){
 }
 async function riverFlow(){
   try{
-    var u="https://www.bom.gov.au/waterdata/services/data/3/314214.json";
-    var response=await fetch(u,{cache:"no-store"});
+    var response=await fetch("./river.json?ts="+Date.now(),{cache:"no-store"});
     if(!response.ok)throw new Error("river");
     var d=await response.json();
-    var rows=d&&d.data?d.data:[];
-    var latest=null;
-    for(var i=rows.length-1;i>=0;i--){
-      var v=Number(rows[i].value);
-      if(isFinite(v)){latest={value:v,time:rows[i].time||rows[i].timestamp||""};break;}
+    var v=Number(d.flow);
+    if(!isFinite(v))throw new Error("no data");
+    el("riverFlow").textContent=v.toFixed(2);
+    el("riverStatus").textContent=v>5.5?"RIVER FLOW ALERT — above 5.5 m³/s":"Within environmental control limit";
+    el("riverStatus").style.color=v>5.5?"#9d2727":"#176b3b";
+    if(v>5.5&&window.riverAlertState!==true){
+      alertNow("DUCK RIVER FLOW ALERT","Duck River flow is "+v.toFixed(2)+" m³/s — above the 5.5 m³/s limit.","river-flow-alert");
     }
-    if(!latest)throw new Error("no data");
-    el("riverFlow").textContent=latest.value.toFixed(2);
-    el("riverStatus").textContent=latest.value>5.5?"RIVER FLOW ALERT — above 5.5 m³/s":"Within environmental control limit";
-    el("riverStatus").style.color=latest.value>5.5?"#9d2727":"#176b3b";
-    if(latest.value>5.5&&window.riverAlertState!==true){
-      alertNow("DUCK RIVER FLOW ALERT","Duck River flow is "+latest.value.toFixed(2)+" m³/s — above the 5.5 m³/s limit.","river-flow-alert");
-    }
-    window.riverAlertState=latest.value>5.5;
+    window.riverAlertState=v>5.5;
+    if(d.timestamp){el("riverStatus").textContent+=(v>5.5?"":"")+" • Updated "+new Date(d.timestamp).toLocaleString("en-AU");}
   }catch(e){
     el("riverFlow").textContent="—";
-    el("riverStatus").textContent="River flow unavailable — tap Refresh.";
+    el("riverStatus").textContent="River flow unavailable — waiting for BOM update.";
   }
 }
 function init(){
