@@ -15,63 +15,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fetch BOM river flow
+      - name: Fetch Tasmania Water Information Portal flow
         shell: bash
         run: |
           python3 - <<'PY'
-          import json, urllib.parse, urllib.request, datetime, re
-          base="https://www.bom.gov.au/waterdata/services"
-          def get(params):
-              u=base+"?"+urllib.parse.urlencode(params)
-              req=urllib.request.Request(u,headers={"User-Agent":"TOCsmithton-web/1.0"})
-              with urllib.request.urlopen(req,timeout=30) as r:
-                  return json.load(r)
-          listing=get({"service":"kisters","type":"QueryServices","format":"json","request":"getTimeseriesList","parametertype_name":"Water Course Discharge","station_no":"14214"})
-          raw=json.dumps(listing)
-          series=[]
-          def walk(x):
-              if isinstance(x,dict):
-                  if "ts_id" in x or "ts_name" in x:
-                      series.append(x)
-                  for v in x.values(): walk(v)
-              elif isinstance(x,list):
-                  for v in x: walk(v)
-          walk(listing)
-          if not series:
-              raise SystemExit("No Duck River discharge time series returned by BOM")
-          def score(x):
-              n=str(x.get("ts_name","")).lower()
-              s=0
-              for k,w in [("instant",10),("15min",9),("5min",9),("30min",8),("hour",7),("merged",4),("dailymean",-20),("daily", -10)]:
-                  if k in n: s+=w
-              return s
-          series=sorted(series,key=lambda x:(score(x),str(x.get("ts_name","")).lower()),reverse=True)
-          ts=next((x for x in series if x.get("ts_id") or x.get("ts_id_name")),None)
-          if not ts: raise SystemExit("BOM returned no usable discharge time series")
-          tsid=ts.get("ts_id") or ts.get("ts_id_name")
-          now=datetime.datetime.now(datetime.timezone.utc)
-          frm=(now-datetime.timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
-          to=now.strftime("%Y-%m-%dT%H:%M:%SZ")
-          vals=get({"service":"kisters","type":"QueryServices","format":"json","request":"getTimeseriesValues","ts_id":tsid,"from":frm,"to":to,"returnfields":"Timestamp,Value,Quality Code"})
-          points=[]
-          def collect(x):
-              if isinstance(x,dict):
-                  if "Timestamp" in x and "Value" in x: points.append(x)
-                  for v in x.values(): collect(v)
-              elif isinstance(x,list):
-                  for v in x: collect(v)
-          collect(vals)
-          good=[]
-          for p in points:
-              try:
-                  v=float(p["Value"])
-                  if v==v and v not in (999999,): good.append((p["Timestamp"],v))
-              except: pass
-          if not good: raise SystemExit("No valid Duck River flow values returned by BOM")
-          timestamp,value=good[-1]
-          out={"station":"Duck River at Scotchtown","station_no":"314214","flow":value,"timestamp":timestamp,"limit":5.5,"source":"BOM Water Data Online"}
-          with open("river.json","w") as f: json.dump(out,f,separators=(",",":"))
-          print(json.dumps(out))
+          import json,re,urllib.request,datetime
+          url="https://portal.wrt.tas.gov.au/Data/DataSet/Chart/Location/14214-1/DataSet/Discharge/1/Interval/Latest"
+          req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 TOCsmithton-web"})
+          try:
+              html=urllib.request.urlopen(req,timeout=30).read().decode("utf-8","ignore")
+              text=re.sub(r"<[^>]+>"," ",html)
+              text=re.sub(r"\\s+"," ",text)
+              m=re.search(r"Latest_Flow.*?([0-9]+(?:\\.[0-9]+)?)\\s*\\(cumecs\\)",text,re.I)
+              if not m:
+                  m=re.search(r"([0-9]+(?:\\.[0-9]+)?)\\s*\\(cumecs\\)",text,re.I)
+              if not m:
+                  raise SystemExit("No cumecs value found in portal response")
+              value=float(m.group(1))
+              now=datetime.datetime.now(datetime.timezone.utc).astimezone(datetime.timezone(datetime.timedelta(hours=10)))
+              out={"station":"Duck River US Scotchtown Road Bridge","station_no":"14214","flow":value,"timestamp":now.isoformat(),"updated":now.isoformat(),"limit":5.5,"source":"Tasmania Water Information Portal","source_url":url}
+              with open("river.json","w") as f: json.dump(out,f,separators=(",",":"))
+              print(json.dumps(out))
+          except Exception as e:
+              print("Portal update failed; retaining last river.json:",e)
           PY
 
       - name: Commit river data
