@@ -7,6 +7,8 @@
 <title>TOC Smithton Control</title>
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase-config.js"></script>
 </head>
 <body>
 <div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite">CHECKING ENVIRONMENTAL CONTROLS</div>
@@ -28,20 +30,15 @@
 
 <section class="grid two">
 <article class="card"><div class="card-head"><h2>Manual salinity</h2><span class="badge">Smithton</span></div>
-<form id="salinityForm">
-<label>Salinity (ppt)<input id="salinityInput" type="number" step="0.1" min="0" placeholder="Enter reading" required></label>
-<label>Environmental minimum<input id="salinityMin" type="number" step="0.1" min="0" placeholder="Optional"></label>
-<label>Environmental maximum<input id="salinityMax" type="number" step="0.1" min="0" placeholder="Optional"></label>
-<button class="button" type="submit">Save salinity</button>
-</form></article>
+<label>Salinity (ppt)<input id="salinityInput" type="number" disabled></label>
+<label>Environmental minimum<input id="salinityMin" type="number" disabled></label>
+<label>Environmental maximum<input id="salinityMax" type="number" disabled></label>
+<p class="hint">Read-only — central environmental settings.</p></article>
 
 <article class="card"><div class="card-head"><h2>Rainfall alert control</h2><span class="badge">Previous 7 days + next 7 days</span></div>
-<form id="rainForm">
-<label>Alert threshold (mm / 24h)<input id="rainThreshold" type="number" step="0.1" min="0" placeholder="Enter threshold" required></label>
-<label>Alert threshold (mm / 7 days)<input id="rain7Threshold" type="number" step="0.1" min="0" placeholder="Optional"></label>
-<button class="button" type="submit">Save thresholds</button>
-</form>
-<p class="hint">Set thresholds to your approved environmental-control limits.</p>
+<label>Alert threshold (mm / 24h)<input id="rainThreshold" type="number" disabled></label>
+<label>Alert threshold (mm / 7 days)<input id="rain7Threshold" type="number" disabled></label>
+<p class="hint">Read-only — central environmental-control limits.</p>
 </article>
 </section>
 
@@ -67,6 +64,23 @@ var KEY="toc-smithton-control-v6";
 var state={salinity:"",salinityMin:"32.5",salinityMax:"",rainThreshold:"25",rain7Threshold:"40",forecast:[],lastAlerts:{salinity:false,rain24:false,rain7:false}};
 var previous24Total=0;
 var previous7Total=0;
+var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
+async function loadCentral(){
+ try{
+  var r=await supabase.from("control_settings").select("salinity,salinity_min,salinity_max,rain_24h_limit,rain_7d_limit,updated_at").eq("id",1).maybeSingle();
+  if(r.error)throw r.error;
+  if(r.data){
+   state.salinity=r.data.salinity==null?"":String(r.data.salinity);
+   state.salinityMin=r.data.salinity_min==null?"":String(r.data.salinity_min);
+   state.salinityMax=r.data.salinity_max==null?"":String(r.data.salinity_max);
+   state.rainThreshold=r.data.rain_24h_limit==null?"":String(r.data.rain_24h_limit);
+   state.rain7Threshold=r.data.rain_7d_limit==null?"":String(r.data.rain_7d_limit);
+   render();
+   el("lastUpdated").textContent=r.data.updated_at?"Central settings updated "+new Date(r.data.updated_at).toLocaleString("en-AU"):"Central control connected ✓";
+   status("CENTRAL CONTROL CONNECTED ✓",true);
+  }
+ }catch(e){status("CENTRAL CONTROL UNAVAILABLE",false);}
+}
 function el(id){return document.getElementById(id);}function updateBayBanner(){
   var sal=Number(state.salinity), min=Number(state.salinityMin), max=Number(state.salinityMax);
   var salOk=state.salinity!==""&&isFinite(sal);
@@ -177,12 +191,10 @@ async function riverFlow(){
   updateBayBanner();
 }
 function init(){
-  el("salinityForm").addEventListener("submit",function(e){e.preventDefault();state.salinity=el("salinityInput").value;state.salinityMin=el("salinityMin").value;state.salinityMax=el("salinityMax").value;var ok=save();render();checkAlerts();status(ok?"SAVED ✓":"SAVE FAILED",ok);});
-  el("rainForm").addEventListener("submit",function(e){e.preventDefault();state.rainThreshold=el("rainThreshold").value;state.rain7Threshold=el("rain7Threshold").value;var ok=save();render();checkAlerts();status(ok?"SAVED ✓":"SAVE FAILED",ok);});
   el("refreshWeather").addEventListener("click",weather);
   el("notifyBtn").addEventListener("click",async function(){if(!("Notification" in window)){status("ALERTS NOT SUPPORTED",false);return;}try{var p=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(p!=="granted"){status("ALERTS BLOCKED — allow notifications in Chrome settings",false);return;}var reg=await navigator.serviceWorker.ready;await reg.showNotification("TOC Smithton Control",{body:"Environmental alerts are enabled on this device.",tag:"toc-test"});el("notifyBtn").textContent="Alerts enabled ✓";status("ALERTS ENABLED ✓",true);}catch(e){status("ALERT SETUP FAILED",false);}});
 }
-load();render();init();status("APP READY ✓",true);weather();riverFlow();setInterval(weather,3600000);setInterval(riverFlow,3600000);
+load();render();init();status("APP READY ✓",true);loadCentral();weather();riverFlow();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,3600000);
 })();
 </script>
 <script>
