@@ -7,7 +7,7 @@
   }catch(e){}
 })();
 const KEY="toc-smithton-control-v5";
-let state={salinity:"",salinityMin:"",salinityMax:"",rainThreshold:"",rain7Threshold:"",movements:[],forecast:[]};
+let state={salinity:"",salinityMin:"",salinityMax:"",rainThreshold:"",rain7Threshold:"",forecast:[]};
 const $=id=>document.getElementById(id);
 function load(){try{const x=localStorage.getItem(KEY);if(x)state=Object.assign(state,JSON.parse(x));}catch(e){}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));return true}catch(e){return false}}
