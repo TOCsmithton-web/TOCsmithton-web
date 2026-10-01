@@ -8,6 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase-config.js"></script>
 </head>
 <body>
 <div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite">CHECKING ENVIRONMENTAL CONTROLS</div>
@@ -62,9 +63,7 @@
 (function(){
 "use strict";
 var KEY="toc-smithton-control-alerts-v1";
-var SUPABASE_URL="https://gyzxsugnlobxlvqjevhh.supabase.co";
-var SUPABASE_PUBLISHABLE_KEY="YOUR_PUBLISHABLE_KEY";
-var supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
 var state={salinity:"",salinityMin:"",salinityMax:"",rainThreshold:"",rain7Threshold:"",forecast:[],lastAlerts:{salinity:false,rain24:false,rain7:false}};
 var previous24Total=0;
 var previous7Total=0;
