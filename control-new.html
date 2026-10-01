@@ -19,7 +19,7 @@
   <div class="metric-row">
     <div><span>Salinity</span><strong id="salinityValue">—</strong><small>ppt</small></div>
     <div><span>Previous 24h rainfall</span><strong id="rain24Value">—</strong><small>mm</small></div>
-    <div><span>7-day rainfall total</span><strong id="rainValue">—</strong><small>mm</small></div>
+    
   </div>
   <p id="lastUpdated" class="muted">No readings entered yet.</p>
   <div id="saveStatus" aria-live="polite"></div>
@@ -38,7 +38,7 @@
 <form id="rainForm">
 <label>Alert threshold (mm / 24h)<input id="rainThreshold" type="number" step="0.1" min="0" placeholder="Enter threshold" required></label>
 <label>Alert threshold (mm / 7 days)<input id="rain7Threshold" type="number" step="0.1" min="0" placeholder="Optional"></label>
-<button class="button" type="submit">Save thresholds</button>
+<div class="metric-inline"><span>Previous 7-day rainfall total</span><strong id="rainValue">—</strong><small>mm</small></div><button class="button" type="submit">Save thresholds</button>
 </form>
 <p class="hint">Set thresholds to your approved environmental-control limits.</p>
 </article>
