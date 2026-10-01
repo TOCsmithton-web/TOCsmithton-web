@@ -26,6 +26,22 @@ function render(){
   $("statusText").textContent=state.salinity===""?"Awaiting readings":"Reading saved";
 }
 function init(){
+  const notifyBtn=$("notifyBtn");
+  if(notifyBtn){
+    notifyBtn.addEventListener("click",async function(){
+      if(!("Notification" in window)){show("ALERTS NOT SUPPORTED — use Chrome on Android",false);return;}
+      try{
+        const permission=await Notification.requestPermission();
+        if(permission==="granted"){
+          notifyBtn.textContent="Alerts enabled ✓";
+          show("ALERTS ENABLED ✓",true);
+          new Notification("TOC Smithton Control",{body:"Environmental alerts are enabled on this device."});
+        }else{
+          show("ALERTS BLOCKED — allow notifications in browser settings",false);
+        }
+      }catch(e){show("ALERT SETUP FAILED — check browser notification permission",false);}
+    });
+  }
   $("salinityForm").addEventListener("submit",function(e){e.preventDefault();state.salinity=$("salinityInput").value;state.salinityMin=$("salinityMin").value;state.salinityMax=$("salinityMax").value;show(save()?"SAVED ✓":"SAVE FAILED",save());render();});
   $("rainForm").addEventListener("submit",function(e){e.preventDefault();state.rainThreshold=$("rainThreshold").value;state.rain7Threshold=$("rain7Threshold").value;show(save()?"SAVED ✓":"SAVE FAILED",save());render();});
   $("stockForm").addEventListener("submit",function(e){e.preventDefault();state.movements.unshift({date:new Date().toISOString(),site:$("siteInput").value,size:$("sizeInput").value,qty:$("qtyInput").value,movement:$("movementInput").value});const ok=save();show(ok?"SAVED ✓":"SAVE FAILED",ok);$("sizeInput").value="";$("qtyInput").value="";render();});
