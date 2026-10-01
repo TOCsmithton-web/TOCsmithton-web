@@ -25,6 +25,15 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Create Supabase browser config
+        env:
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          cat > supabase-config.js <<EOF
+          window.TOC_SUPABASE_URL = "https://gyzxsugnlobxlvqjevhh.supabase.co";
+          window.TOC_SUPABASE_PUBLISHABLE_KEY = "$SUPABASE_PUBLISHABLE_KEY";
+          EOF
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
