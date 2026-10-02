@@ -58,6 +58,10 @@
 <div><span>Control limit</span><strong>5.0</strong><small>m³/s</small></div>
 </div>
 <div id="riverStatus" class="hint">Loading river flow…</div>
+<div class="river-history-wrap">
+  <div class="river-history-head"><strong>River flow trend</strong><span id="riverTrendLabel">—</span></div>
+  <div id="riverHistory" class="river-history"><div class="loading">Loading trend…</div></div>
+</div>
 </section>
 
 <section class="card"><div class="card-head"><div><h2>Smithton rainfall — previous 7 days + next 7 days</h2><p class="muted">Previous 7-day total is observed rainfall; the next 7 days are forecast rainfall supplied by Open-Meteo.</p></div><button id="refreshWeather" class="button secondary" type="button">Refresh</button></div>
@@ -296,6 +300,40 @@ async function weather(){
     console.error("Smithton weather:",e);
   }
 }
+function renderRiverHistory(history){
+  var box=el("riverHistory");if(!box)return;
+  var rows=(history||[]).filter(function(x){return isFinite(Number(x.flow))&&x.timestamp;}).slice(-48);
+  if(!rows.length){box.innerHTML="<div class='loading'>Trend will appear after new river readings are recorded.</div>";el("riverTrendLabel").textContent="Waiting for readings";return;}
+  var w=640,h=210,p=34;
+  var vals=rows.map(function(x){return Number(x.flow);});
+  var min=Math.min.apply(null,vals),max=Math.max.apply(null,vals);
+  var pad=Math.max((max-min)*0.15,0.1);min=Math.max(0,min-pad);max=max+pad;
+  function sx(i){return p+i*(w-2*p)/Math.max(1,rows.length-1);}
+  function sy(v){return h-p-(v-min)*(h-2*p)/(max-min);}
+  var pts=rows.map(function(x,i){return sx(i).toFixed(1)+","+sy(Number(x.flow)).toFixed(1);}).join(" ");
+  var n=rows.length, sumX=0,sumY=0,sumXY=0,sumXX=0;
+  rows.forEach(function(x,i){var y=Number(x.flow);sumX+=i;sumY+=y;sumXY+=i*y;sumXX+=i*i;});
+  var den=n*sumXX-sumX*sumX;
+  var slope=den?(n*sumXY-sumX*sumY)/den:0,intercept=(sumY-slope*sumX)/n;
+  var t1=intercept,t2=intercept+slope*(n-1);
+  var trendChange=t1!==0?((t2-t1)/Math.abs(t1))*100:0;
+  var trendPts=sx(0).toFixed(1)+","+sy(t1).toFixed(1)+" "+sx(n-1).toFixed(1)+","+sy(t2).toFixed(1);
+  var latest=vals[vals.length-1],prev=vals.length>1?vals[vals.length-2]:latest;
+  var cp=prev!==0?((latest-prev)/Math.abs(prev))*100:0;
+  var cpText=(cp>0?"+":"")+cp.toFixed(1)+"%";
+  var trendText=(trendChange>0?"+":"")+trendChange.toFixed(1)+"% trend";
+  var lineColor=cp>0?"#c62828":cp<0?"#16823b":"#607d8b";
+  el("riverTrendLabel").textContent=cpText+" since last reading • "+trendText;
+  var svg="<svg viewBox='0 0 "+w+" "+h+"' role='img' aria-label='Duck River flow percentage change graph' style='width:100%;height:auto;display:block;background:#f7fafb;border-radius:12px'>"+
+    "<line x1='"+p+"' y1='"+(h-p)+"' x2='"+(w-p)+"' y2='"+(h-p)+"' stroke='#cbd6db'/>"+
+    "<polyline fill='none' stroke='#0b4f6c' stroke-width='4' points='"+pts+"'/>"+
+    "<line x1='"+sx(0)+"' y1='"+sy(t1)+"' x2='"+sx(n-1)+"' y2='"+sy(t2)+"' stroke='#e07b00' stroke-width='3' stroke-dasharray='8 6'/>"+
+    "<circle cx='"+sx(n-1)+"' cy='"+sy(latest)+"' r='6' fill='"+lineColor+"'/>"+
+    "<text x='"+p+"' y='20' font-size='14' fill='#53666f'>"+latest.toFixed(3)+" m³/s</text>"+
+    "<text x='"+(w-p)+"' y='20' text-anchor='end' font-size='14' fill='#53666f'>"+cpText+"</text>"+
+    "<text x='"+(w-p)+"' y='"+(h-8)+"' text-anchor='end' font-size='12' fill='#607d8b'>Dashed = trend</text></svg>";
+  box.innerHTML=svg;
+}
 async function riverFlow(){
   var section=document.querySelector("#riverFlow")?.closest("section");
   if(!bayUsesRiver()){if(section)section.style.display="none";window.riverCurrentFlow=0;updateBayBanner();return;}
@@ -316,13 +354,9 @@ async function riverFlow(){
     var readingTime=new Date(when);
     var nextUpdate=new Date();
     nextUpdate.setMinutes(Math.floor(nextUpdate.getMinutes()/10)*10+10,0,0);
-    var changeText="";
-    if(isFinite(Number(fallback.change_pct))){
-      var cp=Number(fallback.change_pct);
-      changeText=" • Change "+(cp>0?"+":"")+cp.toFixed(1)+"% "+(cp>0?"↑":cp<0?"↓":"→");
-    }
-    el("riverStatus").textContent+=" • Reading "+readingTime.toLocaleString("en-AU")+changeText+" • Next update "+nextUpdate.toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"});
+    el("riverStatus").textContent+=" • Reading "+readingTime.toLocaleString("en-AU")+" • Next update "+nextUpdate.toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"});
   }
+  renderRiverHistory(fallback.history||[]);
   if(v>limit&&window.riverAlertState!==true)alertNow("RIVER FLOW ALERT",bayName()+" river flow is "+v.toFixed(3)+" m³/s — above the "+limit.toFixed(1)+" m³/s limit.","river-flow-alert");
   window.riverCurrentFlow=v;window.riverAlertState=v>limit;updateBayBanner();render();
 }
