@@ -119,7 +119,7 @@ function renderMeatTests(errorText){
  if(errorText){box.innerHTML="<div class='loading'>"+errorText+"</div>";return;}
  if(!meatTests.length){box.innerHTML="<div class='loading'>No meat test results recorded for "+bayName()+".</div>";return;}
  box.innerHTML=meatTests.map(function(x){
-   var numeric=Number(String(x.result).replace(",", ".").trim()); var ok=isFinite(numeric)&&numeric<2.3; var cls=isFinite(numeric)?(ok?"meat-good":"meat-bad"):"meat-neutral"; return "<div class='day observed-summary "+cls+"' style='background:"+(isFinite(numeric)?(ok?"#bff3cc":"#ffd0d0"):"#f4f7f8")+";border:2px solid "+(isFinite(numeric)?(ok?"#31a354":"#c62828"):"#cbd6db")+";'>";<div class='date'>"+new Date(x.test_date+"T00:00:00").toLocaleDateString("en-AU")+"</div><div class='rain'>"+String(x.result).replace(/</g,"&lt;")+"</div><div class='range'>"+(isFinite(numeric)?(ok?"UNDER LIMIT":"OVER LIMIT"):"Result recorded")+(x.notes?" • "+String(x.notes).replace(/</g,"&lt;"):"")+"</div></div>";
+   var numeric=Number(String(x.result).replace(",", ".").trim()); var ok=isFinite(numeric)&&numeric<=2.3; var cls=isFinite(numeric)?(ok?"meat-good":"meat-bad"):"meat-neutral"; return "<div class='day observed-summary "+cls+"' style='background:"+(isFinite(numeric)?(ok?"#bff3cc":"#ffd0d0"):"#f4f7f8")+";border:2px solid "+(isFinite(numeric)?(ok?"#31a354":"#c62828"):"#cbd6db")+";'>";<div class='date'>"+new Date(x.test_date+"T00:00:00").toLocaleDateString("en-AU")+"</div><div class='rain'>"+String(x.result).replace(/</g,"&lt;")+"</div><div class='range'>"+(isFinite(numeric)?(ok?"UNDER LIMIT":"OVER LIMIT"):"Result recorded")+(x.notes?" • "+String(x.notes).replace(/</g,"&lt;"):"")+"</div></div>";
  }).join("");
 }
 async function loadCentral(){
@@ -144,7 +144,7 @@ function el(id){return document.getElementById(id);}function updateBayBanner(){
   var rain7Ok=isFinite(previous7Total)&&previous7Total<=bayRainLimit();
   var riverOk=!bayUsesRiver()||(isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<=Number(currentBay.river_flow_limit));
   var latestMeat=meatTests&&meatTests.length?Number(String(meatTests[0].result).replace(",", ".").trim()):NaN;
-  var meatOk=!isFinite(latestMeat)||latestMeat<2.3;
+  var meatOk=!isFinite(latestMeat)||latestMeat<=2.3;
   var open=salOk&&rain7Ok&&riverOk&&meatOk;
   var b=el("bayBanner"); if(!b)return;
   b.className="bay-banner "+(open?"open":"closed");
@@ -191,7 +191,7 @@ function render(){
   var rain7Ok=isFinite(previous7Total)&&previous7Total<=limit;
   var riverOk=!riverRequired||(isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<=Number(currentBay.river_flow_limit));
   var latestMeat=meatTests&&meatTests.length?Number(String(meatTests[0].result).replace(",", ".").trim()):NaN;
-  var meatOk=!isFinite(latestMeat)||latestMeat<2.3;
+  var meatOk=!isFinite(latestMeat)||latestMeat<=2.3;
   var envReady=isFinite(previous7Total)&&(salRequired?state.salinity!=="":true)&&(riverRequired?isFinite(Number(window.riverCurrentFlow)):true);
   var envOk=envReady&&salOk&&rain7Ok&&riverOk&&meatOk;
   var boxes=document.querySelectorAll(".status-grid .metric-row > div");
