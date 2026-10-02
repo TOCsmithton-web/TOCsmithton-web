@@ -65,7 +65,7 @@
 </div>
 <div id="riverStatus" class="hint">Loading river flow…</div>
 <div class="river-history-wrap">
-  <div class="river-history-head"><strong>River flow — last 24 hours</strong><span id="riverTrendLabel">Portal graph</span></div>
+  <div class="river-history-head"><strong>River flow — last 3 days</strong><span id="riverTrendLabel">Portal graph</span></div>
   <div id="riverHistory" class="river-history"><div class="loading">Loading trend…</div></div>
 </div>
 </section>
@@ -308,13 +308,13 @@ async function weather(){
 }
 function renderRiverHistory(history){
   var box=el("riverHistory");if(!box)return;
-  var now=Date.now(), cutoff=now-24*60*60*1000;
+  var now=Date.now(), cutoff=now-3*24*60*60*1000;
   var rows=(history||[]).filter(function(x){
     return isFinite(Number(x.ml_day))&&x.timestamp&&isFinite(new Date(x.timestamp).getTime())&&new Date(x.timestamp).getTime()>=cutoff;
   });
   if(!rows.length){
     box.innerHTML="<div class='loading'>Waiting for portal readings from the last 24 hours.</div>";
-    el("riverTrendLabel").textContent="Last 24 hours";
+    el("riverTrendLabel").textContent="Last 3 days";
     return;
   }
 
