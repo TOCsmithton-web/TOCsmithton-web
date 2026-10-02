@@ -1,1 +1,10 @@
-{"station":"Duck River US Scotchtown Road Bridge","station_no":"14214","flow":6.037,"timestamp":"2026-10-02T00:00:00+10:00","updated":"2026-10-02T00:00:00+10:00","limit":5,"source":"NRE Tasmania Water Information Portal","source_url":"https://portal.wrt.tas.gov.au/Data/DataSet/Chart/Location/14214-1/DataSet/Discharge/1/Interval/Latest"}
+{
+  "station": "Duck River US Scotchtown Road Bridge",
+  "station_no": "14214",
+  "flow": 5.76,
+  "timestamp": "2026-10-02T17:32:00+10:00",
+  "updated": "2026-10-02T17:32:00+10:00",
+  "limit": 5,
+  "source": "NRE Tasmania Water Information Portal — Latest Value (cumecs)",
+  "source_url": "https://portal.wrt.tas.gov.au/Data/DataSet/Chart/Location/14214-1/DataSet/Discharge/1/Interval/Latest"
+}
