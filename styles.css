@@ -9,3 +9,5 @@
 .bay-banner small{display:block;font-size:.72rem;font-weight:600;letter-spacing:0;margin-top:2px}
 
 .forecast-day.under{background:#e8f7ed;border-color:#77c68f}.forecast-day.over{background:#fff0df;border-color:#f0a45a}.seven-day-total{margin-top:9px;padding-top:8px;border-top:1px solid #dce6eb;font-size:11px;font-weight:700}.forecast-day.under .seven-day-total{color:#176b3b}.forecast-day.over .seven-day-total{color:#a35a00}.observed-summary{background:#f4f7f8}
+
+.card.environment-ok{background:#bff3cc;border-color:#31a354;box-shadow:0 0 0 2px #31a35455,0 6px 22px #176b3b22}.card.environment-ok .metric-row div{background:#dff9e5}.card.environment-ok #statusText{color:#07551f}.card.environment-alert{background:#ffd0d0;border-color:#c62828;box-shadow:0 0 0 2px #c6282855,0 6px 22px #9d272722}.card.environment-alert .metric-row div{background:#ffe5e5}.card.environment-alert #statusText{color:#9d2727}
