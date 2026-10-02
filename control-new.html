@@ -309,35 +309,61 @@ async function weather(){
 function renderRiverHistory(history){
   var box=el("riverHistory");if(!box)return;
   var rows=(history||[]).filter(function(x){return isFinite(Number(x.flow))&&x.timestamp;}).slice(-48);
-  if(!rows.length){box.innerHTML="<div class='loading'>Trend will appear after new river readings are recorded.</div>";el("riverTrendLabel").textContent="Waiting for readings";return;}
-  var w=640,h=210,p=34;
+  if(!rows.length){box.innerHTML="<div class='loading'>River graph will appear after new portal readings are recorded.</div>";el("riverTrendLabel").textContent="Waiting for portal readings";return;}
+
+  var w=720,h=300,left=58,right=18,top=24,bottom=42;
   var vals=rows.map(function(x){return Number(x.flow);});
-  var min=Math.min.apply(null,vals),max=Math.max.apply(null,vals);
-  var pad=Math.max((max-min)*0.15,0.1);min=Math.max(0,min-pad);max=max+pad;
-  function sx(i){return p+i*(w-2*p)/Math.max(1,rows.length-1);}
-  function sy(v){return h-p-(v-min)*(h-2*p)/(max-min);}
+  var limit=Number(currentBay.river_flow_limit);
+  var minVal=Math.min.apply(null,vals.concat([limit]));
+  var maxVal=Math.max.apply(null,vals.concat([limit]));
+  var range=Math.max(maxVal-minVal,0.5);
+  var step=range/4;
+  var min=Math.max(0,Math.floor((minVal-step*0.25)/0.5)*0.5);
+  var max=Math.ceil((maxVal+step*0.25)/0.5)*0.5;
+  if(max<=min)max=min+1;
+
+  function sx(i){return left+i*(w-left-right)/Math.max(1,rows.length-1);}
+  function sy(v){return top+(max-v)*(h-top-bottom)/(max-min);}
+  function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
   var pts=rows.map(function(x,i){return sx(i).toFixed(1)+","+sy(Number(x.flow)).toFixed(1);}).join(" ");
-  var n=rows.length, sumX=0,sumY=0,sumXY=0,sumXX=0;
-  rows.forEach(function(x,i){var y=Number(x.flow);sumX+=i;sumY+=y;sumXY+=i*y;sumXX+=i*i;});
-  var den=n*sumXX-sumX*sumX;
-  var slope=den?(n*sumXY-sumX*sumY)/den:0,intercept=(sumY-slope*sumX)/n;
-  var t1=intercept,t2=intercept+slope*(n-1);
-  var trendChange=t1!==0?((t2-t1)/Math.abs(t1))*100:0;
-  var trendPts=sx(0).toFixed(1)+","+sy(t1).toFixed(1)+" "+sx(n-1).toFixed(1)+","+sy(t2).toFixed(1);
   var latest=vals[vals.length-1],prev=vals.length>1?vals[vals.length-2]:latest;
   var cp=prev!==0?((latest-prev)/Math.abs(prev))*100:0;
   var cpText=(cp>0?"+":"")+cp.toFixed(1)+"%";
-  var trendText=(trendChange>0?"+":"")+trendChange.toFixed(1)+"% trend";
-  var lineColor=cp>0?"#c62828":cp<0?"#16823b":"#607d8b";
-  el("riverTrendLabel").textContent=cpText+" since last reading • "+trendText;
-  var svg="<svg viewBox='0 0 "+w+" "+h+"' role='img' aria-label='Duck River flow percentage change graph' style='width:100%;height:auto;display:block;background:#f7fafb;border-radius:12px'>"+
-    "<line x1='"+p+"' y1='"+(h-p)+"' x2='"+(w-p)+"' y2='"+(h-p)+"' stroke='#cbd6db'/>"+
-    "<polyline fill='none' stroke='#0b4f6c' stroke-width='4' points='"+pts+"'/>"+
-    "<line x1='"+sx(0)+"' y1='"+sy(t1)+"' x2='"+sx(n-1)+"' y2='"+sy(t2)+"' stroke='#e07b00' stroke-width='3' stroke-dasharray='8 6'/>"+
-    "<circle cx='"+sx(n-1)+"' cy='"+sy(latest)+"' r='6' fill='"+lineColor+"'/>"+
-    "<text x='"+p+"' y='20' font-size='14' fill='#53666f'>"+latest.toFixed(3)+" m³/s</text>"+
-    "<text x='"+(w-p)+"' y='20' text-anchor='end' font-size='14' fill='#53666f'>"+cpText+"</text>"+
-    "<text x='"+(w-p)+"' y='"+(h-8)+"' text-anchor='end' font-size='12' fill='#607d8b'>Dashed = trend</text></svg>";
+  el("riverTrendLabel").textContent=cpText+" since last portal reading • "+rows.length+" readings";
+
+  var grid="";
+  for(var g=0;g<=4;g++){
+    var gv=min+(max-min)*(g/4), gy=sy(gv);
+    grid+="<line x1='"+left+"' y1='"+gy+"' x2='"+(w-right)+"' y2='"+gy+"' stroke='#b8b8b8' stroke-width='1'/>"+
+      "<text x='"+(left-8)+"' y='"+(gy+5)+"' text-anchor='end' font-size='13' fill='#d8d8d8'>"+gv.toFixed(1)+"</text>";
+  }
+
+  var xLabels="";
+  var labelIdx=[0,Math.floor((rows.length-1)/2),rows.length-1];
+  labelIdx.forEach(function(i){
+    var d=new Date(rows[i].timestamp);
+    var label=d.toLocaleDateString("en-AU",{day:"2-digit",month:"2-digit"})+" "+d.toLocaleTimeString("en-AU",{hour:"2-digit",minute:"2-digit"});
+    xLabels+="<text x='"+sx(i)+"' y='"+(h-14)+"' text-anchor='"+(i===0?"start":i===rows.length-1?"end":"middle")+"' font-size='11' fill='#d8d8d8'>"+esc(label)+"</text>";
+  });
+
+  var limitY=sy(limit);
+  var nowX=sx(rows.length-1);
+  var nowLabel=rows[rows.length-1].timestamp?new Date(rows[rows.length-1].timestamp).toLocaleTimeString("en-AU",{hour:"2-digit",minute:"2-digit"}):"Now";
+  var statusStroke=latest>limit?"#d32f2f":"#2e8b57";
+
+  var svg="<svg viewBox='0 0 "+w+" "+h+"' role='img' aria-label='Duck River flow graph using NRE Tasmania portal readings' style='width:100%;height:auto;display:block;background:#4b4b4b;border-radius:8px'>"+
+    grid+
+    "<line x1='"+left+"' y1='"+limitY+"' x2='"+(w-right)+"' y2='"+limitY+"' stroke='#d32f2f' stroke-width='2' stroke-dasharray='7 5'/>"+
+    "<text x='"+(w-right-4)+"' y='"+(limitY-7)+"' text-anchor='end' font-size='12' fill='#ffb0b0'>Limit "+limit.toFixed(1)+" m³/s</text>"+
+    "<polyline fill='none' stroke='#7cb5ec' stroke-width='4' stroke-linejoin='round' stroke-linecap='round' points='"+pts+"'/>"+
+    "<line x1='"+nowX+"' y1='"+top+"' x2='"+nowX+"' y2='"+(h-bottom)+"' stroke='#65c466' stroke-width='2' stroke-dasharray='7 6'/>"+
+    "<circle cx='"+nowX+"' cy='"+sy(latest)+"' r='7' fill='"+statusStroke+"' stroke='#d9d9d9' stroke-width='2'/>"+
+    "<text x='"+(nowX+7)+"' y='"+(top+18)+"' font-size='13' fill='#e8e8e8'>Now</text>"+
+    "<text x='"+left+"' y='16' font-size='14' fill='#eeeeee'>Flow (m³/s)</text>"+
+    "<text x='"+(w-right)+"' y='16' text-anchor='end' font-size='14' fill='#eeeeee'>"+latest.toFixed(3)+" m³/s</text>"+
+    xLabels+
+    "</svg>";
   box.innerHTML=svg;
 }
 async function riverFlow(){
