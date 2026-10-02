@@ -76,6 +76,31 @@
 <div id="forecast" class="forecast"><div class="loading">Loading forecast…</div></div>
 </section>
 
+
+<section class="card" id="salinityReopenTable">
+  <div class="card-head">
+    <div><h2>Duck Bay — 48-hour salinity reopening check</h2>
+    <p class="muted">Three salinity measurements at low tide: T0, T24 and T48. This table remains visible on the public page.</p></div>
+    <span id="publicReopenBadge" class="badge">WAITING</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr>
+        <th style="text-align:left;padding:10px;border-bottom:2px solid #c8d3d8">Check</th>
+        <th style="text-align:left;padding:10px;border-bottom:2px solid #c8d3d8">Date / time</th>
+        <th style="text-align:left;padding:10px;border-bottom:2px solid #c8d3d8">Salinity (ppt)</th>
+        <th style="text-align:left;padding:10px;border-bottom:2px solid #c8d3d8">Requirement</th>
+      </tr></thead>
+      <tbody>
+        <tr><td style="padding:10px;border-bottom:1px solid #dce6eb"><strong>T0</strong></td><td id="publicT0Time" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td id="publicT0Sal" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td style="padding:10px;border-bottom:1px solid #dce6eb">Above 32.5 ppt</td></tr>
+        <tr><td style="padding:10px;border-bottom:1px solid #dce6eb"><strong>T24</strong></td><td id="publicT1Time" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td id="publicT1Sal" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td style="padding:10px;border-bottom:1px solid #dce6eb">Above 32.5 ppt</td></tr>
+        <tr><td style="padding:10px"><strong>T48</strong></td><td id="publicT2Time" style="padding:10px">—</td><td id="publicT2Sal" style="padding:10px">—</td><td style="padding:10px">Above 32.5 ppt</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p id="publicReopenStatus" class="hint" style="margin-bottom:0">Waiting for all environmental controls to be within limits before the 48-hour check starts.</p>
+</section>
+
 <section class="card">
   <div class="card-head"><div><h2>Duck Bay Management Plan</h2><p class="muted">ShellMAP Management Plan issued 23/12/2025.</p></div></div>
   <div class="grid two">
@@ -262,6 +287,21 @@ function el(id){return document.getElementById(id);}function updateBayBanner(){
   b.style.boxShadow="none";
 }
 
+function renderPublicReopen(){
+  var badge=el("publicReopenBadge"),statusEl=el("publicReopenStatus");
+  if(!badge||!statusEl)return;
+  var ready=isFinite(previous7Total)&&(bayName()==="Duck Bay"?isFinite(previous3Total):true)&&(state.salinity!==""&&isFinite(Number(state.salinity)))&&(!bayUsesRiver()||isFinite(Number(window.riverCurrentFlow)));
+  badge.textContent=ready?"READY TO START":"WAITING";
+  badge.style.background=ready?"#bff3cc":"#f4f7f8";
+  badge.style.color=ready?"#176b3b":"#52636d";
+  if(ready){
+    statusEl.textContent="All available environmental readings are within the required range. The 48-hour salinity check can be commenced and recorded at T0, T24 and T48.";
+  }else{
+    statusEl.textContent="Waiting for all required environmental readings before the 48-hour check starts.";
+  }
+  var v=state.salinity!==""&&isFinite(Number(state.salinity))?Number(state.salinity).toFixed(1):"—";
+  el("publicT0Sal").textContent=v;
+}
 function load(){try{var raw=localStorage.getItem(KEY);if(raw){Object.assign(state,JSON.parse(raw));} state.alertEnabled=localStorage.getItem("toc-smithton-alert-enabled")==="true";}catch(e){state.alertEnabled=false;}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));return true;}catch(e){return false;}}
 function status(msg,ok){var e=el("saveStatus");if(!e)return;e.textContent=msg;e.style.display="block";e.style.padding="10px";e.style.marginTop="10px";e.style.fontWeight="700";e.style.background=ok?"#dff5e8":"#fde2e2";e.style.color=ok?"#176b3b":"#9d2727";}
