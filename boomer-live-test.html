@@ -1,0 +1,22 @@
+<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Boomer Live Test</title>
+<body style="font-family:Arial;padding:20px"><h2>Boomer Bay live-data test</h2><pre id="out">Testing…</pre>
+<script>
+(async()=>{
+ const out=document.getElementById("out");
+ const sites=[
+  ["East","Boomer Bay East"],
+  ["Little","Boomer Bay Narrows 1"],
+  ["Narrows","Boomer Bay Narrows 3"]
+ ];
+ const now=Date.now(),from=now-2*60*60*1000;
+ const queries=sites.map((x,i)=>({refId:["East","Little","Narrows"][i],datasource:{uid:"qhZkWGznk"},rawSql:'SELECT "time" AS "time", measurement AS "Salinity" FROM ind_otmetrics WHERE $__timeFilter("time") AND sensor_name = \'Salinity\' AND site_address = \'Boomer Bay\' AND site_name = \''+x[1]+'\' AND measurement > 0 ORDER BY 1,2',format:"time_series",intervalMs:600000,maxDataPoints:100}));
+ try{
+  const r=await fetch("https://graphs.senseright.com.au/api/ds/query?ds_type=grafana-postgresql-datasource",{
+   method:"POST",headers:{"Content-Type":"application/json"},credentials:"omit",
+   body:JSON.stringify({queries,from:String(from),to:String(now)})
+  });
+  const txt=await r.text();
+  out.textContent="HTTP "+r.status+"\n\n"+txt.slice(0,8000);
+ }catch(e){out.textContent="REQUEST ERROR\n\n"+e.message+"\n\nThis usually means CORS or authentication is blocking the browser request."}
+})();
+</script>
