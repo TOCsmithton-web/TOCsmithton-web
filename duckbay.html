@@ -38,7 +38,7 @@
 <label>7-day rainfall limit (mm)<input id="rain7LimitDisplay" type="number" disabled></label>
 <label>Duck River limit (m³/s)<input value="5" type="number" disabled></label>
 </div>
-<p class="hint">Central environmental settings. Read-only — no changes can be made from this page.</p>
+<p class="hint">Central environmental settings. Read-only — no changes can be made from this page.</p>\n<div id="reopenNote" class="hint" style="margin-top:10px;font-weight:700">When all controls are within limits, the 48-hour salinity reopening check will start.</div>
 </section>
 
 <section class="card">
@@ -59,12 +59,32 @@
 <script>
 (function(){
 "use strict";
-var KEY="toc-smithton-control-alerts-v1";
+var KEY="toc-smithton-control-alerts-v1";\nvar REOPEN_KEY="toc-duckbay-reopen-48h-v1";
 var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
 var state={salinity:"",salinityMin:"",salinityMax:"",rainThreshold:"",rain7Threshold:"",forecast:[],lastAlerts:{salinity:false,rain24:false,rain7:false},alertEnabled:false};
 var previous24Total=0;
 var previous7Total=0;
-function el(id){return document.getElementById(id);}function updateBayBanner(){
+function el(id){return document.getElementById(id);}
+function controlsWithinLimits(){
+  var sal=Number(state.salinity), min=Number(state.salinityMin||32.5), max=Number(state.salinityMax);
+  var salOk=state.salinity!==""&&isFinite(sal)&&sal>=min&&(!isFinite(max)||state.salinityMax===""||sal<=max);
+  var rain24Ok=isFinite(previous24Total)&&previous24Total<=Number(state.rainThreshold||25);
+  var rain7Ok=isFinite(previous7Total)&&previous7Total<=Number(state.rain7Threshold||40);
+  var riverOk=isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<=5;
+  return salOk&&rain24Ok&&rain7Ok&&riverOk;
+}
+function reopenRender(){
+  var raw=null;try{raw=localStorage.getItem(REOPEN_KEY);raw=raw?JSON.parse(raw):null;}catch(e){}
+  var card=el("salinityReopenCard"),note=el("reopenNote");
+  if(!controlsWithinLimits()){card.style.display="none";note.textContent="When all controls are within limits, the 48-hour salinity reopening check will start.";return;}
+  if(!raw||!raw.startedAt){raw={startedAt:new Date().toISOString()};try{localStorage.setItem(REOPEN_KEY,JSON.stringify(raw));}catch(e){}}
+  card.style.display="block";
+  el("reopenStart").textContent="48-hour check started: "+new Date(raw.startedAt).toLocaleString("en-AU");
+  note.textContent="ALL ENVIRONMENTAL CONTROLS WITHIN LIMITS — 48-hour salinity reopening check started.";
+  ["t0Time","t0Salinity","t1Time","t1Salinity","t2Time","t2Salinity"].forEach(function(id){var e=el(id);if(e&&raw[id])e.value=raw[id];});
+  ["t0Time","t0Salinity","t1Time","t1Salinity","t2Time","t2Salinity"].forEach(function(id){var e=el(id);if(e)e.onchange=function(){try{var x=JSON.parse(localStorage.getItem(REOPEN_KEY)||"{}");x[id]=e.value;localStorage.setItem(REOPEN_KEY,JSON.stringify(x));}catch(err){}};});
+}
+function updateBayBanner(){
   var sal=Number(state.salinity), min=Number(state.salinityMin), max=Number(state.salinityMax);
   var salOk=state.salinity!==""&&isFinite(sal);
   if(salOk&&state.salinityMin!==""&&isFinite(min)&&sal<min)salOk=false;
