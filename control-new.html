@@ -346,7 +346,7 @@ async function riverFlow(){
   if(section)section.style.display="";
   var fallback=null;
   try{
-    var response=await fetch("./river.json?ts="+Date.now(),{cache:"no-store"});
+    var response=await fetch("./river.json?ts="+Date.now(),{cache:"no-store",headers:{"Cache-Control":"no-cache"}});
     if(response.ok){var d=await response.json();if(isFinite(Number(d.flow)))fallback=d;}
   }catch(e){}
   if(!fallback){el("riverFlow").textContent="—";el("riverStatus").textContent="River flow unavailable";window.riverCurrentFlow=NaN;updateBayBanner();return;}
@@ -355,12 +355,11 @@ async function riverFlow(){
   el("riverFlow").textContent=v.toFixed(3);
   el("riverStatus").textContent=v>limit?"RIVER FLOW ALERT — above "+limit.toFixed(1)+" m³/s":"Within environmental control limit";
   el("riverStatus").style.color=v>limit?"#9d2727":"#176b3b";
-  var when=fallback.updated||fallback.timestamp;
+  var when=fallback.timestamp;
   if(when){
     var readingTime=new Date(when);
-    var nextUpdate=new Date();
-    nextUpdate.setMinutes(Math.floor(nextUpdate.getMinutes()/10)*10+10,0,0);
-    el("riverStatus").textContent+=" • Reading "+readingTime.toLocaleString("en-AU")+" • Next update "+nextUpdate.toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"});
+    var checkedTime=fallback.updated?new Date(fallback.updated):null;
+    el("riverStatus").textContent+=" • Portal reading "+readingTime.toLocaleString("en-AU")+" • Checked "+(checkedTime&&isFinite(checkedTime.getTime())?checkedTime.toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit",second:"2-digit"}):"—");
   }
   renderRiverHistory(fallback.history||[]);
   if(v>limit&&window.riverAlertState!==true)alertNow("RIVER FLOW ALERT",bayName()+" river flow is "+v.toFixed(3)+" m³/s — above the "+limit.toFixed(1)+" m³/s limit.","river-flow-alert");
@@ -372,7 +371,7 @@ function init(){
   el("baySelect").addEventListener("change",function(){setTimeout(function(){riverFlow();weather();loadMeatTests();},50);});
   el("notifyBtn").addEventListener("click",async function(){if(state.alertEnabled){state.alertEnabled=false;try{localStorage.setItem("toc-smithton-alert-enabled","false");}catch(e){}updateNotifyButton();status("ALERTS OFF — this device will not receive environmental notifications.",true);return;}if(!("Notification" in window)){status("ALERTS NOT SUPPORTED",false);return;}try{var p=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(p!=="granted"){status("ALERTS BLOCKED — allow notifications in Chrome settings",false);return;}state.alertEnabled=true;try{localStorage.setItem("toc-smithton-alert-enabled","true");}catch(e){}updateNotifyButton();var reg=await navigator.serviceWorker.ready;await reg.showNotification("TOC Smithton Control",{body:"Environmental alerts are enabled on this device. This setting stays on until you turn it off.",tag:"toc-test"});status("ALERTS ON ✓ — this setting stays on until you turn it off.",true);}catch(e){status("ALERT SETUP FAILED",false);}});
 }
-load();render();init();updateNotifyButton();status("APP READY ✓",true);loadBays();loadCentral();weather();riverFlow();loadMeatTests();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,600000);setInterval(loadMeatTests,10000);
+load();render();init();updateNotifyButton();status("APP READY ✓",true);loadBays();loadCentral();weather();riverFlow();loadMeatTests();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,60000);setInterval(loadMeatTests,10000);
 })();
 </script>
 <script>
