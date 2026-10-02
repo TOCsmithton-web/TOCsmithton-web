@@ -202,8 +202,8 @@ async function weather(){
 
     box.innerHTML="<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+previous7Total.toFixed(1)+" mm</div><div class='range'>Observed rainfall total</div></div>"+
       future.map(function(x){
-        var level=x.sevenDayTotal>=40?"over":"under";
-        return "<div class='day forecast-day "+level+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+x.sevenDayTotal.toFixed(1)+" mm</strong></div></div>";
+        var level=x.sevenDayTotal>=40?"over":"under"; var greenIntensity=Math.max(0,Math.min(1,(40-x.sevenDayTotal)/40)); var greenBg="rgb("+(232-Math.round(greenIntensity*130))+","+(247-Math.round(greenIntensity*35))+","+(237-Math.round(greenIntensity*70))+")";
+        return "<div class='day forecast-day "+level+"' style='"+(level==="under"?"background:"+greenBg+";":"")+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+x.sevenDayTotal.toFixed(1)+" mm</strong></div></div>";
       }).join("");
   }catch(e){
     box.innerHTML="<div class='loading'>Rainfall/weather unavailable — tap Refresh.</div>";
