@@ -12,6 +12,11 @@ on:
 permissions:
   contents: write
 
+# Prevent scheduled and push-triggered river updates from racing each other.
+concurrency:
+  group: duck-river-update
+  cancel-in-progress: false
+
 jobs:
   update-river:
     runs-on: ubuntu-latest
