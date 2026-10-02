@@ -240,9 +240,18 @@ function el(id){return document.getElementById(id);}function updateBayBanner(){
   var rain3Ok=bayName()==="Duck Bay" ? (isFinite(previous3Total)&&previous3Total<DUCK_RAIN3_LIMIT) : true;
   var rain7Ok=isFinite(previous7Total)&&previous7Total<bayRainLimit();
   var riverOk=!bayUsesRiver()||(isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<Number(currentBay.river_flow_limit));
+  var isKemps=bayName().trim().toLowerCase()==="kemps bay";
   var latestMeat=meatTests&&meatTests.length?Number(String(meatTests[0].result).replace(",", ".").trim()):NaN;
-  var meatOk=!isFinite(latestMeat)||latestMeat<=2.3;
-  var open=salOk&&rain3Ok&&rain7Ok&&riverOk;
+  var meatOk=!isKemps || (isFinite(latestMeat)&&latestMeat<=2.3);
+  var meatDueOk=true;
+  if(isKemps && isFinite(latestMeat) && meatTests[0].test_date){
+    var dueDate=new Date(meatTests[0].test_date+"T00:00:00"); dueDate.setDate(dueDate.getDate()+14);
+    var today=new Date(); today.setHours(0,0,0,0);
+    meatDueOk=today<=dueDate;
+  } else if(isKemps) {
+    meatDueOk=false;
+  }
+  var open=salOk&&rain3Ok&&rain7Ok&&riverOk&&meatOk&&meatDueOk;
   var b=el("bayBanner"); if(!b)return;
   b.className="bay-banner "+(open?"open":"closed");
   b.textContent=bayName().toUpperCase()+" "+(open?"OPEN":"CLOSED");
@@ -287,9 +296,19 @@ function render(){
   var rain3Ok=bayName()==="Duck Bay" ? (isFinite(previous3Total)&&previous3Total<DUCK_RAIN3_LIMIT) : true;
   var rain7Ok=isFinite(previous7Total)&&previous7Total<limit;
   var riverOk=!riverRequired||(isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<Number(currentBay.river_flow_limit));
+  var isKemps=bayName().trim().toLowerCase()==="kemps bay";
   var latestMeat=meatTests&&meatTests.length?Number(String(meatTests[0].result).replace(",", ".").trim()):NaN;
+  var meatOk=!isKemps || (isFinite(latestMeat)&&latestMeat<=2.3);
+  var meatDueOk=true;
+  if(isKemps && isFinite(latestMeat) && meatTests[0].test_date){
+    var dueDate=new Date(meatTests[0].test_date+"T00:00:00"); dueDate.setDate(dueDate.getDate()+14);
+    var today=new Date(); today.setHours(0,0,0,0);
+    meatDueOk=today<=dueDate;
+  } else if(isKemps) {
+    meatDueOk=false;
+  }
   var envReady=isFinite(previous7Total)&&(bayName()!=="Duck Bay"||isFinite(previous3Total))&&(salRequired?state.salinity!=="":true)&&(riverRequired?isFinite(Number(window.riverCurrentFlow)):true);
-  var envOk=envReady&&salOk&&rain3Ok&&rain7Ok&&riverOk;
+  var envOk=envReady&&salOk&&rain3Ok&&rain7Ok&&riverOk&&meatOk&&meatDueOk;
   var boxes=document.querySelectorAll(".status-grid .metric-row > div");
   if(boxes.length>=3){
     boxes[0].className=salRequired?(salOk?"env-box good":"env-box bad"):"env-box neutral";
@@ -307,7 +326,7 @@ function render(){
   }
   var dot=el("statusDot");if(dot)dot.className="status-dot "+(envReady?(envOk?"ok":"alert"):"neutral");
   el("statusText").textContent=!envReady?"Awaiting readings":(envOk?"ENVIRONMENTAL CONTROLS OK":"ENVIRONMENTAL CONTROL ALERT");
-  el("bayCriteria").textContent=bayName()+" • 7-day rainfall closure threshold: "+limit.toFixed(1)+" mm"+(bayName()==="Duck Bay"?" • 3-day rainfall closure threshold: 25.0 mm":"")+(salRequired?" • Salinity ≥ "+(currentBay.salinity_min??"")+" ppt":" • Salinity not required")+(riverRequired?" • River flow <5.0 m³/s":" • River flow not required");
+  el("bayCriteria").textContent=bayName()+" • 7-day rainfall closure threshold: "+limit.toFixed(1)+" mm"+(bayName()==="Duck Bay"?" • 3-day rainfall closure threshold: 25.0 mm":"")+(salRequired?" • Salinity ≥ "+(currentBay.salinity_min??"")+" ppt":" • Salinity not required")+(riverRequired?" • River flow <5.0 m³/s":" • River flow not required")+(isKemps?" • Meat test: passing result required fortnightly":"");
   var riverSection=document.querySelector("#riverFlow")?.closest("section");
   if(riverSection)riverSection.style.display=riverRequired?"":"none";
   var riverBox=document.querySelector("#riverFlow")?.parentElement;
