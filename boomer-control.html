@@ -24,7 +24,7 @@
 <body>
 <div id="bayBanner" class="bay-banner waiting" style="padding:0;overflow:hidden">
   <div class="boomer-zone-banner">
-    <div id="bannerLittle" class="boomer-zone-status waiting"><span class="zone-name">ZONE LITTLE</span><span class="zone-state">CHECKING</span><span class="zone-detail">Environmental controls</span></div>
+    <div id="bannerLittle" class="boomer-zone-status waiting"><span class="zone-name">ZONE LITTLE</span><span class="zone-state">CHECKING</span><span class="zone-detail">Environmental controls<br>CHECK NRE CLASSIFICATION BEFORE HARVESTING</span></div>
     <div id="bannerNarrows" class="boomer-zone-status waiting"><span class="zone-name">ZONE NARROWS</span><span class="zone-state">CHECKING</span><span class="zone-detail">Environmental controls</span></div>
     <div id="bannerEast" class="boomer-zone-status waiting"><span class="zone-name">EAST</span><span class="zone-state">CHECKING</span><span class="zone-detail">Environmental controls</span></div>
   </div>
@@ -142,9 +142,9 @@ function setBannerCard(id,k){
   var open=zoneIsOpen(k);
   node.className="boomer-zone-status "+(open?"open":"closed");
   el(id).querySelector(".zone-state").textContent=open?"OPEN":"CLOSED";
-  el(id).querySelector(".zone-detail").textContent=hasSal
+  el(id).querySelector(".zone-detail").innerHTML=(hasSal
     ? "Salinity "+Number(salinity[k]).toFixed(1)+" • 3d "+rain3.toFixed(1)+" • 7d "+rain7.toFixed(1)
-    : "Salinity not entered";
+    : "Salinity not entered")+"<br>CHECK NRE CLASSIFICATION BEFORE HARVESTING";
 }
 
 function updateBanner(){
