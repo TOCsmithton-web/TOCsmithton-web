@@ -17,12 +17,21 @@
   <button id="notifyBtn" class="button secondary" type="button">Enable alerts</button>
 </header>
 <main class="container">
+<section class="card">
+  <div class="card-head"><div><h2>Harvest area</h2><p class="muted">Select the bay you want to monitor.</p></div></div>
+  <label>Bay
+    <select id="baySelect" style="width:100%;padding:12px;border:1px solid #c8d3d8;border-radius:9px;font-size:16px;background:#fff">
+      <option value="">Loading bays…</option>
+    </select>
+  </label>
+  <p id="bayCriteria" class="hint"></p>
+</section>
 <section class="status-grid"><article class="card hero">
   <div class="card-head"><div><span class="label">Environmental status</span><h2 id="statusText">Awaiting readings</h2></div><span id="statusDot" class="status-dot neutral"></span></div>
   <div class="metric-row">
-    <div><span>Salinity</span><strong id="salinityValue">—</strong><small>ppt</small></div>
-    <div><span>Previous 24h rainfall</span><strong id="rain24Value">—</strong><small>mm</small></div>
-    <div><span>Previous 7-day rainfall</span><strong id="rainValue">—</strong><small>mm</small></div>
+    <div><span id="salinityLabel">Salinity</span><strong id="salinityValue">—</strong><small id="salinityUnit">ppt</small></div>
+    <div><span id="rain24Label">Previous 24h rainfall</span><strong id="rain24Value">—</strong><small id="rain24Unit">mm</small></div>
+    <div><span id="rain7Label">Previous 7-day rainfall</span><strong id="rainValue">—</strong><small>mm</small></div>
   </div>
   <p id="lastUpdated" class="muted">No readings entered yet.</p>
   <div id="saveStatus" aria-live="polite"></div>
@@ -54,6 +63,11 @@
 <section class="card"><div class="card-head"><div><h2>Smithton rainfall — previous 7 days + next 7 days</h2><p class="muted">Previous 7-day total is observed rainfall; the next 7 days are forecast rainfall supplied by Open-Meteo.</p></div><button id="refreshWeather" class="button secondary" type="button">Refresh</button></div>
 <div id="forecast" class="forecast"><div class="loading">Loading forecast…</div></div>
 </section>
+
+<section class="card">
+  <div class="card-head"><div><h2>Meat test results</h2><p class="muted">Results entered by authorised administrators. Public view is read-only.</p></div></div>
+  <div id="meatTests" class="forecast"><div class="loading">Loading meat test results…</div></div>
+</section>
 </main>
 <footer>TOC Smithton Control • Local device data + live Smithton rainfall forecast</footer>
 
@@ -64,7 +78,45 @@ var KEY="toc-smithton-control-v6";
 var state={salinity:"",salinityMin:"32.5",salinityMax:"",rainThreshold:"25",rain7Threshold:"40",forecast:[],lastAlerts:{salinity:false,rain24:false,rain7:false},alertEnabled:false};
 var previous24Total=0;
 var previous7Total=0;
+var bays=[];
+var currentBay=null;
+var meatTests=[];
 var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
+async function loadBays(){
+ try{
+  var r=await supabase.from("bay_settings").select("*").eq("active",true).order("id");
+  if(r.error)throw r.error;
+  bays=r.data||[];
+  var select=el("baySelect");
+  var saved=localStorage.getItem("toc-smithton-bay")||"Duck Bay";
+  select.innerHTML=bays.map(function(b){return "<option value=\""+b.bay_name.replace(/"/g,"&quot;")+"\">"+b.bay_name+"</option>";}).join("");
+  if(bays.some(function(b){return b.bay_name===saved;}))select.value=saved;
+  currentBay=bays.find(function(b){return b.bay_name===select.value;})||bays[0]||null;
+  select.onchange=function(){currentBay=bays.find(function(b){return b.bay_name===select.value;})||null;localStorage.setItem("toc-smithton-bay",select.value);render();renderMeatTests();updateBayBanner();};
+  render();
+  renderMeatTests();
+ }catch(e){el("baySelect").innerHTML="<option>Bay data unavailable</option>";}
+}
+function bayUsesRiver(){return !!(currentBay&&currentBay.river_flow_limit!=null);}
+function bayUsesSalinity(){return !!(currentBay&&(currentBay.salinity_min!=null||currentBay.salinity_max!=null));}
+function bayRainLimit(){return currentBay&&currentBay.rainfall_7d_limit!=null?Number(currentBay.rainfall_7d_limit):40;}
+function bayName(){return currentBay?currentBay.bay_name:"Duck Bay";}
+async function loadMeatTests(){
+ try{
+  var r=await supabase.from("meat_test_results").select("id,bay_name,test_date,result,notes,created_at,updated_at").eq("bay_name",bayName()).order("test_date",{ascending:false}).order("created_at",{ascending:false});
+  if(r.error)throw r.error;
+  meatTests=r.data||[];
+  renderMeatTests();
+ }catch(e){meatTests=[];renderMeatTests("Meat test results unavailable.");}
+}
+function renderMeatTests(errorText){
+ var box=el("meatTests");if(!box)return;
+ if(errorText){box.innerHTML="<div class='loading'>"+errorText+"</div>";return;}
+ if(!meatTests.length){box.innerHTML="<div class='loading'>No meat test results recorded for "+bayName()+".</div>";return;}
+ box.innerHTML=meatTests.map(function(x){
+   return "<div class='day observed-summary'><div class='date'>"+new Date(x.test_date+"T00:00:00").toLocaleDateString("en-AU")+"</div><div class='rain'>"+String(x.result).replace(/</g,"&lt;")+"</div><div class='range'>"+(x.notes?String(x.notes).replace(/</g,"&lt;"):"No notes")+"</div></div>";
+ }).join("");
+}
 async function loadCentral(){
  try{
   var r=await supabase.from("control_settings").select("salinity,salinity_min,salinity_max,rain_24h_limit,rain_7d_limit,updated_at").eq("id",1).maybeSingle();
@@ -82,39 +134,26 @@ async function loadCentral(){
  }catch(e){status("CENTRAL CONTROL UNAVAILABLE",false);}
 }
 function el(id){return document.getElementById(id);}function updateBayBanner(){
-  var sal=Number(state.salinity), min=Number(state.salinityMin), max=Number(state.salinityMax);
-  var salOk=state.salinity!==""&&isFinite(sal);
-  if(salOk&&state.salinityMin!==""&&isFinite(min)&&sal<min)salOk=false;
-  if(salOk&&state.salinityMax!==""&&isFinite(max)&&sal>max)salOk=false;
-  var rain24Ok=isFinite(previous24Total)&&previous24Total<=Number(state.rainThreshold||25);
-  var rain7Ok=isFinite(previous7Total)&&previous7Total<=Number(state.rain7Threshold||40);
-  var riverOk=isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<=5;
-  var open=salOk&&rain24Ok&&rain7Ok&&riverOk;
+  var sal=Number(state.salinity), min=currentBay&&currentBay.salinity_min!=null?Number(currentBay.salinity_min):null, max=currentBay&&currentBay.salinity_max!=null?Number(currentBay.salinity_max):null;
+  var salOk=!bayUsesSalinity()||(state.salinity!==""&&isFinite(sal)&&(min==null||sal>=min)&&(max==null||sal<=max));
+  var rain7Ok=isFinite(previous7Total)&&previous7Total<=bayRainLimit();
+  var riverOk=!bayUsesRiver()||(isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<=Number(currentBay.river_flow_limit));
+  var open=salOk&&rain7Ok&&riverOk;
   var b=el("bayBanner"); if(!b)return;
   b.className="bay-banner "+(open?"open":"closed");
-  b.textContent=open?"DUCK BAY OPEN":"DUCK BAY CLOSED";
+  b.textContent=bayName().toUpperCase()+" "+(open?"OPEN":"CLOSED");
   if(window.bayFlashTimer)clearInterval(window.bayFlashTimer);
   b.style.opacity="1";
-  if(!open){
-    var bright=false;
-    window.bayFlashTimer=setInterval(function(){
-      bright=!bright;
-      b.style.backgroundColor=bright?"#ff0000":"#7a0000";
-      b.style.color="#fff";
-      b.style.opacity=bright?"1":"0.45";
-      b.style.boxShadow=bright?"0 0 28px #ff0000":"0 0 4px #7a0000";
-    },450);
-  }else{
-    var green=false;
-    window.bayFlashTimer=setInterval(function(){
-      green=!green;
-      b.style.backgroundColor=green?"#16823b":"#07551f";
-      b.style.color="#fff";
-      b.style.opacity=green?"1":"0.55";
-      b.style.boxShadow=green?"0 0 28px #16823b":"0 0 4px #07551f";
-    },600);
-  }
+  var bright=false;
+  window.bayFlashTimer=setInterval(function(){
+    bright=!bright;
+    b.style.backgroundColor=open?(bright?"#16823b":"#07551f"):(bright?"#ff0000":"#7a0000");
+    b.style.color="#fff";
+    b.style.opacity=bright?"1":"0.55";
+    b.style.boxShadow=bright?(open?"0 0 28px #16823b":"0 0 28px #ff0000"):(open?"0 0 4px #07551f":"0 0 4px #7a0000");
+  },open?600:450);
 }
+
 function load(){try{var raw=localStorage.getItem(KEY);if(raw){Object.assign(state,JSON.parse(raw));} state.alertEnabled=localStorage.getItem("toc-smithton-alert-enabled")==="true";}catch(e){state.alertEnabled=false;}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));return true;}catch(e){return false;}}
 function status(msg,ok){var e=el("saveStatus");if(!e)return;e.textContent=msg;e.style.display="block";e.style.padding="10px";e.style.marginTop="10px";e.style.fontWeight="700";e.style.background=ok?"#dff5e8":"#fde2e2";e.style.color=ok?"#176b3b":"#9d2727";}
@@ -130,45 +169,50 @@ function checkAlerts(){
   state.lastAlerts={salinity:low,rain24:high24,rain7:high7};save();
 }
 function render(){
+  var salRequired=bayUsesSalinity(), riverRequired=bayUsesRiver(), limit=bayRainLimit();
   el("salinityInput").value=state.salinity||"";
-  el("salinityMin").value=state.salinityMin||"";
-  el("salinityMax").value=state.salinityMax||"";
-  el("rainThreshold").value=state.rainThreshold||"";
-  el("rain7Threshold").value=state.rain7Threshold||"";
-  el("salinityValue").textContent=state.salinity===""?"—":Number(state.salinity).toFixed(1);
+  el("salinityMin").value=currentBay&&currentBay.salinity_min!=null?currentBay.salinity_min:"";
+  el("salinityMax").value=currentBay&&currentBay.salinity_max!=null?currentBay.salinity_max:"";
+  el("rainThreshold").value=currentBay&&currentBay.rainfall_7d_limit!=null?currentBay.rainfall_7d_limit:"";
+  el("rain7Threshold").value=limit;
+  el("salinityValue").textContent=salRequired?(state.salinity===""?"—":Number(state.salinity).toFixed(1)):"N/A";
   el("rainValue").textContent=isFinite(previous7Total)?previous7Total.toFixed(1):"—";
-  el("rain24Value").textContent=previous24Total.toFixed(1);
-  var envSal=state.salinity!==""&&isFinite(Number(state.salinity));
-  var envSalOk=envSal&&Number(state.salinity)>=Number(state.salinityMin||32.5)&&Number(state.salinity)<=Number(state.salinityMax||40);
-  var env24Ok=isFinite(previous24Total)&&previous24Total<=Number(state.rainThreshold||25);
-  var env7Ok=isFinite(previous7Total)&&previous7Total<=Number(state.rain7Threshold||40);
-  var envReady=envSal&&isFinite(previous24Total)&&isFinite(previous7Total);
-  var envOk=envReady&&envSalOk&&env24Ok&&env7Ok;
+  el("rain24Value").textContent=salRequired||riverRequired?previous24Total.toFixed(1):"Not required";
+  el("salinityLabel").textContent=salRequired?"Salinity":"Salinity (not required)";
+  el("rain24Label").textContent=riverRequired||salRequired?"Previous 24h rainfall":"24h rainfall (not required)";
+  var salOk=!salRequired||(state.salinity!==""&&isFinite(Number(state.salinity))&&(currentBay.salinity_min==null||Number(state.salinity)>=Number(currentBay.salinity_min))&&(currentBay.salinity_max==null||Number(state.salinity)<=Number(currentBay.salinity_max)));
+  var rain7Ok=isFinite(previous7Total)&&previous7Total<=limit;
+  var riverOk=!riverRequired||(isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<=Number(currentBay.river_flow_limit));
+  var envReady=isFinite(previous7Total)&&(salRequired?state.salinity!=="":true)&&(riverRequired?isFinite(Number(window.riverCurrentFlow)):true);
+  var envOk=envReady&&salOk&&rain7Ok&&riverOk;
   var boxes=document.querySelectorAll(".status-grid .metric-row > div");
   if(boxes.length>=3){
-    boxes[0].className=envSal?(envSalOk?"env-box good":"env-box bad"):"env-box neutral";
-    boxes[1].className=isFinite(previous24Total)?(env24Ok?"env-box good":"env-box bad"):"env-box neutral";
-    boxes[2].className=isFinite(previous7Total)?(env7Ok?"env-box good":"env-box bad"):"env-box neutral";
-    boxes[0].style.background=envSal?(envSalOk?"#bff3cc":"#ffd0d0"):"#f4f7f8";
-    boxes[1].style.background=isFinite(previous24Total)?(env24Ok?"#bff3cc":"#ffd0d0"):"#f4f7f8";
-    boxes[2].style.background=isFinite(previous7Total)?(env7Ok?"#bff3cc":"#ffd0d0"):"#f4f7f8";
-    boxes[0].style.border="2px solid "+(envSal?(envSalOk?"#31a354":"#c62828"):"#cbd6db");
-    boxes[1].style.border="2px solid "+(isFinite(previous24Total)?(env24Ok?"#31a354":"#c62828"):"#cbd6db");
-    boxes[2].style.border="2px solid "+(isFinite(previous7Total)?(env7Ok?"#31a354":"#c62828"):"#cbd6db");
+    boxes[0].className=salRequired?(salOk?"env-box good":"env-box bad"):"env-box neutral";
+    boxes[1].className=riverRequired?(rain7Ok?"env-box good":"env-box bad"):"env-box neutral";
+    boxes[2].className=rain7Ok?"env-box good":"env-box bad";
+    boxes[0].style.background=salRequired?(salOk?"#bff3cc":"#ffd0d0"):"#f4f7f8";
+    boxes[1].style.background=riverRequired?(rain7Ok?"#bff3cc":"#ffd0d0"):"#f4f7f8";
+    boxes[2].style.background=rain7Ok?"#bff3cc":"#ffd0d0";
+    boxes[0].style.border="2px solid "+(salRequired?(salOk?"#31a354":"#c62828"):"#cbd6db");
+    boxes[1].style.border="2px solid "+(riverRequired?(rain7Ok?"#31a354":"#c62828"):"#cbd6db");
+    boxes[2].style.border="2px solid "+(rain7Ok?"#31a354":"#c62828");
   }
-  var dot=el("statusDot");
-  if(dot)dot.className="status-dot "+(envReady?(envOk?"ok":"alert"):"neutral");
+  var dot=el("statusDot");if(dot)dot.className="status-dot "+(envReady?(envOk?"ok":"alert"):"neutral");
   el("statusText").textContent=!envReady?"Awaiting readings":(envOk?"ENVIRONMENTAL CONTROLS OK":"ENVIRONMENTAL CONTROL ALERT");
+  el("bayCriteria").textContent=bayName()+" • 7-day rainfall closure threshold: "+limit.toFixed(1)+" mm"+(salRequired?" • Salinity "+(currentBay.salinity_min??"")+"–"+(currentBay.salinity_max??"")+" ppt":" • Salinity not required")+(riverRequired?" • River flow ≤ "+Number(currentBay.river_flow_limit).toFixed(1)+" m³/s":" • River flow not required");
+  var riverSection=document.querySelector("#riverFlow")?.closest("section");
+  if(riverSection)riverSection.style.display=riverRequired?"":"none";
   var riverBox=document.querySelector("#riverFlow")?.parentElement;
-  if(riverBox){
-    var rf=Number(window.riverCurrentFlow);
-    var riverGood=isFinite(rf)&&rf<=5;
-    riverBox.className=isFinite(rf)?(riverGood?"river-box good":"river-box bad"):"river-box neutral";
-    riverBox.style.background=riverGood?"#bff3cc":"#ffd0d0";
-    riverBox.style.border="2px solid "+(riverGood?"#31a354":"#c62828");
+  if(riverBox&&riverRequired){
+    var rf=Number(window.riverCurrentFlow), good=rf<=Number(currentBay.river_flow_limit);
+    riverBox.className=isFinite(rf)?(good?"river-box good":"river-box bad"):"river-box neutral";
+    riverBox.style.background=good?"#bff3cc":"#ffd0d0";
+    riverBox.style.border="2px solid "+(good?"#31a354":"#c62828");
   }
+  el("rainThreshold").value=salRequired||riverRequired?state.rainThreshold||"":limit;
   updateBayBanner();
 }
+
 function isoDate(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 async function weather(){
   var box=el("forecast");box.innerHTML="<div class='loading'>Loading Smithton rainfall…</div>";
@@ -230,7 +274,7 @@ async function weather(){
 
     box.innerHTML="<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+previous7Total.toFixed(1)+" mm</div><div class='range'>Observed rainfall total</div></div>"+
       future.map(function(x){
-        var level=x.sevenDayTotal>=40?"over":"under"; var greenIntensity=Math.max(0,Math.min(1,(40-x.sevenDayTotal)/40)); var greenBg="rgb("+(232-Math.round(greenIntensity*130))+","+(247-Math.round(greenIntensity*35))+","+(237-Math.round(greenIntensity*70))+")";
+        var threshold=bayRainLimit(); var level=x.sevenDayTotal>=threshold?"over":"under"; var greenIntensity=Math.max(0,Math.min(1,(threshold-x.sevenDayTotal)/threshold)); var greenBg="rgb("+(232-Math.round(greenIntensity*130))+","+(247-Math.round(greenIntensity*35))+","+(237-Math.round(greenIntensity*70))+")";
         return "<div class='day forecast-day "+level+"' style='"+(level==="under"?"background:"+greenBg+";":"")+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+x.sevenDayTotal.toFixed(1)+" mm</strong></div></div>";
       }).join("");
   }catch(e){
@@ -239,29 +283,32 @@ async function weather(){
   }
 }
 async function riverFlow(){
+  var section=document.querySelector("#riverFlow")?.closest("section");
+  if(!bayUsesRiver()){if(section)section.style.display="none";window.riverCurrentFlow=0;updateBayBanner();return;}
+  if(section)section.style.display="";
   var fallback=null;
   try{
     var response=await fetch("./river.json?ts="+Date.now(),{cache:"no-store"});
     if(response.ok){var d=await response.json();if(isFinite(Number(d.flow)))fallback=d;}
   }catch(e){}
+  if(!fallback){el("riverFlow").textContent="—";el("riverStatus").textContent="River flow unavailable";window.riverCurrentFlow=NaN;updateBayBanner();return;}
   var v=Number(fallback.flow);
+  var limit=Number(currentBay.river_flow_limit);
   el("riverFlow").textContent=v.toFixed(3);
-  el("riverStatus").textContent=v>5?"RIVER FLOW ALERT — above 5 m³/s":"Within environmental control limit";
-  el("riverStatus").style.color=v>5?"#9d2727":"#176b3b";
+  el("riverStatus").textContent=v>limit?"RIVER FLOW ALERT — above "+limit.toFixed(1)+" m³/s":"Within environmental control limit";
+  el("riverStatus").style.color=v>limit?"#9d2727":"#176b3b";
   var when=fallback.updated||fallback.timestamp;
   if(when)el("riverStatus").textContent+=" • Reading "+new Date(when).toLocaleString("en-AU");
-  if(v>5&&window.riverAlertState!==true){
-    alertNow("DUCK RIVER FLOW ALERT","Duck River flow is "+v.toFixed(3)+" m³/s — above the 5 m³/s limit.","river-flow-alert");
-  }
-  window.riverCurrentFlow=v;
-  window.riverAlertState=v>5;
-  updateBayBanner();
+  if(v>limit&&window.riverAlertState!==true)alertNow("RIVER FLOW ALERT",bayName()+" river flow is "+v.toFixed(3)+" m³/s — above the "+limit.toFixed(1)+" m³/s limit.","river-flow-alert");
+  window.riverCurrentFlow=v;window.riverAlertState=v>limit;updateBayBanner();render();
 }
+
 function init(){
   el("refreshWeather").addEventListener("click",weather);
+  el("baySelect").addEventListener("change",function(){setTimeout(function(){riverFlow();weather();loadMeatTests();},50);});
   el("notifyBtn").addEventListener("click",async function(){if(state.alertEnabled){state.alertEnabled=false;try{localStorage.setItem("toc-smithton-alert-enabled","false");}catch(e){}updateNotifyButton();status("ALERTS OFF — this device will not receive environmental notifications.",true);return;}if(!("Notification" in window)){status("ALERTS NOT SUPPORTED",false);return;}try{var p=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(p!=="granted"){status("ALERTS BLOCKED — allow notifications in Chrome settings",false);return;}state.alertEnabled=true;try{localStorage.setItem("toc-smithton-alert-enabled","true");}catch(e){}updateNotifyButton();var reg=await navigator.serviceWorker.ready;await reg.showNotification("TOC Smithton Control",{body:"Environmental alerts are enabled on this device. This setting stays on until you turn it off.",tag:"toc-test"});status("ALERTS ON ✓ — this setting stays on until you turn it off.",true);}catch(e){status("ALERT SETUP FAILED",false);}});
 }
-load();render();init();updateNotifyButton();status("APP READY ✓",true);loadCentral();weather();riverFlow();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,3600000);
+load();render();init();updateNotifyButton();status("APP READY ✓",true);loadBays();loadCentral();weather();riverFlow();loadMeatTests();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,3600000);setInterval(loadMeatTests,60000);
 })();
 </script>
 <script>
