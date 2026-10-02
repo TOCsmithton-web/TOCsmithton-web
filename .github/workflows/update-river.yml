@@ -95,7 +95,7 @@ jobs:
                   value=float(row[value_col])
               except Exception:
                   continue
-              if value != value or not (0 <= value < 200):
+              if value != value or not (0 <= value < 100000):
                   continue
               latest=(ts,value)
 
