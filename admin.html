@@ -54,6 +54,21 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 <p id="saveMsg" class="small"></p>
 </div>
 
+<div id="reopenEditor" class="admin-card" style="display:none">
+<h2>Duck Bay — 48-hour salinity reopening</h2>
+<p id="reopenStatus" class="small">Waiting for all environmental controls to be within limits.</p>
+<div class="grid2">
+<label>T0 — date/time<input id="reopenT0Time" type="datetime-local"></label>
+<label>T0 — salinity (ppt)<input id="reopenT0Sal" type="number" step="0.1" min="0"></label>
+<label>T1 — date/time<input id="reopenT1Time" type="datetime-local"></label>
+<label>T1 — salinity (ppt)<input id="reopenT1Sal" type="number" step="0.1" min="0"></label>
+<label>T2 — date/time<input id="reopenT2Time" type="datetime-local"></label>
+<label>T2 — salinity (ppt)<input id="reopenT2Sal" type="number" step="0.1" min="0"></label>
+</div>
+<p class="small">T0, T1 and T2 must be taken at low tide, at representative lease locations, within 48 hours. All other environmental criteria must also remain satisfied.</p>
+<a class="button secondary" href="https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas" target="_blank" rel="noopener">Check NRE classification</a>
+</div>
+
 <div id="meatEditor" class="admin-card" style="display:none">
 <h2>Meat test results</h2>
 <p class="small">Enter a result for the selected harvest area. These results are visible to the public in read-only mode. <b>Sample limit: 2.3</b> — under 2.3 is green; over 2.3 is red.</p>
@@ -82,6 +97,31 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 "use strict";
 var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
 var $=function(id){return document.getElementById(id);};
+var REOPEN_KEY="toc-duckbay-reopen-admin-v1";
+function reopenSet(id,value){try{var x=JSON.parse(localStorage.getItem(REOPEN_KEY)||"{}");x[id]=value;localStorage.setItem(REOPEN_KEY,JSON.stringify(x));}catch(e){}}
+function reopenLoad(){try{var x=JSON.parse(localStorage.getItem(REOPEN_KEY)||"{}");["startedAt","reopenT0Time","reopenT0Sal","reopenT1Time","reopenT1Sal","reopenT2Time","reopenT2Sal"].forEach(function(id){if(x[id]&&$(id))$(id).value=x[id];});return x;}catch(e){return {};}}
+function reopenWatch(){
+  var sal=Number($("salinity").value), min=Number($("salinityMin").value||32.5), rain24=Number($("rain24").value), rain7=Number($("rain7").value);
+  fetch("./river.json?ts="+Date.now(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(d){
+    var river=Number(d&&d.flow), ok=isFinite(sal)&&sal>=min&&isFinite(rain24)&&rain24<=25&&isFinite(rain7)&&rain7<=40&&isFinite(river)&&river<=5;
+    var x=reopenLoad();
+    if(ok){
+      if(!x.startedAt){x.startedAt=new Date().toISOString();try{localStorage.setItem(REOPEN_KEY,JSON.stringify(x));}catch(e){}}
+      $("reopenEditor").style.display="block";
+      $("reopenStatus").textContent="ALL ENVIRONMENTAL CONTROLS WITHIN LIMITS — 48-hour check started "+new Date(x.startedAt).toLocaleString("en-AU")+".";
+      $("reopenStatus").style.color="#176b3b";
+    }else{
+      $("reopenEditor").style.display="block";
+      $("reopenStatus").textContent="Waiting — all environmental controls must be within limits before the 48-hour check starts.";
+      $("reopenStatus").style.color="#9d2727";
+    }
+  }).catch(function(){
+    $("reopenEditor").style.display="block";
+    $("reopenStatus").textContent="Waiting — river data unavailable.";
+    $("reopenStatus").style.color="#9d2727";
+  });
+}
+
 
 function msg(id,text,ok){
   $(id).textContent=text;
@@ -150,7 +190,7 @@ async function showSession(session){
   var admin=await isAdmin(u);
   if(admin){
     $("editor").style.display="block";
-    $("meatEditor").style.display="block";
+    $("meatEditor").style.display="block";\n    $("reopenEditor").style.display="block";\n    reopenLoad();\n    reopenWatch();
     msg("accessMsg","ADMIN ACCESS CONFIRMED ✓",true);
     await loadSettings();
   }else{
@@ -200,9 +240,10 @@ $("saveBtn").onclick=async function(){
 
 $("meatBay").onchange=loadMeatList;
 $("meatSaveBtn").onclick=saveMeatTest;
+["reopenT0Time","reopenT0Sal","reopenT1Time","reopenT1Sal","reopenT2Time","reopenT2Sal"].forEach(function(id){$(id).onchange=function(){reopenSet(id,$(id).value);};});
 $("meatDate").value=new Date().toISOString().slice(0,10);
 loadMeatList();
-supabase.auth.getSession().then(function(r){showSession(r.data.session);});
+supabase.auth.getSession().then(function(r){showSession(r.data.session);});\nsetInterval(reopenWatch,300000);
 supabase.auth.onAuthStateChange(function(event,session){showSession(session);});
 })();
 </script>
