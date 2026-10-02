@@ -95,6 +95,8 @@ async function loadBays(){
   select.onchange=function(){currentBay=bays.find(function(b){return b.bay_name===select.value;})||null;localStorage.setItem("toc-smithton-bay",select.value);render();renderMeatTests();updateBayBanner();};
   render();
   renderMeatTests();
+  weather();
+  riverFlow();
  }catch(e){el("baySelect").innerHTML="<option>Bay data unavailable</option>";}
 }
 function bayUsesRiver(){return !!(currentBay&&currentBay.river_flow_limit!=null);}
@@ -162,7 +164,7 @@ function checkAlerts(){
   var sal=Number(state.salinity);
   var low=state.salinity!==""&&sal<Number(state.salinityMin||32.5);
   var high24=previous24Total>Number(state.rainThreshold||25);
-  var high7=previous7Total>Number(state.rain7Threshold||40);
+  var high7=previous7Total>bayRainLimit();
   if(low&&!state.lastAlerts.salinity)alertNow("SALINITY ALERT","Salinity is "+sal.toFixed(1)+" ppt — below minimum.","salinity-alert");
   if(high24&&!state.lastAlerts.rain24)alertNow("24-HOUR RAINFALL ALERT","Previous 24-hour rainfall is "+previous24Total.toFixed(1)+" mm.","rain24-alert");
   if(high7&&!state.lastAlerts.rain7)alertNow("7-DAY RAINFALL ALERT","Previous 7-day rainfall is "+previous7Total.toFixed(1)+" mm.","rain7-alert");
