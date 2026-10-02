@@ -41,6 +41,20 @@
 <p class="hint">Central environmental settings. Read-only — no changes can be made from this page.</p>\n<div id="reopenNote" class="hint" style="margin-top:10px;font-weight:700">When all controls are within limits, the 48-hour salinity reopening check will start.</div>
 </section>
 
+<section id="salinityReopenCard" class="card" style="display:none">
+<div class="card-head"><div><h2>Duck Bay — 48-hour salinity reopening</h2><p id="reopenStart" class="muted">48-hour check not started.</p></div><span class="badge">Reopening check</span></div>
+<p class="hint">Record the three salinity checks during the 48-hour period. After 48 hours of satisfactory readings, check the current NRE classification before reopening.</p>
+<div class="grid2">
+<label>T0 date/time<input id="t0Time" type="datetime-local"></label>
+<label>T0 salinity (ppt)<input id="t0Salinity" type="number" step="0.1"></label>
+<label>T1 date/time<input id="t1Time" type="datetime-local"></label>
+<label>T1 salinity (ppt)<input id="t1Salinity" type="number" step="0.1"></label>
+<label>T2 date/time<input id="t2Time" type="datetime-local"></label>
+<label>T2 salinity (ppt)<input id="t2Salinity" type="number" step="0.1"></label>
+</div>
+<a class="button secondary" href="https://www.nre.tas.gov.au/water/shellfish-classification" target="_blank" rel="noopener">Check NRE classification</a>
+</section>
+
 <section class="card">
 <div class="card-head"><div><h2>Duck River — Scotchtown</h2><p class="muted">NRE Tas Water Information Portal • Station 14214 • Environmental control: 5 m³/s</p></div></div>
 <div class="metric-row">
