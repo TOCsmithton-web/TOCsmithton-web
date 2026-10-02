@@ -11,3 +11,8 @@
 .card.environment-ok{background:#bff3cc;border-color:#31a354;box-shadow:0 0 0 2px #31a35455,0 6px 22px #176b3b22}.card.environment-ok .metric-row div{background:#dff9e5}.card.environment-ok #statusText{color:#07551f}.card.environment-alert{background:#ffd0d0;border-color:#c62828;box-shadow:0 0 0 2px #c6282855,0 6px 22px #9d272722}.card.environment-alert .metric-row div{background:#ffe5e5}.card.environment-alert #statusText{color:#9d2727}
 
 .status-grid .hero.environment-ok,.status-grid .hero.environment-alert{background:inherit;border-color:inherit;box-shadow:none}.env-box{transition:background .2s,border-color .2s}.env-box.good,.river-box.good{background:#bff3cc!important;border:2px solid #31a354!important}.env-box.bad,.river-box.bad{background:#ffd0d0!important;border:2px solid #c62828!important}.env-box.neutral,.river-box.neutral{background:#f4f7f8!important;border:2px solid #cbd6db!important}
+
+.river-history-wrap{margin-top:14px;padding:14px;border-radius:14px;background:#eef4f7;border:1px solid #d5e1e6}
+.river-history-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px;color:#25404d}
+.river-history-head span{font-size:.9rem;color:#53666f;text-align:right}
+.river-history{width:100%;overflow:hidden}
