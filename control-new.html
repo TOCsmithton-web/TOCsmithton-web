@@ -162,7 +162,7 @@ function render(){
   var riverBox=document.querySelector("#riverFlow")?.parentElement;
   if(riverBox){
     var rf=Number(window.riverCurrentFlow);
-    var riverGood=isFinite(rf)&&rf<=5.5;
+    var riverGood=isFinite(rf)&&rf<=5;
     riverBox.className=isFinite(rf)?(riverGood?"river-box good":"river-box bad"):"river-box neutral";
     riverBox.style.background=riverGood?"#bff3cc":"#ffd0d0";
     riverBox.style.border="2px solid "+(riverGood?"#31a354":"#c62828");
