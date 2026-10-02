@@ -190,7 +190,7 @@ async function weather(){
   }
 }
 async function riverFlow(){
-  var fallback={flow:7.027,timestamp:"2026-10-01T20:00:00+10:00",updated:"2026-10-01T20:05:00+10:00",source:"Tasmania Water Information Portal"};
+  var fallback=null;
   try{
     var response=await fetch("./river.json?ts="+Date.now(),{cache:"no-store"});
     if(response.ok){var d=await response.json();if(isFinite(Number(d.flow)))fallback=d;}
