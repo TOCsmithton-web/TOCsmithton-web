@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b4f6c"><title>TOC Boomer Bay Control</title><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="styles.css"></head>
+<body>
+<div id="bayBanner" class="bay-banner waiting">CHECKING ENVIRONMENTAL CONTROLS</div>
+<header class="topbar">
+  <div><div class="eyebrow">TASMANIAN OYSTER COMPANY</div><h1>Boomer Bay Control</h1></div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+    <select aria-label="Control location" onchange="if(this.value)location.href=this.value" style="padding:10px 12px;border-radius:10px;border:1px solid #c8d3d8;background:#fff;font-weight:700;color:#17384a">
+      <option value="control-new.html">Smithton Control</option><option value="boomer-control.html" selected>Boomer Bay Control</option>
+    </select>
+    <button id="refreshWeather" class="button secondary" type="button">Refresh</button>
+  </div>
+</header>
+<main class="container">
+<section class="card"><div class="card-head"><div><h2>Harvest area</h2><p class="muted">Select the Boomer Bay zone to monitor.</p></div></div>
+<label>Zone<select id="zoneSelect" style="width:100%;padding:12px;border:1px solid #c8d3d8;border-radius:9px;font-size:16px;background:#fff">
+<option value="little">Zone Little</option><option value="narrows">Zone Narrows</option><option value="east">East</option></select></label>
+<p id="criteria" class="hint"></p></section>
+<section class="status-grid"><article class="card hero"><div class="card-head"><div><span class="label">Environmental status</span><h2 id="statusText">Awaiting readings</h2></div><span id="statusDot" class="status-dot neutral"></span></div>
+<div class="metric-row"><div><span>Salinity</span><strong id="salinityValue">—</strong><small>ppt</small></div><div><span>Previous 3-day rainfall</span><strong id="rain3Value">—</strong><small>mm</small></div><div><span>Previous 7-day rainfall</span><strong id="rain7Value">—</strong><small>mm</small></div></div>
+<p id="lastUpdated" class="muted">No readings yet.</p></article></section>
+<section class="grid two">
+<article class="card"><div class="card-head"><h2>Manual salinity</h2><span class="badge">Boomer Bay</span></div>
+<label>Salinity (ppt)<input id="salinityInput" type="number" step="0.1" inputmode="decimal"></label>
+<p class="hint">Enter the current representative salinity reading for the selected zone.</p></article>
+<article class="card"><div class="card-head"><h2>Environmental controls</h2><span class="badge">NRE ShellMAP</span></div>
+<label>Salinity minimum<input id="salMin" type="number" disabled></label>
+<label>3-day rainfall threshold<input id="rain3Limit" type="number" disabled></label>
+<label>7-day rainfall threshold<input id="rain7Limit" type="number" disabled></label>
+<p class="hint">Criteria from the October 2025 Boomer Bay Management Plan.</p></article>
+</section>
+<section class="card"><div class="card-head"><div><h2>Dunalley (Stroud Point) rainfall — previous 7 days + next 7 days</h2><p class="muted">Rainfall station 94254. Previous totals are calculated to 9am Hobart time; forecast is from Open-Meteo at the station location.</p></div></div>
+<div id="forecast" class="forecast"><div class="loading">Loading rainfall…</div></div></section>
+<section class="card"><div class="card-head"><div><h2>Meat test results</h2><p class="muted">Results entered by authorised administrators. Public view is read-only.</p></div></div>
+<div id="meatTests" class="forecast"><div class="loading">Loading meat test results…</div></div></section>
+</main><footer>TOC Boomer Bay Control • Dunalley (Stroud Point) rainfall • ShellMAP criteria</footer>
+<script>
+"use strict";
+var zoneData={
+ little:{name:"Zone Little",min:27,r3:35,r7:60},
+ narrows:{name:"Zone Narrows",min:27,r3:35,r7:60},
+ east:{name:"East",min:29,r3:30,r7:60}
+};
+var zone=zoneData.little, rain3=0,rain7=0,sal="";
+function el(id){return document.getElementById(id);}
+function setZone(){
+ zone=zoneData[el("zoneSelect").value]||zoneData.little;
+ el("criteria").textContent=zone.name+" • Salinity ≥ "+zone.min+" ppt • 3-day rainfall < "+zone.r3+" mm • 7-day rainfall < "+zone.r7+" mm";
+ el("salMin").value=zone.min;el("rain3Limit").value=zone.r3;el("rain7Limit").value=zone.r7;
+ sal=localStorage.getItem("toc-boomer-salinity-"+el("zoneSelect").value)||"";
+ el("salinityInput").value=sal;updateStatus();
+}
+function updateStatus(){
+ var s=Number(sal),okSal=sal!==""&&isFinite(s)&&s>=zone.min,ok3=rain3<zone.r3,ok7=rain7<zone.r7,open=okSal&&ok3&&ok7;
+ el("salinityValue").textContent=sal||"—";el("rain3Value").textContent=rain3.toFixed(1);el("rain7Value").textContent=rain7.toFixed(1);
+ el("statusText").textContent=open?"ENVIRONMENTAL CONDITIONS OK":"ENVIRONMENTAL CONTROL ALERT";
+ el("statusDot").className="status-dot "+(open?"good":"bad");
+ el("bayBanner").className="bay-banner "+(open?"open":"closed");
+ el("bayBanner").textContent="BOOMER BAY "+(open?"OPEN":"CLOSED");
+}
+async function weather(){
+ el("forecast").innerHTML="<div class='loading'>Loading Dunalley rainfall…</div>";
+ try{
+  var parts=Object.fromEntries(new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Hobart",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).filter(p=>p.type!=="literal").map(p=>[p.type,p.value]));
+  var today=parts.year+"-"+parts.month+"-"+parts.day,base=new Date(Date.UTC(+parts.year,+parts.month-1,+parts.day));
+  function iso(d){return d.toISOString().slice(0,10);}
+  var end=new Date(base);end.setUTCDate(end.getUTCDate()+1);var start=new Date(base);start.setUTCDate(start.getUTCDate()-8);
+  var histUrl="https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=-42.9017&longitude=147.7894&start_date="+iso(start)+"&end_date="+iso(end)+"&hourly=precipitation&timezone=Australia%2FHobart";
+  var fcUrl="https://api.open-meteo.com/v1/forecast?latitude=-42.9017&longitude=147.7894&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Australia%2FHobart&forecast_days=7";
+  var rs=await Promise.all([fetch(histUrl,{cache:"no-store"}),fetch(fcUrl,{cache:"no-store"})]);if(!rs[0].ok||!rs[1].ok)throw Error("weather");
+  var h=await rs[0].json(),f=await rs[1].json();var end9=today+"T09:00",start7=new Date(base);start7.setUTCDate(start7.getUTCDate()-7);var start7k=iso(start7)+"T09:00";var start3=new Date(base);start3.setUTCDate(start3.getUTCDate()-3);var start3k=iso(start3)+"T09:00";
+  rain3=0;rain7=0;var byDate={};
+  h.hourly.time.forEach(function(t,i){var x=Number(h.hourly.precipitation[i]||0),k=t.replace(" ","T").slice(0,16);if(k>start3k&&k<=end9)rain3+=x;if(k>start7k&&k<=end9)rain7+=x;var d=t.slice(0,10);byDate[d]=(byDate[d]||0)+x;});
+  var future=f.daily.time.map(function(d,i){var total=Number(f.daily.precipitation_sum[i]||0);for(var k=1;k<=6;k++){if(i-k>=0)total+=Number(f.daily.precipitation_sum[i-k]||0);else{var dd=new Date(d+"T00:00:00");dd.setDate(dd.getDate()-k);total+=Number(byDate[iso(dd)]||0);}}return {date:d,rain:Number(f.daily.precipitation_sum[i]||0),total:total,min:f.daily.temperature_2m_min[i],max:f.daily.temperature_2m_max[i]};});
+  el("forecast").innerHTML="<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+rain7.toFixed(1)+" mm</div><div class='range'>Previous 3 days: "+rain3.toFixed(1)+" mm</div></div>"+future.map(function(x){var level=x.total>=zone.r7?"over":"under";return "<div class='day forecast-day "+level+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+x.total.toFixed(1)+" mm</strong></div></div>";}).join("");
+  el("lastUpdated").textContent="Rainfall updated "+new Date().toLocaleString("en-AU");updateStatus();
+ }catch(e){el("forecast").innerHTML="<div class='loading'>Rainfall unavailable — tap Refresh/reload.</div>";}
+}
+async function meat(){
+ try{var s=window.supabase;if(!s){return;} }catch(e){}
+}
+el("zoneSelect").onchange=setZone;
+el("salinityInput").oninput=function(){sal=this.value;localStorage.setItem("toc-boomer-salinity-"+el("zoneSelect").value,sal);updateStatus();};
+el("refreshWeather").onclick=weather;
+setZone();weather();
+setInterval(weather,3600000);
+</script></body></html>
