@@ -1,1 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#0b4f6c"/><circle cx="256" cy="285" r="145" fill="#eef4f7"/><path d="M118 285c46-56 96-84 138-84s92 28 138 84c-46 56-96 84-138 84s-92-28-138-84Z" fill="#55a6c6"/><path d="M164 285c30-34 61-51 92-51s62 17 92 51c-30 34-61 51-92 51s-62-17-92-51Z" fill="#eef4f7"/><circle cx="256" cy="285" r="25" fill="#0b4f6c"/><text x="256" y="135" text-anchor="middle" font-family="Arial,sans-serif" font-size="58" font-weight="700" fill="#fff">TOC</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<rect width="512" height="512" rx="96" fill="#0b4f6c"/>
+<circle cx="256" cy="256" r="198" fill="#fff"/>
+<circle cx="256" cy="256" r="188" fill="none" stroke="#0b4f6c" stroke-width="10"/>
+<text x="256" y="170" text-anchor="middle" font-family="Arial,sans-serif" font-size="32" font-weight="800" fill="#0b4f6c" letter-spacing="1">TASMANIAN</text>
+<text x="256" y="203" text-anchor="middle" font-family="Arial,sans-serif" font-size="23" font-weight="800" fill="#0b4f6c">OYSTER CO</text>
+<g fill="none" stroke="#0b4f6c" stroke-width="15" stroke-linecap="round">
+ <path d="M164 286 Q256 196 348 286"/>
+ <path d="M184 317 Q256 247 328 317"/>
+ <path d="M211 345 Q256 303 301 345"/>
+</g>
+<path d="M220 360 Q256 390 292 360 Q281 400 256 412 Q231 400 220 360Z" fill="#0b4f6c"/>
+</svg>
