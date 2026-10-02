@@ -190,7 +190,10 @@ async function showSession(session){
   var admin=await isAdmin(u);
   if(admin){
     $("editor").style.display="block";
-    $("meatEditor").style.display="block";\n    $("reopenEditor").style.display="block";\n    reopenLoad();\n    reopenWatch();
+    $("meatEditor").style.display="block";
+    $("reopenEditor").style.display="block";
+    reopenLoad();
+    reopenWatch();
     msg("accessMsg","ADMIN ACCESS CONFIRMED ✓",true);
     await loadSettings();
   }else{
@@ -243,7 +246,8 @@ $("meatSaveBtn").onclick=saveMeatTest;
 ["reopenT0Time","reopenT0Sal","reopenT1Time","reopenT1Sal","reopenT2Time","reopenT2Sal"].forEach(function(id){$(id).onchange=function(){reopenSet(id,$(id).value);};});
 $("meatDate").value=new Date().toISOString().slice(0,10);
 loadMeatList();
-supabase.auth.getSession().then(function(r){showSession(r.data.session);});\nsetInterval(reopenWatch,300000);
+supabase.auth.getSession().then(function(r){showSession(r.data.session);});
+setInterval(reopenWatch,300000);
 supabase.auth.onAuthStateChange(function(event,session){showSession(session);});
 })();
 </script>
