@@ -119,7 +119,7 @@ function renderMeatTests(errorText){
  if(errorText){box.innerHTML="<div class='loading'>"+errorText+"</div>";return;}
  if(!meatTests.length){box.innerHTML="<div class='loading'>No meat test results recorded for "+bayName()+".</div>";return;}
  box.innerHTML=meatTests.map(function(x){
-   var numeric=Number(String(x.result).replace(",", ".")); var ok=isFinite(numeric)&&numeric<=2.3; var cls=isFinite(numeric)?(ok?"meat-good":"meat-bad"):"meat-neutral"; return "<div class='day observed-summary "+cls+"'><div class='date'>"+new Date(x.test_date+"T00:00:00").toLocaleDateString("en-AU")+"</div><div class='rain'>"+String(x.result).replace(/</g,"&lt;")+"</div><div class='range'>"+(isFinite(numeric)?(ok?"UNDER LIMIT":"OVER LIMIT"):"Result recorded")+(x.notes?" • "+String(x.notes).replace(/</g,"&lt;"):"")+"</div></div>";
+   var numeric=Number(String(x.result).replace(",", ".").trim()); var ok=isFinite(numeric)&&numeric<2.3; var cls=isFinite(numeric)?(ok?"meat-good":"meat-bad"):"meat-neutral"; return "<div class='day observed-summary "+cls+"' style='background:"+(isFinite(numeric)?(ok?"#bff3cc":"#ffd0d0"):"#f4f7f8")+";border:2px solid "+(isFinite(numeric)?(ok?"#31a354":"#c62828"):"#cbd6db")+";'>";<div class='date'>"+new Date(x.test_date+"T00:00:00").toLocaleDateString("en-AU")+"</div><div class='rain'>"+String(x.result).replace(/</g,"&lt;")+"</div><div class='range'>"+(isFinite(numeric)?(ok?"UNDER LIMIT":"OVER LIMIT"):"Result recorded")+(x.notes?" • "+String(x.notes).replace(/</g,"&lt;"):"")+"</div></div>";
  }).join("");
 }
 async function loadCentral(){
@@ -143,8 +143,8 @@ function el(id){return document.getElementById(id);}function updateBayBanner(){
   var salOk=!bayUsesSalinity()||(state.salinity!==""&&isFinite(sal)&&(min==null||sal>=min)&&(max==null||sal<=max));
   var rain7Ok=isFinite(previous7Total)&&previous7Total<=bayRainLimit();
   var riverOk=!bayUsesRiver()||(isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<=Number(currentBay.river_flow_limit));
-  var latestMeat=meatTests&&meatTests.length?Number(String(meatTests[0].result).replace(",", ".")):NaN;
-  var meatOk=!isFinite(latestMeat)||latestMeat<=2.3;
+  var latestMeat=meatTests&&meatTests.length?Number(String(meatTests[0].result).replace(",", ".").trim()):NaN;
+  var meatOk=!isFinite(latestMeat)||latestMeat<2.3;
   var open=salOk&&rain7Ok&&riverOk&&meatOk;
   var b=el("bayBanner"); if(!b)return;
   b.className="bay-banner "+(open?"open":"closed");
@@ -190,8 +190,8 @@ function render(){
   var salOk=!salRequired||(state.salinity!==""&&isFinite(Number(state.salinity))&&(currentBay.salinity_min==null||Number(state.salinity)>=Number(currentBay.salinity_min))&&(currentBay.salinity_max==null||Number(state.salinity)<=Number(currentBay.salinity_max)));
   var rain7Ok=isFinite(previous7Total)&&previous7Total<=limit;
   var riverOk=!riverRequired||(isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<=Number(currentBay.river_flow_limit));
-  var latestMeat=meatTests&&meatTests.length?Number(String(meatTests[0].result).replace(",", ".")):NaN;
-  var meatOk=!isFinite(latestMeat)||latestMeat<=2.3;
+  var latestMeat=meatTests&&meatTests.length?Number(String(meatTests[0].result).replace(",", ".").trim()):NaN;
+  var meatOk=!isFinite(latestMeat)||latestMeat<2.3;
   var envReady=isFinite(previous7Total)&&(salRequired?state.salinity!=="":true)&&(riverRequired?isFinite(Number(window.riverCurrentFlow)):true);
   var envOk=envReady&&salOk&&rain7Ok&&riverOk&&meatOk;
   var boxes=document.querySelectorAll(".status-grid .metric-row > div");
@@ -317,7 +317,7 @@ function init(){
   el("baySelect").addEventListener("change",function(){setTimeout(function(){riverFlow();weather();loadMeatTests();},50);});
   el("notifyBtn").addEventListener("click",async function(){if(state.alertEnabled){state.alertEnabled=false;try{localStorage.setItem("toc-smithton-alert-enabled","false");}catch(e){}updateNotifyButton();status("ALERTS OFF — this device will not receive environmental notifications.",true);return;}if(!("Notification" in window)){status("ALERTS NOT SUPPORTED",false);return;}try{var p=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(p!=="granted"){status("ALERTS BLOCKED — allow notifications in Chrome settings",false);return;}state.alertEnabled=true;try{localStorage.setItem("toc-smithton-alert-enabled","true");}catch(e){}updateNotifyButton();var reg=await navigator.serviceWorker.ready;await reg.showNotification("TOC Smithton Control",{body:"Environmental alerts are enabled on this device. This setting stays on until you turn it off.",tag:"toc-test"});status("ALERTS ON ✓ — this setting stays on until you turn it off.",true);}catch(e){status("ALERT SETUP FAILED",false);}});
 }
-load();render();init();updateNotifyButton();status("APP READY ✓",true);loadBays();loadCentral();weather();riverFlow();loadMeatTests();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,3600000);setInterval(loadMeatTests,60000);
+load();render();init();updateNotifyButton();status("APP READY ✓",true);loadBays();loadCentral();weather();riverFlow();loadMeatTests();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,3600000);setInterval(loadMeatTests,10000);
 })();
 </script>
 <script>
