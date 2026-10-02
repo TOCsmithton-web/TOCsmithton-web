@@ -38,7 +38,8 @@
 <label>7-day rainfall limit (mm)<input id="rain7LimitDisplay" type="number" disabled></label>
 <label>Duck River limit (m³/s)<input value="5" type="number" disabled></label>
 </div>
-<p class="hint">Central environmental settings. Read-only — no changes can be made from this page.</p>\n<div id="reopenNote" class="hint" style="margin-top:10px;font-weight:700">When all controls are within limits, the 48-hour salinity reopening check will start.</div>
+<p class="hint">Central environmental settings. Read-only — no changes can be made from this page.</p>
+<div id="reopenNote" class="hint" style="margin-top:10px;font-weight:700">When all controls are within limits, the 48-hour salinity reopening check will start.</div>
 </section>
 
 <section id="salinityReopenCard" class="card" style="display:none">
@@ -73,7 +74,8 @@
 <script>
 (function(){
 "use strict";
-var KEY="toc-smithton-control-alerts-v1";\nvar REOPEN_KEY="toc-duckbay-reopen-48h-v1";
+var KEY="toc-smithton-control-alerts-v1";
+var REOPEN_KEY="toc-duckbay-reopen-48h-v1";
 var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
 var state={salinity:"",salinityMin:"",salinityMax:"",rainThreshold:"",rain7Threshold:"",forecast:[],lastAlerts:{salinity:false,rain24:false,rain7:false},alertEnabled:false};
 var previous24Total=0;
