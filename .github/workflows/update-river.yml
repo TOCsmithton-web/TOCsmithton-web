@@ -118,6 +118,17 @@ jobs:
                           if previous_flow is not None and previous_flow != 0:
                               change_pct=round((flow-previous_flow)/previous_flow*100,1)
                           now=datetime.datetime.now(datetime.timezone.utc).astimezone(HOBART)
+                          history=[]
+                          try:
+                              with open("river.json","r",encoding="utf-8") as oldf:
+                                  old_data=json.load(oldf)
+                                  history=list(old_data.get("history") or [])
+                          except Exception:
+                              history=[]
+                          point={"timestamp":now.isoformat(),"flow":round(flow,3),"ml_day":round(ml,3)}
+                          history.append(point)
+                          # Keep the latest 72 readings (12 hours at a 10-minute cadence).
+                          history=history[-72:]
                           out={
                               "station":"Duck River US Scotchtown Road Bridge",
                               "station_no":"14214",
@@ -128,6 +139,7 @@ jobs:
                               "limit":5,
                               "previous_flow":round(previous_flow,3) if previous_flow is not None else None,
                               "change_pct":change_pct,
+                              "history":history,
                               "source":"NRE Tasmania Water Information Portal — Scotchtown map Latest Value (ML/day)",
                               "source_url":MAP_URL
                           }
