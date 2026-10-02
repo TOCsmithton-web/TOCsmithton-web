@@ -25,7 +25,7 @@ jobs:
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
           from selenium.webdriver.common.by import By
-          from selenium.webdriver.support.ui import Select
+          from selenium.webdriver.common.action_chains import ActionChains
 
           MAP_URL="https://portal.wrt.tas.gov.au/Data/Map"
           HOBART=ZoneInfo("Australia/Hobart")
@@ -35,11 +35,29 @@ jobs:
           o.add_argument("--no-sandbox")
           o.add_argument("--disable-dev-shm-usage")
           o.add_argument("--window-size=1920,1080")
+          o.add_argument("--disable-gpu")
           d=webdriver.Chrome(options=o)
 
-          def body():
+          def text():
               try: return d.find_element(By.TAG_NAME,"body").text
               except Exception: return ""
+
+          def parse_popup(t):
+              low=t.lower()
+              if "14214" not in low and "scotchtown" not in low and "duck river" not in low:
+                  return None
+              # Require an ML/day value in the same popup/page text.
+              patterns=[
+                  r"(?:latest value|latest discharge|discharge)[^0-9]{0,160}([0-9]+(?:\.[0-9]+)?)\s*ml\s*/?\s*day",
+                  r"([0-9]+(?:\.[0-9]+)?)\s*ml\s*/?\s*day"
+              ]
+              for p in patterns:
+                  m=re.search(p,t,re.I|re.S)
+                  if m:
+                      v=float(m.group(1))
+                      if 0 < v < 100000:
+                          return v
+              return None
 
           try:
               d.get(MAP_URL)
@@ -50,92 +68,68 @@ jobs:
                   time.sleep(8)
               except Exception:
                   pass
-
               d.get(MAP_URL)
-              time.sleep(12)
+              time.sleep(15)
 
-              # Select the Discharge parameter wherever the portal exposes its selector.
-              for s in d.find_elements(By.TAG_NAME,"select"):
+              # The portal defaults to latest flow in ML/day. If a selector is
+              # available, explicitly choose Discharge/Latest.
+              for el in d.find_elements(By.XPATH,"//select"):
                   try:
-                      opts=[x.text.strip() for x in Select(s).options]
+                      opts=[o.text.strip() for o in el.find_elements(By.TAG_NAME,"option")]
                       hit=next((x for x in opts if x.lower()=="discharge" or "discharge" in x.lower()),None)
                       if hit:
-                          Select(s).select_by_visible_text(hit)
+                          d.execute_script("arguments[0].value=[...arguments[0].options].find(o=>o.text.trim()===arguments[1]).value; arguments[0].dispatchEvent(new Event('change',{bubbles:true}));",el,hit)
                           time.sleep(10)
                           break
                   except Exception:
                       pass
 
-              # Find the Scotchtown / station 14214 marker or result and click it.
-              clicked=False
-              for xpath in [
-                  "//*[contains(normalize-space(.),'14214') and contains(normalize-space(.),'Duck River')]",
-                  "//*[contains(normalize-space(.),'14214')]",
-                  "//*[contains(normalize-space(.),'Scotchtown')]",
-                  "//*[contains(normalize-space(.),'Duck River')]"
-              ]:
-                  for e in d.find_elements(By.XPATH,xpath):
-                      try:
-                          if e.is_displayed():
-                              d.execute_script("arguments[0].scrollIntoView({block:'center'});",e)
-                              d.execute_script("arguments[0].click();",e)
-                              time.sleep(5)
-                              clicked=True
-                              break
-                      except Exception:
-                          pass
-                  if clicked: break
+              # Try every map-marker-like DOM element. When a marker is clicked,
+              # the portal opens a location popup. Accept a value only if that
+              # popup identifies station 14214 / Scotchtown / Duck River.
+              candidates=d.find_elements(By.XPATH,
+                  "//*[contains(translate(@class,'MARKER','marker'),'marker') or "
+                  "contains(translate(@class,'INDICATOR','indicator'),'indicator') or "
+                  "self::circle]")
+              print("MAP CANDIDATES:",len(candidates))
 
-              # Some map markers are SVG/canvas-backed. Click the page near a matching
-              # text element if the normal DOM click did not open the popup.
-              text=body()
-              print(text[:20000])
+              seen=set()
+              for i,el in enumerate(candidates):
+                  try:
+                      key=(el.tag_name,el.get_attribute("class"),el.get_attribute("aria-label"),el.get_attribute("title"))
+                      if key in seen: continue
+                      seen.add(key)
+                      d.execute_script("arguments[0].scrollIntoView({block:'center'});",el)
+                      d.execute_script("arguments[0].click();",el)
+                      time.sleep(1.5)
+                      t=text()
+                      ml=parse_popup(t)
+                      if ml is not None:
+                          flow=ml/86.4
+                          now=datetime.datetime.now(datetime.timezone.utc).astimezone(HOBART)
+                          out={
+                              "station":"Duck River US Scotchtown Road Bridge",
+                              "station_no":"14214",
+                              "flow":round(flow,3),
+                              "ml_day":round(ml,3),
+                              "timestamp":now.isoformat(),
+                              "updated":now.isoformat(),
+                              "limit":5,
+                              "source":"NRE Tasmania Water Information Portal — Scotchtown map Latest Value (ML/day)",
+                              "source_url":MAP_URL
+                          }
+                          with open("river.json","w",encoding="utf-8") as f:
+                              json.dump(out,f,separators=(",",":"))
+                          print("VERIFIED SCOTCHTOWN MAP READING:",json.dumps(out))
+                          break
+                  except Exception:
+                      continue
+              else:
+                  raise RuntimeError("Could not open a Scotchtown/14214 map popup containing an ML/day value")
 
-              # Only accept a value that is explicitly tied to the Scotchtown station
-              # popup and expressed in ML/day. Never take an arbitrary ML/day value.
-              lower=text.lower()
-              station_pos=max(lower.find("14214"),lower.find("scotchtown"))
-              if station_pos < 0:
-                  raise RuntimeError("Scotchtown station 14214 not found on NRE map")
-
-              context=text[max(0,station_pos-1000):station_pos+3000]
-              patterns=[
-                  r"(?:Latest Value|Latest Discharge|Discharge)[^0-9]{0,120}([0-9]+(?:\.[0-9]+)?)\s*(?:ML\s*/?\s*day|ML/day)",
-                  r"([0-9]+(?:\.[0-9]+)?)\s*(?:ML\s*/?\s*day|ML/day)"
-              ]
-              vals=[]
-              for p in patterns:
-                  vals += re.findall(p,context,re.I)
-
-              if not vals:
-                  raise RuntimeError("Scotchtown popup has no ML/day Latest Value")
-
-              ml_day=float(vals[0])
-              if not (0 < ml_day < 100000):
-                  raise RuntimeError("Invalid Scotchtown ML/day value")
-
-              flow=ml_day/86.4
-              if not (0 < flow < 200):
-                  raise RuntimeError("Invalid converted Scotchtown flow")
-
-              now=datetime.datetime.now(datetime.timezone.utc).astimezone(HOBART)
-              out={
-                  "station":"Duck River US Scotchtown Road Bridge",
-                  "station_no":"14214",
-                  "flow":round(flow,3),
-                  "ml_day":round(ml_day,3),
-                  "timestamp":now.isoformat(),
-                  "updated":now.isoformat(),
-                  "limit":5,
-                  "source":"NRE Tasmania Water Information Portal — Scotchtown map Latest Value",
-                  "source_url":"https://portal.wrt.tas.gov.au/Data/Map"
-              }
-              with open("river.json","w",encoding="utf-8") as f:
-                  json.dump(out,f,separators=(",",":"))
-              print("VERIFIED SCOTCHTOWN MAP READING:",json.dumps(out))
           except Exception as exc:
               print("River update did not obtain a verified Scotchtown map reading:",exc)
-              # Leave river.json unchanged when the map value cannot be tied to station 14214.
+              # Keep the last verified river.json unchanged.
           finally:
               d.quit()
 
