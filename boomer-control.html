@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b4f6c"><title>TOC Boomer Bay Control</title><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="styles.css"></head>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b4f6c"><title>TOC Boomer Bay Control</title><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="./supabase-config.js"></script></head>
 <body>
 <div id="bayBanner" class="bay-banner waiting">CHECKING ENVIRONMENTAL CONTROLS</div>
 <header class="topbar">
@@ -77,11 +77,20 @@ async function weather(){
  }catch(e){el("forecast").innerHTML="<div class='loading'>Rainfall unavailable — tap Refresh/reload.</div>";}
 }
 async function meat(){
- try{var s=window.supabase;if(!s){return;} }catch(e){}
+ try{
+  var client=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
+  var r=await client.from("meat_test_results").select("test_date,result,notes,created_at").eq("bay_name","Boomer Bay").order("test_date",{ascending:false}).order("created_at",{ascending:false}).limit(5);
+  if(r.error)throw r.error;
+  var rows=r.data||[];
+  el("meatTests").innerHTML=rows.length?rows.map(function(x){
+    var n=Number(String(x.result).replace(",","."));var ok=isFinite(n)&&n<=2.3;
+    return "<div class='day observed-summary' style='background:"+(ok?"#bff3cc":"#ffd0d0")+";border:2px solid "+(ok?"#31a354":"#c62828")+"'><div class='date'>"+new Date(x.test_date+"T00:00:00").toLocaleDateString("en-AU")+"</div><div class='rain'>"+String(x.result).replace(/</g,"&lt;")+"</div><div class='range'>"+(ok?"UNDER LIMIT":"OVER LIMIT")+(x.notes?" • "+String(x.notes).replace(/</g,"&lt;"):"")+"</div></div>";
+  }).join(""):"<div class='loading'>No Boomer Bay meat test results recorded.</div>";
+ }catch(e){el("meatTests").innerHTML="<div class='loading'>Meat test results unavailable.</div>";}
 }
 el("zoneSelect").onchange=setZone;
 el("salinityInput").oninput=function(){sal=this.value;localStorage.setItem("toc-boomer-salinity-"+el("zoneSelect").value,sal);updateStatus();};
 el("refreshWeather").onclick=weather;
-setZone();weather();
+setZone();weather();meat();
 setInterval(weather,3600000);
 </script></body></html>
