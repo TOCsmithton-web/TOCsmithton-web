@@ -1,8 +1,6 @@
 name: Update Duck River Flow
 
 on:
-  push:
-    branches: ["main"]
   schedule:
     - cron: "*/10 * * * *"
   workflow_dispatch:
@@ -17,139 +15,129 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fetch the live NRE Tasmania portal reading
+      - name: Fetch Duck River from the NRE map marker
         shell: bash
         run: |
           python3 -m pip install --quiet selenium
           python3 - <<'PY'
-          import datetime
-          import json
-          import re
-          import time
+          import datetime, json, re, time
           from zoneinfo import ZoneInfo
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.common.by import By
+          from selenium.webdriver.support.ui import Select
 
-          URL = "https://portal.wrt.tas.gov.au/Data/DataSet/Chart/Location/14214-1/DataSet/Discharge/1/Interval/Latest"
-          HOBART = ZoneInfo("Australia/Hobart")
+          MAP_URL="https://portal.wrt.tas.gov.au/Data/Map"
+          HOBART=ZoneInfo("Australia/Hobart")
 
-          options = Options()
-          options.add_argument("--headless=new")
-          options.add_argument("--no-sandbox")
-          options.add_argument("--disable-dev-shm-usage")
-          options.add_argument("--window-size=1920,1080")
-          options.add_argument("--disable-gpu")
+          o=Options()
+          o.add_argument("--headless=new")
+          o.add_argument("--no-sandbox")
+          o.add_argument("--disable-dev-shm-usage")
+          o.add_argument("--window-size=1920,1080")
+          d=webdriver.Chrome(options=o)
 
-          driver = webdriver.Chrome(options=options)
+          def body():
+              try: return d.find_element(By.TAG_NAME,"body").text
+              except Exception: return ""
+
           try:
-              driver.get(URL)
-              # The portal now presents an acceptance page on a fresh runner.
-              # Accept it once, then reload the requested live-data page.
-              time.sleep(3)
+              d.get(MAP_URL)
+              time.sleep(8)
               try:
-                  accept = driver.find_element("xpath", "//button[normalize-space()='Accept'] | //a[normalize-space()='Accept'] | //*[@value='Accept']")
-                  driver.execute_script("arguments[0].click();", accept)
-                  time.sleep(4)
+                  a=d.find_element(By.XPATH,"//button[normalize-space()='Accept'] | //a[normalize-space()='Accept'] | //*[@value='Accept']")
+                  d.execute_script("arguments[0].click();",a)
+                  time.sleep(8)
               except Exception:
                   pass
-              # Retry the live page because the portal can be slow to initialise.
-              text = ""
-              for attempt in range(3):
-                  driver.get(URL)
-                  time.sleep(12 + attempt * 5)
+
+              d.get(MAP_URL)
+              time.sleep(12)
+
+              # Select the Discharge parameter wherever the portal exposes its selector.
+              for s in d.find_elements(By.TAG_NAME,"select"):
                   try:
-                      text = driver.find_element("tag name", "body").text
+                      opts=[x.text.strip() for x in Select(s).options]
+                      hit=next((x for x in opts if x.lower()=="discharge" or "discharge" in x.lower()),None)
+                      if hit:
+                          Select(s).select_by_visible_text(hit)
+                          time.sleep(10)
+                          break
                   except Exception:
-                      text = ""
-                  if "Discharge" in text or "m³/s" in text or "cumecs" in text.lower():
-                      break
-                  time.sleep(3)
-              print(text[:12000])
+                      pass
 
-              # The live chart tooltip/current marker is rendered by JavaScript.
-              # Match the discharge value displayed in m^3/s (cumecs).
-              # The NRE map reports Duck River flow as ML/day.
-              # Convert megalitres/day to cubic metres/second:
-              # 1 ML = 1,000,000 L and 1 day = 86,400 s, so ML/day / 86.4 = m³/s.
-              ml_patterns = [
-                  r"([0-9]+(?:\.[0-9]+)?)\s*(?:ML|ML\/day|ML\s*\/\s*day)\b",
-                  r"(?:Latest Value|Latest Discharge|Discharge)[^0-9]{0,100}([0-9]+(?:\.[0-9]+)?)\s*(?:ML|ML\/day|ML\s*\/\s*day)\b"
+              # Find the Scotchtown / station 14214 marker or result and click it.
+              clicked=False
+              for xpath in [
+                  "//*[contains(normalize-space(.),'14214') and contains(normalize-space(.),'Duck River')]",
+                  "//*[contains(normalize-space(.),'14214')]",
+                  "//*[contains(normalize-space(.),'Scotchtown')]",
+                  "//*[contains(normalize-space(.),'Duck River')]"
+              ]:
+                  for e in d.find_elements(By.XPATH,xpath):
+                      try:
+                          if e.is_displayed():
+                              d.execute_script("arguments[0].scrollIntoView({block:'center'});",e)
+                              d.execute_script("arguments[0].click();",e)
+                              time.sleep(5)
+                              clicked=True
+                              break
+                      except Exception:
+                          pass
+                  if clicked: break
+
+              # Some map markers are SVG/canvas-backed. Click the page near a matching
+              # text element if the normal DOM click did not open the popup.
+              text=body()
+              print(text[:20000])
+
+              # Only accept a value that is explicitly tied to the Scotchtown station
+              # popup and expressed in ML/day. Never take an arbitrary ML/day value.
+              lower=text.lower()
+              station_pos=max(lower.find("14214"),lower.find("scotchtown"))
+              if station_pos < 0:
+                  raise RuntimeError("Scotchtown station 14214 not found on NRE map")
+
+              context=text[max(0,station_pos-1000):station_pos+3000]
+              patterns=[
+                  r"(?:Latest Value|Latest Discharge|Discharge)[^0-9]{0,120}([0-9]+(?:\.[0-9]+)?)\s*(?:ML\s*/?\s*day|ML/day)",
+                  r"([0-9]+(?:\.[0-9]+)?)\s*(?:ML\s*/?\s*day|ML/day)"
               ]
-              ml_matches = []
-              for p in ml_patterns:
-                  ml_matches.extend(re.findall(p, text, flags=re.I))
+              vals=[]
+              for p in patterns:
+                  vals += re.findall(p,context,re.I)
 
-              if not ml_matches:
-                  print("LIVE PORTAL ML/day READING NOT AVAILABLE — retaining previous verified river.json")
-                  raise RuntimeError("No ML/day reading found")
+              if not vals:
+                  raise RuntimeError("Scotchtown popup has no ML/day Latest Value")
 
-              ml_values = [float(x) for x in ml_matches if 0 < float(x) < 100000]
-              if not ml_values:
-                  raise RuntimeError("No valid ML/day value found")
+              ml_day=float(vals[0])
+              if not (0 < ml_day < 100000):
+                  raise RuntimeError("Invalid Scotchtown ML/day value")
 
-              ml_day = ml_values[0]
-              flow = ml_day / 86.4
-              print(f"PORTAL FLOW: {ml_day} ML/day -> {flow:.3f} m³/s")
+              flow=ml_day/86.4
+              if not (0 < flow < 200):
+                  raise RuntimeError("Invalid converted Scotchtown flow")
 
-              now = datetime.datetime.now(datetime.timezone.utc).astimezone(HOBART)
-              out = {
-                  "station": "Duck River US Scotchtown Road Bridge",
-                  "station_no": "14214",
-                  "flow": round(flow, 3),
-                  "timestamp": now.isoformat(),
-                  "updated": now.isoformat(),
-                  "limit": 5,
-                  "source": "NRE Tasmania Water Information Portal",
-                  "source_url": URL
+              now=datetime.datetime.now(datetime.timezone.utc).astimezone(HOBART)
+              out={
+                  "station":"Duck River US Scotchtown Road Bridge",
+                  "station_no":"14214",
+                  "flow":round(flow,3),
+                  "ml_day":round(ml_day,3),
+                  "timestamp":now.isoformat(),
+                  "updated":now.isoformat(),
+                  "limit":5,
+                  "source":"NRE Tasmania Water Information Portal — Scotchtown map Latest Value",
+                  "source_url":"https://portal.wrt.tas.gov.au/Data/Map"
               }
-
-              with open("river.json", "w", encoding="utf-8") as f:
-                  json.dump(out, f, separators=(",", ":"))
-
-              print("LIVE RIVER DATA:", json.dumps(out))
+              with open("river.json","w",encoding="utf-8") as f:
+                  json.dump(out,f,separators=(",",":"))
+              print("VERIFIED SCOTCHTOWN MAP READING:",json.dumps(out))
           except Exception as exc:
-              print("River update did not obtain a new verified reading:", exc)
-              # Do not fail the scheduled workflow when the portal is unavailable.
-              # The existing river.json remains the last verified reading.
+              print("River update did not obtain a verified Scotchtown map reading:",exc)
+              # Leave river.json unchanged when the map value cannot be tied to station 14214.
           finally:
-              driver.quit()
-          PY
-
-      - name: Diagnose NRE map page
-        shell: bash
-        run: |
-          python3 -m pip install --quiet selenium
-          python3 - <<'PY'
-          import time, json
-          from selenium import webdriver
-          from selenium.webdriver.chrome.options import Options
-          URL="https://portal.wrt.tas.gov.au/Data/Map"
-          o=Options(); o.add_argument("--headless=new"); o.add_argument("--no-sandbox"); o.add_argument("--disable-dev-shm-usage"); o.add_argument("--window-size=1920,1080")
-          d=webdriver.Chrome(options=o)
-          try:
-              d.get(URL); time.sleep(8)
-              try:
-                  a=d.find_element("xpath","//button[normalize-space()='Accept'] | //a[normalize-space()='Accept'] | //*[@value='Accept']")
-                  d.execute_script("arguments[0].click();",a); time.sleep(8)
-              except Exception: pass
-              d.get(URL); time.sleep(15)
-              inputs=[]
-              for e in d.find_elements("css selector","input,select,textarea"):
-                  inputs.append({"tag":e.tag_name,"type":e.get_attribute("type"),"name":e.get_attribute("name"),"id":e.get_attribute("id"),"placeholder":e.get_attribute("placeholder"),"aria":e.get_attribute("aria-label"),"value":e.get_attribute("value")})
-              body=d.find_element("tag name","body").text
-              with open("river-debug.txt","w",encoding="utf-8") as f: f.write(json.dumps({"url":d.current_url,"inputs":inputs,"body":body[:30000]},indent=2))
-          finally: d.quit()
-          PY
-
-      - name: Commit river diagnostic
-        shell: bash
-        run: |
-          git config user.name "TOC Smithton Bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add river-debug.txt
-          git diff --cached --quiet && exit 0
-          git commit -m "Diagnose NRE river map"
-          git push
+              d.quit()
 
       - name: Commit river data
         shell: bash
