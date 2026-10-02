@@ -37,6 +37,7 @@
   <div class="metric-row">
     <div><span id="salinityLabel">Salinity</span><strong id="salinityValue">—</strong><small id="salinityUnit">ppt</small></div>
     <div><span id="rain24Label">Previous 24h rainfall</span><strong id="rain24Value">—</strong><small id="rain24Unit">mm</small></div>
+    <div><span id="rain3Label">Previous 3-day rainfall</span><strong id="rain3Value">—</strong><small>mm</small></div>
     <div><span id="rain7Label">Previous 7-day rainfall</span><strong id="rainValue">—</strong><small>mm</small></div>
   </div>
   <p id="lastUpdated" class="muted">No readings entered yet.</p>
@@ -53,7 +54,8 @@
 <article class="card"><div class="card-head"><h2>Rainfall alert control</h2><span class="badge">Previous 7 days + next 7 days</span></div>
 <label>Alert threshold (mm / 24h)<input id="rainThreshold" type="number" disabled></label>
 <label>Alert threshold (mm / 7 days)<input id="rain7Threshold" type="number" disabled></label>
-<p class="hint">Read-only — central environmental-control limits.</p>
+<label>Duck Bay 3-day management limit<input id="rain3Threshold" type="number" value="25" disabled></label>
+<p class="hint">Duck Bay Management Plan (issued 23/12/2025): 3-day rainfall ≥25 mm is a combined environmental closure criterion. This limit is fixed by the management plan.</p>
 </article>
 </section>
 
@@ -75,6 +77,26 @@
 </section>
 
 <section class="card">
+  <div class="card-head"><div><h2>Duck Bay Management Plan</h2><p class="muted">ShellMAP Management Plan issued 23/12/2025.</p></div></div>
+  <div class="grid two">
+    <div class="notice"><strong>Combined environmental closure criteria</strong><ul class="hint">
+      <li>Salinity below 32.5‰</li>
+      <li>7-day Smithton rainfall ≥40 mm</li>
+      <li>3-day Smithton rainfall ≥25 mm</li>
+      <li>Duck River at Scotchtown Rd ≥5.0 m³/s</li>
+    </ul></div>
+    <div class="notice"><strong>Re-opening after combined environmental closure</strong><ul class="hint">
+      <li>All environmental criteria satisfied</li>
+      <li>Rainfall ceased, or daily rainfall is less than 10% of the 7-day criterion</li>
+      <li>48 hours of satisfactory salinity above the criterion</li>
+      <li>Salinity may be demonstrated by 48 hours ShellPOINT data or three manual low-tide measurements at T0, T24 and T48</li>
+    </ul></div>
+  </div>
+  <p class="hint"><strong>Important:</strong> Formal ShellMAP closure/open decisions, including biotoxin, phytoplankton, sewage, microbial and other regulatory events, can override these environmental indicators. Check the current ShellMAP Classification Notice before harvesting.</p>
+  <p><a href="https://nre.tas.gov.au/SiteAssets/ShellMAP%20Current%20Harvest%20Status.pdf" target="_blank" rel="noopener">Open current ShellMAP Classification Notice</a> • <a href="https://nre.tas.gov.au/Documents/Management%20Plan%20-%20Duck%20Bay.pdf" target="_blank" rel="noopener">Open Duck Bay Management Plan</a></p>
+</section>
+
+<section class="card">
   <div class="card-head"><div><h2>Meat test results</h2><p class="muted">Results entered by authorised administrators. Public view is read-only.</p></div></div>
   <div id="meatTestLimit" class="hint">Sample limit: 2.3</div>
   <div id="meatTests" class="forecast"><div class="loading">Loading meat test results…</div></div>
@@ -86,9 +108,11 @@
 (function(){
 "use strict";
 var KEY="toc-smithton-control-v6";
-var state={salinity:"",salinityMin:"32.5",salinityMax:"",rainThreshold:"25",rain7Threshold:"40",forecast:[],lastAlerts:{salinity:false,rain24:false,rain7:false},alertEnabled:false};
+var state={salinity:"",salinityMin:"32.5",salinityMax:"",rainThreshold:"25",rain7Threshold:"40",forecast:[],lastAlerts:{salinity:false,rain24:false,rain3:false,rain7:false},alertEnabled:false};
 var previous24Total=0;
+var previous3Total=0;
 var previous7Total=0;
+var DUCK_RAIN3_LIMIT=25;
 var bays=[];
 var currentBay=null;
 var meatTests=[];
@@ -161,11 +185,12 @@ async function loadCentral(){
 function el(id){return document.getElementById(id);}function updateBayBanner(){
   var sal=Number(state.salinity), min=currentBay&&currentBay.salinity_min!=null?Number(currentBay.salinity_min):null, max=currentBay&&currentBay.salinity_max!=null?Number(currentBay.salinity_max):null;
   var salOk=!bayUsesSalinity()||(state.salinity!==""&&isFinite(sal)&&(min==null||sal>=min)&&(max==null||sal<=max));
-  var rain7Ok=isFinite(previous7Total)&&previous7Total<=bayRainLimit();
-  var riverOk=!bayUsesRiver()||(isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<=Number(currentBay.river_flow_limit));
+  var rain3Ok=bayName()==="Duck Bay" ? (isFinite(previous3Total)&&previous3Total<DUCK_RAIN3_LIMIT) : true;
+  var rain7Ok=isFinite(previous7Total)&&previous7Total<bayRainLimit();
+  var riverOk=!bayUsesRiver()||(isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<Number(currentBay.river_flow_limit));
   var latestMeat=meatTests&&meatTests.length?Number(String(meatTests[0].result).replace(",", ".").trim()):NaN;
   var meatOk=!isFinite(latestMeat)||latestMeat<=2.3;
-  var open=salOk&&rain7Ok&&riverOk&&meatOk;
+  var open=salOk&&rain3Ok&&rain7Ok&&riverOk;
   var b=el("bayBanner"); if(!b)return;
   b.className="bay-banner "+(open?"open":"closed");
   b.textContent=bayName().toUpperCase()+" "+(open?"OPEN":"CLOSED");
@@ -184,11 +209,13 @@ function checkAlerts(){
   var sal=Number(state.salinity);
   var low=state.salinity!==""&&sal<Number(state.salinityMin||32.5);
   var high24=previous24Total>Number(state.rainThreshold||25);
-  var high7=previous7Total>bayRainLimit();
+  var high3=bayName()==="Duck Bay"&&previous3Total>=DUCK_RAIN3_LIMIT;
+  var high7=previous7Total>=bayRainLimit();
   if(low&&!state.lastAlerts.salinity)alertNow("SALINITY ALERT","Salinity is "+sal.toFixed(1)+" ppt — below minimum.","salinity-alert");
   if(high24&&!state.lastAlerts.rain24)alertNow("24-HOUR RAINFALL ALERT","Previous 24-hour rainfall is "+previous24Total.toFixed(1)+" mm.","rain24-alert");
+  if(high3&&!state.lastAlerts.rain3)alertNow("3-DAY RAINFALL ALERT","Duck Bay 3-day rainfall is "+previous3Total.toFixed(1)+" mm — management limit is 25 mm.","rain3-alert");
   if(high7&&!state.lastAlerts.rain7)alertNow("7-DAY RAINFALL ALERT","Previous 7-day rainfall is "+previous7Total.toFixed(1)+" mm.","rain7-alert");
-  state.lastAlerts={salinity:low,rain24:high24,rain7:high7};save();
+  state.lastAlerts={salinity:low,rain24:high24,rain3:high3,rain7:high7};save();
 }
 function render(){
   var salRequired=bayUsesSalinity(), riverRequired=bayUsesRiver(), limit=bayRainLimit();
@@ -199,31 +226,36 @@ function render(){
   el("rain7Threshold").value=limit;
   el("salinityValue").textContent=salRequired?(state.salinity===""?"—":Number(state.salinity).toFixed(1)):"N/A";
   el("rainValue").textContent=isFinite(previous7Total)?previous7Total.toFixed(1):"—";
-  el("rain24Value").textContent=salRequired||riverRequired?previous24Total.toFixed(1):"Not required";
+  el("rain24Value").textContent=previous24Total.toFixed(1);
+  el("rain3Value").textContent=bayName()==="Duck Bay"?previous3Total.toFixed(1):"N/A";
   el("salinityLabel").textContent=salRequired?"Salinity":"Salinity (not required)";
-  el("rain24Label").textContent=riverRequired||salRequired?"Previous 24h rainfall":"24h rainfall (not required)";
+  el("rain24Label").textContent="Previous 24h rainfall";
+  el("rain3Label").textContent=bayName()==="Duck Bay"?"Previous 3-day rainfall":"3-day rainfall (not required)";
   var salOk=!salRequired||(state.salinity!==""&&isFinite(Number(state.salinity))&&(currentBay.salinity_min==null||Number(state.salinity)>=Number(currentBay.salinity_min))&&(currentBay.salinity_max==null||Number(state.salinity)<=Number(currentBay.salinity_max)));
-  var rain7Ok=isFinite(previous7Total)&&previous7Total<=limit;
-  var riverOk=!riverRequired||(isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<=Number(currentBay.river_flow_limit));
+  var rain3Ok=bayName()==="Duck Bay" ? (isFinite(previous3Total)&&previous3Total<DUCK_RAIN3_LIMIT) : true;
+  var rain7Ok=isFinite(previous7Total)&&previous7Total<limit;
+  var riverOk=!riverRequired||(isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<Number(currentBay.river_flow_limit));
   var latestMeat=meatTests&&meatTests.length?Number(String(meatTests[0].result).replace(",", ".").trim()):NaN;
-  var meatOk=!isFinite(latestMeat)||latestMeat<=2.3;
-  var envReady=isFinite(previous7Total)&&(salRequired?state.salinity!=="":true)&&(riverRequired?isFinite(Number(window.riverCurrentFlow)):true);
-  var envOk=envReady&&salOk&&rain7Ok&&riverOk&&meatOk;
+  var envReady=isFinite(previous7Total)&&(bayName()!=="Duck Bay"||isFinite(previous3Total))&&(salRequired?state.salinity!=="":true)&&(riverRequired?isFinite(Number(window.riverCurrentFlow)):true);
+  var envOk=envReady&&salOk&&rain3Ok&&rain7Ok&&riverOk;
   var boxes=document.querySelectorAll(".status-grid .metric-row > div");
   if(boxes.length>=3){
     boxes[0].className=salRequired?(salOk?"env-box good":"env-box bad"):"env-box neutral";
-    boxes[1].className=riverRequired?(rain7Ok?"env-box good":"env-box bad"):"env-box neutral";
-    boxes[2].className=rain7Ok?"env-box good":"env-box bad";
+    boxes[1].className="env-box neutral";
+    boxes[2].className=bayName()==="Duck Bay"?(rain3Ok?"env-box good":"env-box bad"):"env-box neutral";
+    boxes[3].className=rain7Ok?"env-box good":"env-box bad";
     boxes[0].style.background=salRequired?(salOk?"#bff3cc":"#ffd0d0"):"#f4f7f8";
-    boxes[1].style.background=riverRequired?(rain7Ok?"#bff3cc":"#ffd0d0"):"#f4f7f8";
-    boxes[2].style.background=rain7Ok?"#bff3cc":"#ffd0d0";
+    boxes[1].style.background="#f4f7f8";
+    boxes[2].style.background=bayName()==="Duck Bay"?(rain3Ok?"#bff3cc":"#ffd0d0"):"#f4f7f8";
+    boxes[3].style.background=rain7Ok?"#bff3cc":"#ffd0d0";
     boxes[0].style.border="2px solid "+(salRequired?(salOk?"#31a354":"#c62828"):"#cbd6db");
-    boxes[1].style.border="2px solid "+(riverRequired?(rain7Ok?"#31a354":"#c62828"):"#cbd6db");
-    boxes[2].style.border="2px solid "+(rain7Ok?"#31a354":"#c62828");
+    boxes[1].style.border="2px solid #cbd6db";
+    boxes[2].style.border="2px solid "+(bayName()==="Duck Bay"?(rain3Ok?"#31a354":"#c62828"):"#cbd6db");
+    boxes[3].style.border="2px solid "+(rain7Ok?"#31a354":"#c62828");
   }
   var dot=el("statusDot");if(dot)dot.className="status-dot "+(envReady?(envOk?"ok":"alert"):"neutral");
   el("statusText").textContent=!envReady?"Awaiting readings":(envOk?"ENVIRONMENTAL CONTROLS OK":"ENVIRONMENTAL CONTROL ALERT");
-  el("bayCriteria").textContent=bayName()+" • 7-day rainfall closure threshold: "+limit.toFixed(1)+" mm"+(salRequired?" • Salinity "+(currentBay.salinity_min??"")+"–"+(currentBay.salinity_max??"")+" ppt":" • Salinity not required")+(riverRequired?" • River flow ≤ "+Number(currentBay.river_flow_limit).toFixed(1)+" m³/s":" • River flow not required");
+  el("bayCriteria").textContent=bayName()+" • 7-day rainfall closure threshold: "+limit.toFixed(1)+" mm"+(bayName()==="Duck Bay"?" • 3-day rainfall closure threshold: 25.0 mm":"")+(salRequired?" • Salinity ≥ "+(currentBay.salinity_min??"")+" ppt":" • Salinity not required")+(riverRequired?" • River flow <5.0 m³/s":" • River flow not required");
   var riverSection=document.querySelector("#riverFlow")?.closest("section");
   if(riverSection)riverSection.style.display=riverRequired?"":"none";
   var riverBox=document.querySelector("#riverFlow")?.parentElement;
@@ -233,7 +265,8 @@ function render(){
     riverBox.style.background=good?"#bff3cc":"#ffd0d0";
     riverBox.style.border="2px solid "+(good?"#31a354":"#c62828");
   }
-  el("rainThreshold").value=salRequired||riverRequired?state.rainThreshold||"":limit;
+  el("rainThreshold").value=state.rainThreshold||"";
+  el("rain3Threshold").value=bayName()==="Duck Bay"?DUCK_RAIN3_LIMIT:"";
   updateBayBanner();
 }
 
@@ -256,6 +289,8 @@ async function weather(){
     var end9Key=todayKey+"T09:00";
     var start7=new Date(todayUtc);start7.setUTCDate(start7.getUTCDate()-7);
     var start7Key=isoDate(start7)+"T09:00";
+    var start3=new Date(todayUtc);start3.setUTCDate(start3.getUTCDate()-3);
+    var start3Key=isoDate(start3)+"T09:00";
 
     var histUrl="https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&start_date="+startKey+"&end_date="+endKey+"&hourly=precipitation&timezone=Australia%2FHobart";
     var forecastUrl="https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Australia%2FHobart&forecast_days=7";
@@ -265,11 +300,12 @@ async function weather(){
     var fc=await results[1].json();
     if(!hist.hourly||!hist.hourly.time||!fc.daily)throw new Error("incomplete weather data");
 
-    previous7Total=0;previous24Total=0;
+    previous7Total=0;previous3Total=0;previous24Total=0;
     for(var i=0;i<hist.hourly.time.length;i++){
       var rain=Number(hist.hourly.precipitation[i]||0);
       var key=String(hist.hourly.time[i]).replace(" ","T").slice(0,16);
       if(key>start7Key&&key<=end9Key)previous7Total+=rain;
+      if(key>start3Key&&key<=end9Key)previous3Total+=rain;
       if(key>cutoff24Key&&key<=end9Key)previous24Total+=rain;
     }
 
@@ -296,7 +332,7 @@ async function weather(){
     });
     save();render();checkAlerts();
 
-    box.innerHTML="<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+previous7Total.toFixed(1)+" mm</div><div class='range'>Observed rainfall total</div></div>"+
+    box.innerHTML="<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+previous7Total.toFixed(1)+" mm</div><div class='range'>Previous 3 days: "+previous3Total.toFixed(1)+" mm • Observed rainfall total</div></div>"+
       future.map(function(x){
         var threshold=bayRainLimit(); var level=x.sevenDayTotal>=threshold?"over":"under"; var greenIntensity=Math.max(0,Math.min(1,(threshold-x.sevenDayTotal)/threshold)); var greenBg="rgb("+(232-Math.round(greenIntensity*130))+","+(247-Math.round(greenIntensity*35))+","+(237-Math.round(greenIntensity*70))+")";
         return "<div class='day forecast-day "+level+"' style='"+(level==="under"?"background:"+greenBg+";":"")+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+x.sevenDayTotal.toFixed(1)+" mm</strong></div></div>";
