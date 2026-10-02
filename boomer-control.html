@@ -144,7 +144,7 @@ function setBannerCard(id,k){
   el(id).querySelector(".zone-state").textContent=open?"OPEN":"CLOSED";
   el(id).querySelector(".zone-detail").innerHTML=(hasSal
     ? "Salinity "+Number(salinity[k]).toFixed(1)+" • 3d "+rain3.toFixed(1)+" • 7d "+rain7.toFixed(1)
-    : "Salinity not entered")+"<br>CHECK NRE CLASSIFICATION BEFORE HARVESTING";
+    : "Salinity not entered")+"<br><a href=\"https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas\" target=\"_blank\" rel=\"noopener\" style=\"color:#fff;text-decoration:underline\">CHECK NRE CLASSIFICATION BEFORE HARVESTING</a>";
 }
 
 function updateBanner(){
