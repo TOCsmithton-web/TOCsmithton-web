@@ -119,7 +119,16 @@ function renderMeatTests(errorText){
  if(errorText){box.innerHTML="<div class='loading'>"+errorText+"</div>";return;}
  if(!meatTests.length){box.innerHTML="<div class='loading'>No meat test results recorded for "+bayName()+".</div>";return;}
  box.innerHTML=meatTests.map(function(x){
-   var numeric=Number(String(x.result).replace(",", ".").trim()); var ok=isFinite(numeric)&&numeric<=2.3; var cls=isFinite(numeric)?(ok?"meat-good":"meat-bad"):"meat-neutral"; return "<div class='day observed-summary "+cls+"' style='background:"+(isFinite(numeric)?(ok?"#bff3cc":"#ffd0d0"):"#f4f7f8")+";border:2px solid "+(isFinite(numeric)?(ok?"#31a354":"#c62828"):"#cbd6db")+";'>";<div class='date'>"+new Date(x.test_date+"T00:00:00").toLocaleDateString("en-AU")+"</div><div class='rain'>"+String(x.result).replace(/</g,"&lt;")+"</div><div class='range'>"+(isFinite(numeric)?(ok?"UNDER LIMIT":"OVER LIMIT"):"Result recorded")+(x.notes?" • "+String(x.notes).replace(/</g,"&lt;"):"")+"</div></div>";
+   var numeric=Number(String(x.result).replace(",", ".").trim());
+   var ok=isFinite(numeric)&&numeric<=2.3;
+   var cls=isFinite(numeric)?(ok?"meat-good":"meat-bad"):"meat-neutral";
+   var bg=isFinite(numeric)?(ok?"#bff3cc":"#ffd0d0"):"#f4f7f8";
+   var border=isFinite(numeric)?(ok?"#31a354":"#c62828"):"#cbd6db";
+   return "<div class='day observed-summary "+cls+"' style='background:"+bg+";border:2px solid "+border+";'>"+
+     "<div class='date'>"+new Date(x.test_date+"T00:00:00").toLocaleDateString("en-AU")+"</div>"+
+     "<div class='rain'>"+String(x.result).replace(/</g,"&lt;")+"</div>"+
+     "<div class='range'>"+(isFinite(numeric)?(ok?"UNDER LIMIT":"OVER LIMIT"):"Result recorded")+
+     (x.notes?" • "+String(x.notes).replace(/</g,"&lt;"):"")+"</div></div>";
  }).join("");
 }
 async function loadCentral(){
