@@ -56,7 +56,7 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 
 <div id="meatEditor" class="admin-card" style="display:none">
 <h2>Meat test results</h2>
-<p class="small">Enter a result for the selected harvest area. These results are visible to the public in read-only mode.</p>
+<p class="small">Enter a result for the selected harvest area. These results are visible to the public in read-only mode. <b>Sample limit: 2.3</b> — under 2.3 is green; over 2.3 is red.</p>
 <div class="grid2">
 <label>Harvest area
 <select id="meatBay" style="width:100%;padding:12px;border:1px solid #c8d3d8;border-radius:9px;font-size:16px;background:#fff">
@@ -65,7 +65,7 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 </select></label>
 <label>Test date<input id="meatDate" type="date"></label>
 </div>
-<label>Result<input id="meatResult" type="text" placeholder="e.g. Satisfactory / E. coli result"></label>
+<label>Result<input id="meatResult" type="number" step="0.1" min="0" placeholder="Enter sample result"></label>
 <label>Notes<input id="meatNotes" type="text" placeholder="Optional notes"></label>
 <button id="meatSaveBtn" class="button" type="button">Save meat test result</button>
 <p id="meatSaveMsg" class="small"></p>
