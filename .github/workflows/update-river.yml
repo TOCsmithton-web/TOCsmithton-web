@@ -15,179 +15,77 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fetch Duck River flow from BOM Water Data Online
+      - name: Fetch the live NRE Tasmania portal reading
         shell: bash
         run: |
+          python3 -m pip install --quiet selenium
           python3 - <<'PY'
           import datetime
           import json
           import re
-          import urllib.parse
-          import urllib.request
-          import xml.etree.ElementTree as ET
+          import time
           from zoneinfo import ZoneInfo
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
 
-          SERVICE = "https://www.bom.gov.au/waterdata/services"
-          DISCHARGE = "http://bom.gov.au/waterdata/services/parameters/Water Course Discharge"
+          URL = "https://portal.wrt.tas.gov.au/Data/DataSet/Chart/Location/14214-1/DataSet/Discharge/1/Interval/Latest"
           HOBART = ZoneInfo("Australia/Hobart")
 
-          def post(xml):
-              req = urllib.request.Request(
-                  SERVICE,
-                  data=xml.encode("utf-8"),
-                  headers={
-                      "Content-Type": "application/soap+xml; charset=utf-8",
-                      "User-Agent": "TOCsmithton-web Duck River updater",
-                  },
-                  method="POST",
-              )
-              return urllib.request.urlopen(req, timeout=45).read()
+          options = Options()
+          options.add_argument("--headless=new")
+          options.add_argument("--no-sandbox")
+          options.add_argument("--disable-dev-shm-usage")
+          options.add_argument("--window-size=1920,1080")
+          options.add_argument("--disable-gpu")
 
-          def esc(s):
-              return (s.replace("&", "&amp;").replace("<", "&lt;")
-                       .replace(">", "&gt;").replace('"', "&quot;").replace("'", "&apos;"))
+          driver = webdriver.Chrome(options=options)
+          try:
+              driver.get(URL)
+              # Allow the Aquarius chart/data controls to finish loading.
+              time.sleep(12)
+              text = driver.find_element("tag name", "body").text
+              print(text[:12000])
 
-          now = datetime.datetime.now(datetime.timezone.utc)
-          start = (now - datetime.timedelta(hours=6)).isoformat()
-          end = now.isoformat()
+              # The live chart tooltip/current marker is rendered by JavaScript.
+              # Match the discharge value displayed in m^3/s (cumecs).
+              patterns = [
+                  r"([0-9]+(?:\.[0-9]+)?)\s*m\s*\^?\s*3\s*/\s*s",
+                  r"([0-9]+(?:\.[0-9]+)?)\s*m³\s*/\s*s",
+                  r"([0-9]+(?:\.[0-9]+)?)\s*\(cumecs\)",
+              ]
+              matches = []
+              for p in patterns:
+                  matches.extend(re.findall(p, text, flags=re.I))
 
-          # Find the active Duck River at Scotchtown station identifier.
-          station_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
-          <soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"
-            xmlns:sos="http://www.opengis.net/sos/2.0"
-            xmlns:fes="http://www.opengis.net/fes/2.0"
-            xmlns:gml="http://www.opengis.net/gml/3.2">
-            <soap12:Body>
-              <sos:GetFeatureOfInterest service="SOS" version="2.0.0">
-                <sos:observedProperty>{DISCHARGE}</sos:observedProperty>
-                <sos:temporalFilter>
-                  <fes:During>
-                    <fes:ValueReference>om:phenomenonTime</fes:ValueReference>
-                    <gml:TimePeriod gml:id="tp1">
-                      <gml:beginPosition>{start}</gml:beginPosition>
-                      <gml:endPosition>{end}</gml:endPosition>
-                    </gml:TimePeriod>
-                  </fes:During>
-                </sos:temporalFilter>
-              </sos:GetFeatureOfInterest>
-            </soap12:Body>
-          </soap12:Envelope>"""
+              if not matches:
+                  raise SystemExit("Could not find the live Duck River discharge value in the rendered NRE portal")
 
-          root = ET.fromstring(post(station_xml))
-          gml = "{http://www.opengis.net/gml/3.2}"
-          stations = []
-          names = root.findall(".//" + gml + "name")
-          identifiers = root.findall(".//" + gml + "identifier")
-          for name, ident in zip(names, identifiers):
-              n = (name.text or "").strip()
-              i = (ident.text or "").strip()
-              if "DUCK RIVER" in n.upper() and "SCOTCHTOWN" in n.upper():
-                  stations.append((n, i))
+              # Prefer a value close to the chart's current reading. Remove obvious
+              # axis values and retain the largest precision value when duplicates exist.
+              values = [float(x) for x in matches if 0 <= float(x) < 1000]
+              if not values:
+                  raise SystemExit("No valid discharge value found")
 
-          if not stations:
-              raise SystemExit("Duck River at Scotchtown discharge station was not returned by BOM")
+              flow = max(values)
 
-          station_name, station = stations[0]
-          print("Using BOM station:", station_name, station)
+              now = datetime.datetime.now(datetime.timezone.utc).astimezone(HOBART)
+              out = {
+                  "station": "Duck River US Scotchtown Road Bridge",
+                  "station_no": "14214",
+                  "flow": round(flow, 3),
+                  "timestamp": now.isoformat(),
+                  "updated": now.isoformat(),
+                  "limit": 5,
+                  "source": "NRE Tasmania Water Information Portal",
+                  "source_url": URL
+              }
 
-          # Ask BOM which discharge time series are actually available for this station.
-          availability_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
-          <soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"
-            xmlns:sos="http://www.opengis.net/sos/2.0"
-            xmlns:fes="http://www.opengis.net/fes/2.0"
-            xmlns:gml="http://www.opengis.net/gml/3.2">
-            <soap12:Body>
-              <sos:GetDataAvailability service="SOS" version="2.0.0">
-                <sos:featureOfInterest>{esc(station)}</sos:featureOfInterest>
-                <sos:observedProperty>{DISCHARGE}</sos:observedProperty>
-              </sos:GetDataAvailability>
-            </soap12:Body>
-          </soap12:Envelope>"""
+              with open("river.json", "w", encoding="utf-8") as f:
+                  json.dump(out, f, separators=(",", ":"))
 
-          av_root = ET.fromstring(post(availability_xml))
-          procedures = []
-          for elem in av_root.iter():
-              tag = elem.tag.split("}")[-1]
-              if tag == "procedure":
-                  href = elem.attrib.get("{http://www.w3.org/1999/xlink}href", "")
-                  title = elem.attrib.get("{http://www.w3.org/1999/xlink}title", "")
-                  if href:
-                      procedures.append((title, href))
-
-          if not procedures:
-              raise SystemExit("No discharge time series available for Duck River station")
-
-          # Prefer the continuous/near-real-time series. Fall back to the first
-          # available series only if BOM does not expose a continuous one.
-          def score(item):
-              title = item[0].lower()
-              return (
-                  ("continuous" in title or "instant" in title or "15min" in title or "hour" in title),
-                  "provisional" in title or "raw" in title,
-                  -len(title),
-              )
-
-          title, procedure = sorted(procedures, key=score, reverse=True)[0]
-          print("Using time series:", title, procedure)
-
-          obs_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
-          <soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"
-            xmlns:sos="http://www.opengis.net/sos/2.0"
-            xmlns:fes="http://www.opengis.net/fes/2.0"
-            xmlns:gml="http://www.opengis.net/gml/3.2">
-            <soap12:Body>
-              <sos:GetObservation service="SOS" version="2.0.0">
-                <sos:procedure>{esc(procedure)}</sos:procedure>
-                <sos:observedProperty>{DISCHARGE}</sos:observedProperty>
-                <sos:featureOfInterest>{esc(station)}</sos:featureOfInterest>
-                <sos:temporalFilter>
-                  <fes:During>
-                    <fes:ValueReference>om:phenomenonTime</fes:ValueReference>
-                    <gml:TimePeriod gml:id="tp1">
-                      <gml:beginPosition>{start}</gml:beginPosition>
-                      <gml:endPosition>{end}</gml:endPosition>
-                    </gml:TimePeriod>
-                  </fes:During>
-                </sos:temporalFilter>
-              </sos:GetObservation>
-            </soap12:Body>
-          </soap12:Envelope>"""
-
-          obs_root = ET.fromstring(post(obs_xml))
-          waterml = "{http://www.opengis.net/waterml/2.0}"
-          times = [x.text for x in obs_root.findall(".//" + waterml + "time") if x.text]
-          values = [x.text for x in obs_root.findall(".//" + waterml + "value") if x.text]
-
-          readings = []
-          for t, v in zip(times, values):
-              try:
-                  readings.append((datetime.datetime.fromisoformat(t.replace("Z", "+00:00")), float(v)))
-              except ValueError:
-                  pass
-
-          readings = [(t, v) for t, v in readings if v == v and v >= 0]
-          if not readings:
-              raise SystemExit("BOM returned no current Duck River discharge observations")
-
-          reading_time, flow = max(readings, key=lambda x: x[0])
-          reading_time = reading_time.astimezone(HOBART)
-          updated = datetime.datetime.now(datetime.timezone.utc).astimezone(HOBART)
-
-          out = {
-              "station": "Duck River US Scotchtown Road Bridge",
-              "station_no": "14214",
-              "flow": round(flow, 3),
-              "timestamp": reading_time.isoformat(),
-              "updated": updated.isoformat(),
-              "limit": 5,
-              "source": "Bureau of Meteorology Water Data Online / NRE Tasmania",
-              "source_url": "https://www.bom.gov.au/waterdata/wiski-web-public/"
-          }
-
-          with open("river.json", "w", encoding="utf-8") as f:
-              json.dump(out, f, separators=(",", ":"))
-
-          print(json.dumps(out))
+              print("LIVE RIVER DATA:", json.dumps(out))
+          finally:
+              driver.quit()
           PY
 
       - name: Commit river data
