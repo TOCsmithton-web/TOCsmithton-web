@@ -52,7 +52,7 @@
 </section>
 
 <section class="card">
-<div class="card-head"><div><h2>Duck River — Scotchtown</h2><p class="muted">BOM streamflow gauge 314214 • Environmental control: 5 m³/s</p></div></div>
+<div class="card-head"><div><h2>Duck River — Scotchtown</h2><p class="muted">NRE Tasmania station 14214 • Environmental control: 5 m³/s</p></div></div>
 <div class="metric-row">
 <div><span>Current flow</span><strong id="riverFlow">—</strong><small>m³/s</small></div>
 <div><span>Control limit</span><strong>5.0</strong><small>m³/s</small></div>
@@ -322,7 +322,7 @@ function init(){
   el("baySelect").addEventListener("change",function(){setTimeout(function(){riverFlow();weather();loadMeatTests();},50);});
   el("notifyBtn").addEventListener("click",async function(){if(state.alertEnabled){state.alertEnabled=false;try{localStorage.setItem("toc-smithton-alert-enabled","false");}catch(e){}updateNotifyButton();status("ALERTS OFF — this device will not receive environmental notifications.",true);return;}if(!("Notification" in window)){status("ALERTS NOT SUPPORTED",false);return;}try{var p=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(p!=="granted"){status("ALERTS BLOCKED — allow notifications in Chrome settings",false);return;}state.alertEnabled=true;try{localStorage.setItem("toc-smithton-alert-enabled","true");}catch(e){}updateNotifyButton();var reg=await navigator.serviceWorker.ready;await reg.showNotification("TOC Smithton Control",{body:"Environmental alerts are enabled on this device. This setting stays on until you turn it off.",tag:"toc-test"});status("ALERTS ON ✓ — this setting stays on until you turn it off.",true);}catch(e){status("ALERT SETUP FAILED",false);}});
 }
-load();render();init();updateNotifyButton();status("APP READY ✓",true);loadBays();loadCentral();weather();riverFlow();loadMeatTests();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,3600000);setInterval(loadMeatTests,10000);
+load();render();init();updateNotifyButton();status("APP READY ✓",true);loadBays();loadCentral();weather();riverFlow();loadMeatTests();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,600000);setInterval(loadMeatTests,10000);
 })();
 </script>
 <script>
