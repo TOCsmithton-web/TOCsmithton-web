@@ -1,6 +1,8 @@
 name: Update Duck River Flow
 
 on:
+  push:
+    branches: ["main"]
   schedule:
     - cron: "*/10 * * * *"
   workflow_dispatch:
@@ -112,6 +114,42 @@ jobs:
           finally:
               driver.quit()
           PY
+
+      - name: Diagnose NRE map page
+        shell: bash
+        run: |
+          python3 -m pip install --quiet selenium
+          python3 - <<'PY'
+          import time, json
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          URL="https://portal.wrt.tas.gov.au/Data/Map"
+          o=Options(); o.add_argument("--headless=new"); o.add_argument("--no-sandbox"); o.add_argument("--disable-dev-shm-usage"); o.add_argument("--window-size=1920,1080")
+          d=webdriver.Chrome(options=o)
+          try:
+              d.get(URL); time.sleep(8)
+              try:
+                  a=d.find_element("xpath","//button[normalize-space()='Accept'] | //a[normalize-space()='Accept'] | //*[@value='Accept']")
+                  d.execute_script("arguments[0].click();",a); time.sleep(8)
+              except Exception: pass
+              d.get(URL); time.sleep(15)
+              inputs=[]
+              for e in d.find_elements("css selector","input,select,textarea"):
+                  inputs.append({"tag":e.tag_name,"type":e.get_attribute("type"),"name":e.get_attribute("name"),"id":e.get_attribute("id"),"placeholder":e.get_attribute("placeholder"),"aria":e.get_attribute("aria-label"),"value":e.get_attribute("value")})
+              body=d.find_element("tag name","body").text
+              with open("river-debug.txt","w",encoding="utf-8") as f: f.write(json.dumps({"url":d.current_url,"inputs":inputs,"body":body[:30000]},indent=2))
+          finally: d.quit()
+          PY
+
+      - name: Commit river diagnostic
+        shell: bash
+        run: |
+          git config user.name "TOC Smithton Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add river-debug.txt
+          git diff --cached --quiet && exit 0
+          git commit -m "Diagnose NRE river map"
+          git push
 
       - name: Commit river data
         shell: bash
