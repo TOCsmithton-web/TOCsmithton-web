@@ -110,6 +110,8 @@ async function loadMeatTests(){
   if(r.error)throw r.error;
   meatTests=r.data||[];
   renderMeatTests();
+  updateBayBanner();
+  render();
  }catch(e){meatTests=[];renderMeatTests("Meat test results unavailable.");}
 }
 function renderMeatTests(errorText){
@@ -141,7 +143,9 @@ function el(id){return document.getElementById(id);}function updateBayBanner(){
   var salOk=!bayUsesSalinity()||(state.salinity!==""&&isFinite(sal)&&(min==null||sal>=min)&&(max==null||sal<=max));
   var rain7Ok=isFinite(previous7Total)&&previous7Total<=bayRainLimit();
   var riverOk=!bayUsesRiver()||(isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<=Number(currentBay.river_flow_limit));
-  var open=salOk&&rain7Ok&&riverOk;
+  var latestMeat=meatTests&&meatTests.length?Number(String(meatTests[0].result).replace(",", ".")):NaN;
+  var meatOk=!isFinite(latestMeat)||latestMeat<=2.3;
+  var open=salOk&&rain7Ok&&riverOk&&meatOk;
   var b=el("bayBanner"); if(!b)return;
   b.className="bay-banner "+(open?"open":"closed");
   b.textContent=bayName().toUpperCase()+" "+(open?"OPEN":"CLOSED");
@@ -186,8 +190,10 @@ function render(){
   var salOk=!salRequired||(state.salinity!==""&&isFinite(Number(state.salinity))&&(currentBay.salinity_min==null||Number(state.salinity)>=Number(currentBay.salinity_min))&&(currentBay.salinity_max==null||Number(state.salinity)<=Number(currentBay.salinity_max)));
   var rain7Ok=isFinite(previous7Total)&&previous7Total<=limit;
   var riverOk=!riverRequired||(isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<=Number(currentBay.river_flow_limit));
+  var latestMeat=meatTests&&meatTests.length?Number(String(meatTests[0].result).replace(",", ".")):NaN;
+  var meatOk=!isFinite(latestMeat)||latestMeat<=2.3;
   var envReady=isFinite(previous7Total)&&(salRequired?state.salinity!=="":true)&&(riverRequired?isFinite(Number(window.riverCurrentFlow)):true);
-  var envOk=envReady&&salOk&&rain7Ok&&riverOk;
+  var envOk=envReady&&salOk&&rain7Ok&&riverOk&&meatOk;
   var boxes=document.querySelectorAll(".status-grid .metric-row > div");
   if(boxes.length>=3){
     boxes[0].className=salRequired?(salOk?"env-box good":"env-box bad"):"env-box neutral";
