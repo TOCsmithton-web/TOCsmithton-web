@@ -321,11 +321,12 @@ function renderRiverHistory(history){
   var w=720,h=300,left=58,right=18,top=24,bottom=42;
   var vals=rows.map(function(x){return Number(x.ml_day)/86.4;});
   var minVal=Math.min.apply(null,vals),maxVal=Math.max.apply(null,vals);
-  var span=Math.max(maxVal-minVal,50);
-  var step=span/4;
-  var min=Math.max(0,Math.floor((minVal-step*0.15)/50)*50);
-  var max=Math.ceil((maxVal+step*0.15)/50)*50;
-  if(max<=min)max=min+100;
+  var min=0;
+  var max=25;
+  if(maxVal>25){
+    max=Math.ceil((maxVal*1.1)/5)*5;
+  }
+  if(max<=min)max=25;
 
   function sxTime(t){
     return left+(t-rows[0]._ms)*(w-left-right)/Math.max(1,rows[rows.length-1]._ms-rows[0]._ms);
