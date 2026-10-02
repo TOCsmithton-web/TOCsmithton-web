@@ -129,8 +129,8 @@ jobs:
               if source_dt.tzinfo is None:
                   source_dt=source_dt.replace(tzinfo=HOBART)
               source_timestamp=source_dt.astimezone(HOBART).isoformat()
-          except Exception:
-              source_timestamp=now.isoformat()
+          except Exception as e:
+              raise RuntimeError(f"Invalid NRE source timestamp: {ts!r}") from e
 
           # Avoid adding duplicate telemetry points.
           if not history or history[-1].get("timestamp") != source_timestamp or float(history[-1].get("flow",0)) != flow:
