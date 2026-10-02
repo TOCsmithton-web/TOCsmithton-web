@@ -6,7 +6,7 @@ on:
     paths-ignore:
       - "river.json"
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -30,7 +30,7 @@ jobs:
           MAP_URL=PORTAL+"/Data/Map"
           EXPORT_URL=PORTAL+"/Export/BulkExport"
           HOBART=ZoneInfo("Australia/Hobart")
-          DATASET="Discharge.1@14214-1"
+          DATASET="Flow.MLD@14214-1"
 
           s=requests.Session()
           s.headers.update({"User-Agent":"TOC Smithton River Monitor/1.0","Accept":"text/csv,text/plain,*/*"})
@@ -80,7 +80,8 @@ jobs:
           if not data_rows:
               raise RuntimeError("NRE CSV contained no timestamped points")
 
-          # Locate the numeric discharge column; Aquarius CSV normally names it Value.
+          # The portal chart shown to operators uses Flow.MLD (ML/day).
+          # Read the portal's ML/day value directly, then convert to m³/s.
           value_col=1 if len(header)>1 else None
           if value_col is None:
               raise RuntimeError("NRE CSV has no value column")
@@ -102,8 +103,9 @@ jobs:
               raise RuntimeError("No valid discharge value in NRE CSV")
 
           ts,value=latest
-          # This export is already Discharge (m^3/s), so no ML/day conversion is needed.
-          flow=round(value,3)
+          # Portal Flow.MLD is ML/day. 1 m³/s = 86.4 ML/day.
+          flow=round(value/86.4,3)
+          ml_day=round(value,3)
 
           previous_flow=None
           history=[]
@@ -138,14 +140,14 @@ jobs:
               "station":"Duck River US Scotchtown Road Bridge",
               "station_no":"14214",
               "flow":flow,
-              "ml_day":round(flow*86.4,3),
+              "ml_day":ml_day,
               "timestamp":source_timestamp,
               "updated":now.isoformat(),
               "limit":5,
               "previous_flow":round(previous_flow,3) if previous_flow is not None else None,
               "change_pct":change_pct,
               "history":history,
-              "source":"NRE Tasmania Water Information Portal — station 14214 Discharge export",
+              "source":"NRE Tasmania Water Information Portal — station 14214 Flow.MLD export",
               "source_url":EXPORT_URL
           }
           with open("river.json","w",encoding="utf-8") as f:
