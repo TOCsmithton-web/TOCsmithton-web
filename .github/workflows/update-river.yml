@@ -66,32 +66,28 @@ jobs:
 
               # The live chart tooltip/current marker is rendered by JavaScript.
               # Match the discharge value displayed in m^3/s (cumecs).
-              patterns = [
-                  r"([0-9]+(?:\.[0-9]+)?)\s*m\s*\^?\s*3\s*/\s*s",
-                  r"([0-9]+(?:\.[0-9]+)?)\s*m³\s*/\s*s",
-                  r"([0-9]+(?:\.[0-9]+)?)\s*\(cumecs\)",
-                  r"(?:Latest Value|Latest Discharge|Discharge)[^0-9]{0,80}([0-9]+(?:\.[0-9]+)?)",
+              # The NRE map reports Duck River flow as ML/day.
+              # Convert megalitres/day to cubic metres/second:
+              # 1 ML = 1,000,000 L and 1 day = 86,400 s, so ML/day / 86.4 = m³/s.
+              ml_patterns = [
+                  r"([0-9]+(?:\.[0-9]+)?)\s*(?:ML|ML\/day|ML\s*\/\s*day)\b",
+                  r"(?:Latest Value|Latest Discharge|Discharge)[^0-9]{0,100}([0-9]+(?:\.[0-9]+)?)\s*(?:ML|ML\/day|ML\s*\/\s*day)\b"
               ]
-              matches = []
-              for p in patterns:
-                  matches.extend(re.findall(p, text, flags=re.I))
+              ml_matches = []
+              for p in ml_patterns:
+                  ml_matches.extend(re.findall(p, text, flags=re.I))
 
-              if not matches:
-                  print("LIVE PORTAL READING NOT AVAILABLE — retaining previous verified river.json")
-                  raise RuntimeError("No live discharge value found")
+              if not ml_matches:
+                  print("LIVE PORTAL ML/day READING NOT AVAILABLE — retaining previous verified river.json")
+                  raise RuntimeError("No ML/day reading found")
 
-              values = [float(x) for x in matches if 0 <= float(x) < 1000]
-              if not values:
-                  raise SystemExit("No valid discharge value found")
+              ml_values = [float(x) for x in ml_matches if 0 < float(x) < 100000]
+              if not ml_values:
+                  raise RuntimeError("No valid ML/day value found")
 
-              # Prefer the first value from the explicit Discharge pattern.
-              discharge_matches = re.findall(patterns[-1], text, flags=re.I)
-              if discharge_matches:
-                  flow = float(discharge_matches[0])
-              else:
-                  # Fall back to the first unit-labelled value rather than taking
-                  # the maximum, which can accidentally select a chart-axis value.
-                  flow = values[0]
+              ml_day = ml_values[0]
+              flow = ml_day / 86.4
+              print(f"PORTAL FLOW: {ml_day} ML/day -> {flow:.3f} m³/s")
 
               now = datetime.datetime.now(datetime.timezone.utc).astimezone(HOBART)
               out = {
