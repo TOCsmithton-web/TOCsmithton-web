@@ -254,7 +254,7 @@ function el(id){return document.getElementById(id);}function updateBayBanner(){
   var open=salOk&&rain3Ok&&rain7Ok&&riverOk&&meatOk&&meatDueOk;
   var b=el("bayBanner"); if(!b)return;
   b.className="bay-banner "+(open?"open":"closed");
-  b.innerHTML=bayName().toUpperCase()+" "+(open?"OPEN":"CLOSED")+(open?"<span style=\"display:block;font-size:.72em;margin-top:4px;font-weight:700\">CHECK NRE CLASSIFICATION BEFORE HARVESTING</span>":"");
+  b.innerHTML=bayName().toUpperCase()+" "+(open?"OPEN":"CLOSED")+"<a href=\"https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas\" target=\"_blank\" rel=\"noopener\" style=\"display:block;color:#fff;text-decoration:underline;font-size:.72em;margin-top:4px;font-weight:700\">CHECK NRE CLASSIFICATION BEFORE HARVESTING</a>";
   if(window.bayFlashTimer){clearInterval(window.bayFlashTimer);window.bayFlashTimer=null;}
   b.style.backgroundColor=open?"#16823b":"#c62828";
   b.style.color="#fff";
