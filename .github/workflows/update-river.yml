@@ -50,10 +50,18 @@ jobs:
                   time.sleep(4)
               except Exception:
                   pass
-              driver.get(URL)
-              # Allow the Aquarius chart/data controls to finish loading.
-              time.sleep(15)
-              text = driver.find_element("tag name", "body").text
+              # Retry the live page because the portal can be slow to initialise.
+              text = ""
+              for attempt in range(3):
+                  driver.get(URL)
+                  time.sleep(12 + attempt * 5)
+                  try:
+                      text = driver.find_element("tag name", "body").text
+                  except Exception:
+                      text = ""
+                  if "Discharge" in text or "m³/s" in text or "cumecs" in text.lower():
+                      break
+                  time.sleep(3)
               print(text[:12000])
 
               # The live chart tooltip/current marker is rendered by JavaScript.
@@ -68,7 +76,8 @@ jobs:
                   matches.extend(re.findall(p, text, flags=re.I))
 
               if not matches:
-                  raise SystemExit("Could not find the live Duck River discharge value in the rendered NRE portal")
+                  print("LIVE PORTAL READING NOT AVAILABLE — retaining previous verified river.json")
+                  raise RuntimeError("No live discharge value found")
 
               values = [float(x) for x in matches if 0 <= float(x) < 1000]
               if not values:
@@ -99,6 +108,10 @@ jobs:
                   json.dump(out, f, separators=(",", ":"))
 
               print("LIVE RIVER DATA:", json.dumps(out))
+          except Exception as exc:
+              print("River update did not obtain a new verified reading:", exc)
+              # Do not fail the scheduled workflow when the portal is unavailable.
+              # The existing river.json remains the last verified reading.
           finally:
               driver.quit()
           PY
