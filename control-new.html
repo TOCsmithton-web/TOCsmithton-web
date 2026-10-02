@@ -138,7 +138,20 @@ function render(){
   el("salinityValue").textContent=state.salinity===""?"—":Number(state.salinity).toFixed(1);
   el("rainValue").textContent=isFinite(previous7Total)?previous7Total.toFixed(1):"—";
   el("rain24Value").textContent=previous24Total.toFixed(1);
-  el("statusText").textContent=state.salinity===""?"Awaiting readings":"Reading saved";
+  var envSal=state.salinity!==""&&isFinite(Number(state.salinity));
+  var envSalOk=envSal&&Number(state.salinity)>=Number(state.salinityMin||32.5)&&Number(state.salinity)<=Number(state.salinityMax||40);
+  var env24Ok=isFinite(previous24Total)&&previous24Total<=Number(state.rainThreshold||25);
+  var env7Ok=isFinite(previous7Total)&&previous7Total<=Number(state.rain7Threshold||40);
+  var envReady=envSal&&isFinite(previous24Total)&&isFinite(previous7Total);
+  var envOk=envReady&&envSalOk&&env24Ok&&env7Ok;
+  var statusCard=document.querySelector(".hero");
+  var dot=el("statusDot");
+  if(statusCard){
+    statusCard.classList.remove("environment-ok","environment-alert");
+    if(envReady)statusCard.classList.add(envOk?"environment-ok":"environment-alert");
+  }
+  if(dot)dot.className="status-dot "+(envReady?(envOk?"ok":"alert"):"neutral");
+  el("statusText").textContent=!envReady?"Awaiting readings":(envOk?"ENVIRONMENTAL CONTROLS OK":"ENVIRONMENTAL CONTROL ALERT");
   updateBayBanner();
 }
 function isoDate(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
