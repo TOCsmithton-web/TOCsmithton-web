@@ -42,7 +42,7 @@
 </section>
 
 <section class="card">
-<div class="card-head"><div><h2>Duck River — Scotchtown</h2><p class="muted">BOM streamflow gauge 314214 • Environmental control: 5 m³/s</p></div></div>
+<div class="card-head"><div><h2>Duck River — Scotchtown</h2><p class="muted">NRE Tas Water Information Portal • Station 14214 • Environmental control: 5 m³/s</p></div></div>
 <div class="metric-row">
 <div><span>Current flow</span><strong id="riverFlow">—</strong><small>m³/s</small></div>
 <div><span>Control limit</span><strong>5</strong><small>m³/s</small></div>
@@ -195,12 +195,16 @@ async function riverFlow(){
     var response=await fetch("./river.json?ts="+Date.now(),{cache:"no-store"});
     if(response.ok){var d=await response.json();if(isFinite(Number(d.flow)))fallback=d;}
   }catch(e){}
+  if(!fallback){ el("riverFlow").textContent="—"; el("riverStatus").textContent="RIVER DATA UNAVAILABLE — no verified reading received"; el("riverStatus").style.color="#9d2727"; window.riverCurrentFlow=NaN; updateBayBanner(); return; }
   var v=Number(fallback.flow);
   el("riverFlow").textContent=v.toFixed(3);
   el("riverStatus").textContent=v>5?"RIVER FLOW ALERT — above 5 m³/s":"Within environmental control limit";
   el("riverStatus").style.color=v>5?"#9d2727":"#176b3b";
   var when=fallback.updated||fallback.timestamp;
-  if(when)el("riverStatus").textContent+=" • Reading "+new Date(when).toLocaleString("en-AU");
+  var sourceWhen=fallback.timestamp;
+  var ageMinutes=sourceWhen?(Date.now()-new Date(sourceWhen).getTime())/60000:Infinity;
+  if(when)el("riverStatus").textContent+=" • Portal reading "+new Date(sourceWhen||when).toLocaleString("en-AU")+" • Checked "+new Date(when).toLocaleString("en-AU");
+  if(ageMinutes>90){el("riverStatus").textContent+=" • STALE READING — waiting for a newer portal reading";el("riverStatus").style.color="#9d2727";}
   if(v>5&&window.riverAlertState!==true){
     alertNow("DUCK RIVER FLOW ALERT","Duck River flow is "+v.toFixed(3)+" m³/s — above the 5 m³/s limit.","river-flow-alert");
   }
@@ -218,7 +222,7 @@ loadCentral().then(function(ok){status(ok?"CENTRAL CONTROL CONNECTED ✓":"CENTR
 weather();riverFlow();
 setInterval(loadCentral,30000);
 setInterval(weather,3600000);
-setInterval(riverFlow,3600000);
+setInterval(riverFlow,300000);
 })();
 </script>
 <script>
