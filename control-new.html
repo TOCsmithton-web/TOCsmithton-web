@@ -106,9 +106,9 @@ function bayRainLimit(){return currentBay&&currentBay.rainfall_7d_limit!=null?Nu
 function bayName(){return currentBay?currentBay.bay_name:"Duck Bay";}
 async function loadMeatTests(){
  try{
-  var r=await supabase.from("meat_test_results").select("id,bay_name,test_date,result,notes,created_at,updated_at").eq("bay_name",bayName()).order("test_date",{ascending:false}).order("created_at",{ascending:false}).limit(5);
+  var r=await supabase.from("meat_test_results").select("id,bay_name,test_date,result,notes,created_at,updated_at").eq("bay_name",bayName()).order("test_date",{ascending:false}).order("created_at",{ascending:false}).limit(50);
   if(r.error)throw r.error;
-  meatTests=r.data||[];
+  meatTests=(r.data||[]).slice(0,5);
   renderMeatTests();
   updateBayBanner();
   render();
