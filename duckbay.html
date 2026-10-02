@@ -90,7 +90,17 @@ function controlsWithinLimits(){
 function reopenRender(){
   var raw=null;try{raw=localStorage.getItem(REOPEN_KEY);raw=raw?JSON.parse(raw):null;}catch(e){}
   var card=el("salinityReopenCard"),note=el("reopenNote");
-  if(!controlsWithinLimits()){card.style.display="none";note.textContent="When all controls are within limits, the 48-hour salinity reopening check will start.";return;}
+  card.style.display="block";
+  if(!controlsWithinLimits()){
+    if(raw&&raw.startedAt){
+      note.textContent="48-hour check paused — all environmental controls must be within limits."; 
+      el("reopenStart").textContent="48-hour check started: "+new Date(raw.startedAt).toLocaleString("en-AU");
+    } else {
+      note.textContent="Waiting for all environmental controls to be within limits before the 48-hour check starts.";
+      el("reopenStart").textContent="48-hour check not started.";
+    }
+    return;
+  }
   if(!raw||!raw.startedAt){raw={startedAt:new Date().toISOString()};try{localStorage.setItem(REOPEN_KEY,JSON.stringify(raw));}catch(e){}}
   card.style.display="block";
   el("reopenStart").textContent="48-hour check started: "+new Date(raw.startedAt).toLocaleString("en-AU");
