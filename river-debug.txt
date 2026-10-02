@@ -1,0 +1,1752 @@
+{
+  "url": "https://portal.wrt.tas.gov.au/Data/Map",
+  "inputs": [
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#7CB5EC"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#67CC34"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#FF9933"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#333266"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#990600"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#FFCC02"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#0166CC"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#FE3200"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#B4E2FF"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#444444"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#7CB5EC"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#67CC34"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#FF9933"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#333266"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#990600"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#FFCC02"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#0166CC"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#FE3200"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#B4E2FF"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "#444444"
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "Latest"
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "114"
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "1"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2026-09-29"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2026-09-01"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2026-01-01"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2026-01-01"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2026-01-01"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2026-09-29"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2026-09-29"
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2026-09-30"
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "MaxDataSets",
+      "placeholder": "",
+      "aria": null,
+      "value": "20"
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "MaxDataSetsBeforeWarning",
+      "placeholder": "",
+      "aria": null,
+      "value": "10"
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "MaxExportDataSets",
+      "placeholder": "",
+      "aria": null,
+      "value": "80"
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "MaxExportDataSetsBeforeWarning",
+      "placeholder": "",
+      "aria": null,
+      "value": "10"
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "InitialFilterId",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "parameterSelect_1",
+      "placeholder": null,
+      "aria": null,
+      "value": "138"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": "Search",
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "valuesSelect_1",
+      "placeholder": null,
+      "aria": null,
+      "value": "1"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": "Search",
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "/Data/Map/Parameter/Flow/Statistic/LATEST_Flow_MLD/Interval/Latest"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "1a0fbb7eb24-widget-0",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "displayIndicators",
+      "placeholder": "",
+      "aria": null,
+      "value": "on"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "aggregateIndicators",
+      "placeholder": "",
+      "aria": null,
+      "value": "on"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "displayValues",
+      "placeholder": "",
+      "aria": null,
+      "value": "on"
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "legendSelect_1",
+      "placeholder": null,
+      "aria": null,
+      "value": "5"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": "Search",
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "on"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "1"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "1"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "3"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "4"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "1"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "3"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "4"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "0"
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "locationsSearch_1",
+      "placeholder": null,
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": "Search",
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "datasetsSearch_1",
+      "placeholder": null,
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": "Search",
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "/Data/DataSet/Interval/Latest"
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "Chart"
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "__RequestVerificationToken",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "CfDJ8OJeBIqxhRVLiI970XsmXgJ_ji5R7alTwAu_oCdJjKESSeWa3imFI3zRzb2mdk1BOS3VPa1r3ShZGpPhEwFDsuTmcXbplsCzvexalIB7watO7e4A9EJG1CFfDw1scwrGZ4oC7eS3lFMopmX-7ojB0w8"
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "/Data/Dashboard"
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "chartSelect_1",
+      "placeholder": null,
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": "Search",
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "locationsSearch_2",
+      "placeholder": null,
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": "Search",
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "/Data/Chart/Interval/Latest"
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "__RequestVerificationToken",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "CfDJ8OJeBIqxhRVLiI970XsmXgJ_ji5R7alTwAu_oCdJjKESSeWa3imFI3zRzb2mdk1BOS3VPa1r3ShZGpPhEwFDsuTmcXbplsCzvexalIB7watO7e4A9EJG1CFfDw1scwrGZ4oC7eS3lFMopmX-7ojB0w8"
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "/Data/Report"
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "exportdefault",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "/Data/Export"
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "locationsSearch_3",
+      "placeholder": null,
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": "Search",
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "/Data/Location/Interval/Latest"
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "parameterSelect_2",
+      "placeholder": null,
+      "aria": null,
+      "value": "138"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": "Search",
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "valuesSelect_2",
+      "placeholder": null,
+      "aria": null,
+      "value": "1"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": "Search",
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "/Data/List/Parameter/Flow/Statistic/LATEST_Flow_MLD/Interval/Latest"
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "legendSelect_2",
+      "placeholder": null,
+      "aria": null,
+      "value": "5"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": "Search",
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "1"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "1"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "3"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "4"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "1"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "3"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "4"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "0"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "Name",
+      "id": "Name",
+      "placeholder": "",
+      "aria": null,
+      "value": "Default Filter"
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "FilterId",
+      "id": "FilterId",
+      "placeholder": "",
+      "aria": null,
+      "value": "0"
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "",
+      "id": "IsSavedFilter",
+      "placeholder": "",
+      "aria": null,
+      "value": "true"
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "Value-NotNull_Value",
+      "id": "",
+      "placeholder": null,
+      "aria": "Filter value",
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "Value-NotNull_Value2",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "gt"
+    },
+    {
+      "tag": "input",
+      "type": "number",
+      "name": "Value-NotNull_Value2",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "Value-NotNull_Value3",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "lt"
+    },
+    {
+      "tag": "input",
+      "type": "number",
+      "name": "Value-NotNull_Value3",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "filterMap",
+      "id": "filterMap",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "contains"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "textarea",
+      "type": "textarea",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "contains"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "textarea",
+      "type": "textarea",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "eq"
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "gt"
+    },
+    {
+      "tag": "input",
+      "type": "number",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "lt"
+    },
+    {
+      "tag": "input",
+      "type": "number",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "gt"
+    },
+    {
+      "tag": "input",
+      "type": "number",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "lt"
+    },
+    {
+      "tag": "input",
+      "type": "number",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "gt"
+    },
+    {
+      "tag": "input",
+      "type": "number",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "lt"
+    },
+    {
+      "tag": "input",
+      "type": "number",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "eq"
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "filterTagSearch_Location-Tags2673",
+      "placeholder": null,
+      "aria": "Tag",
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": "Search",
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "radio",
+      "name": "Location-Tags2673",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "hasall"
+    },
+    {
+      "tag": "input",
+      "type": "radio",
+      "name": "Location-Tags2673",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "hasany"
+    },
+    {
+      "tag": "input",
+      "type": "radio",
+      "name": "Location-Tags2673",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "hasanyglobal"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2744:2746"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2744:2745"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2744:2748"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2744:2747"
+    },
+    {
+      "tag": "input",
+      "type": "radio",
+      "name": "Location-Tags2744",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "hasall"
+    },
+    {
+      "tag": "input",
+      "type": "radio",
+      "name": "Location-Tags2744",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "hasany"
+    },
+    {
+      "tag": "input",
+      "type": "radio",
+      "name": "Location-Tags2744",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "hasanyglobal"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2666:2749"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2666:2877"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2666:2667"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2666:2668"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2666:2669"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2666:2924"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2666:2671"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2666:2672"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2666:2670"
+    },
+    {
+      "tag": "input",
+      "type": "radio",
+      "name": "Location-Tags2666",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "hasall"
+    },
+    {
+      "tag": "input",
+      "type": "radio",
+      "name": "Location-Tags2666",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "hasany"
+    },
+    {
+      "tag": "input",
+      "type": "radio",
+      "name": "Location-Tags2666",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "hasanyglobal"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2722:2725"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2722:2724"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2722:2723"
+    },
+    {
+      "tag": "input",
+      "type": "radio",
+      "name": "Location-Tags2722",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "hasall"
+    },
+    {
+      "tag": "input",
+      "type": "radio",
+      "name": "Location-Tags2722",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "hasany"
+    },
+    {
+      "tag": "input",
+      "type": "radio",
+      "name": "Location-Tags2722",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "hasanyglobal"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2731:2736"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2731:2733"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2731:2734"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2731:2737"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2731:2738"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2731:2739"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2731:2740"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2731:2735"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2731:2741"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2731:2742"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2731:2743"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2731:2732"
+    },
+    {
+      "tag": "input",
+      "type": "radio",
+      "name": "Location-Tags2731",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "hasall"
+    },
+    {
+      "tag": "input",
+      "type": "radio",
+      "name": "Location-Tags2731",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "hasany"
+    },
+    {
+      "tag": "input",
+      "type": "radio",
+      "name": "Location-Tags2731",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "hasanyglobal"
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "LocationPicklist-8b72016e96834f7d9c75c1d2b2782628",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "hasany"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "1"
+    },
+    {
+      "tag": "input",
+      "type": "checkbox",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "2"
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "contains"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "textarea",
+      "type": "textarea",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "doesnotcontain"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "textarea",
+      "type": "textarea",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "AHD"
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "true"
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "lt"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "gt"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "lt"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "select",
+      "type": "select-one",
+      "name": "",
+      "id": "",
+      "placeholder": null,
+      "aria": null,
+      "value": "gt"
+    },
+    {
+      "tag": "input",
+      "type": "text",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "type": "hidden",
+      "name": "__RequestVerificationToken",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": "CfDJ8OJeBIqxhRVLiI970XsmXgIOA_qGz3gk_jAL0x9cQfMW62asUhwkaci15iM0zdSpWvSPLaJUbUiI_WHQa_9nLo1F-ETabZQ38ADFDt2PlD0wW3bwgFMktTv0V2p_rRqzM0ZL_8YeS7ernGFKmOpOOsY"
+    },
+    {
+      "tag": "textarea",
+      "type": "textarea",
+      "name": "",
+      "id": "",
+      "placeholder": "",
+      "aria": null,
+      "value": ""
+    }
+  ],
+  "body": "Aquatic Informatics Web Site\nNRE Tasmania Water Information Web Portal\nassessment\nsupport\nHide/Expand Tabbed Navigation\nMap\nData Set\nDashboards\nChart\nReports\nExport\nLocation\nList\nDisclaimers\nWater Data Portal: v2026.2.57\n\nDepartment of Natural Resources and\nEnvironment Tasmania\n\nContact: WRT.Portal@wrt.tas.gov.au\n\u00a9 State of Tasmania\nSelect Parameter:\nDischarge\nFlow\nGround Water Level\nPrecipitation Incremental\nReservoir Level\nRiver Health Score OE\nFlow\nSelect Value:\nAverage Last 7 Days\nDaily Average 24hours to 8am\nLakes\nLatest Value (cumecs)\nLatest Value (ML/day)\nMax over 4 weeks\nValue at 8am\nLatest Value (ML/day)\nDate:\nLatest Data\nOptions Menu\nFilter\nDefault Filter Edit\nXY\nbasemap\ndd\nddm\ndms\nmgrs\nusng\nutm\nXY\nBASEMAP\nDD\nDDM\nDMS\nMGRS\nUSNG\nUTM\nNo position\n0\n50 km\nCreative Commons BY 3.0 AU \u00a9 State of Tasmania\nPowered by Esri\nHide/Expand Right-Side Panel\nMap Options\n    Display Indicators  \n  Aggregate Indicators  \n  Display Values\nSelect Legend:\nLatest\nData Currency\nData Owner\nLatest\nLive Data Feed: Connected\nLatest 111\n  Latest \n111"
+}
