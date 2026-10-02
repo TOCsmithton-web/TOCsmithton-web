@@ -144,14 +144,20 @@ function render(){
   var env7Ok=isFinite(previous7Total)&&previous7Total<=Number(state.rain7Threshold||40);
   var envReady=envSal&&isFinite(previous24Total)&&isFinite(previous7Total);
   var envOk=envReady&&envSalOk&&env24Ok&&env7Ok;
-  var statusCard=document.querySelector(".hero");
-  var dot=el("statusDot");
-  if(statusCard){
-    statusCard.classList.remove("environment-ok","environment-alert");
-    if(envReady)statusCard.classList.add(envOk?"environment-ok":"environment-alert");
+  var boxes=document.querySelectorAll(".status-grid .metric-row > div");
+  if(boxes.length>=3){
+    boxes[0].className=envSal?(envSalOk?"env-box good":"env-box bad"):"env-box neutral";
+    boxes[1].className=isFinite(previous24Total)?(env24Ok?"env-box good":"env-box bad"):"env-box neutral";
+    boxes[2].className=isFinite(previous7Total)?(env7Ok?"env-box good":"env-box bad"):"env-box neutral";
   }
+  var dot=el("statusDot");
   if(dot)dot.className="status-dot "+(envReady?(envOk?"ok":"alert"):"neutral");
   el("statusText").textContent=!envReady?"Awaiting readings":(envOk?"ENVIRONMENTAL CONTROLS OK":"ENVIRONMENTAL CONTROL ALERT");
+  var riverBox=document.querySelector("#riverFlow")?.parentElement;
+  if(riverBox){
+    var rf=Number(window.riverCurrentFlow);
+    riverBox.className=isFinite(rf)?(rf<=5?"river-box good":"river-box bad"):"river-box neutral";
+  }
   updateBayBanner();
 }
 function isoDate(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
