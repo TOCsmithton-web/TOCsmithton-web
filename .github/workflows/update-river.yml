@@ -134,7 +134,21 @@ jobs:
           # Avoid adding duplicate telemetry points.
           if not history or history[-1].get("timestamp") != source_timestamp or float(history[-1].get("flow",0)) != flow:
               history.append({"timestamp":source_timestamp,"flow":flow,"ml_day":round(flow*86.4,3)})
-          history=history[-72:]
+          # Keep every distinct portal reading for at least the last 3 days.
+          # The portal may publish at different intervals, so use timestamps
+          # rather than a fixed number of points.
+          cutoff_dt=source_dt-datetime.timedelta(days=3)
+          trimmed=[]
+          for item in history:
+              try:
+                  item_dt=datetime.datetime.fromisoformat(str(item.get("timestamp")).replace("Z","+00:00"))
+                  if item_dt.tzinfo is None:
+                      item_dt=item_dt.replace(tzinfo=HOBART)
+                  if item_dt.astimezone(HOBART) >= cutoff_dt.astimezone(HOBART):
+                      trimmed.append(item)
+              except Exception:
+                  pass
+          history=trimmed[-1000:]
 
           out={
               "station":"Duck River US Scotchtown Road Bridge",
