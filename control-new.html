@@ -180,11 +180,30 @@ async function weather(){
     var future=fc.daily.time.map(function(date,i){
       return {date:date,rain:Number(fc.daily.precipitation_sum[i]||0),max:fc.daily.temperature_2m_max[i],min:fc.daily.temperature_2m_min[i]};
     });
+    var observedByDate={};
+    for(var j=0;j<hist.hourly.time.length;j++){
+      var hd=hist.hourly.time[j].slice(0,10);
+      observedByDate[hd]=(observedByDate[hd]||0)+Number(hist.hourly.precipitation[j]||0);
+    }
+    future.forEach(function(x,i){
+      var total=Number(x.rain||0);
+      for(var k=1;k<=6;k++){
+        if(i-k>=0){
+          total+=Number(future[i-k].rain||0);
+        }else{
+          var d=new Date(x.date+"T00:00:00");
+          d.setDate(d.getDate()-k);
+          total+=Number(observedByDate[isoDate(d)]||0);
+        }
+      }
+      x.sevenDayTotal=total;
+    });
     save();render();checkAlerts();
 
-    box.innerHTML="<div class='day'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+previous7Total.toFixed(1)+" mm</div><div class='range'>Observed rainfall total</div></div>"+
+    box.innerHTML="<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+previous7Total.toFixed(1)+" mm</div><div class='range'>Observed rainfall total</div></div>"+
       future.map(function(x){
-        return "<div class='day'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div></div>";
+        var level=x.sevenDayTotal>=40?"over":"under";
+        return "<div class='day forecast-day "+level+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+x.sevenDayTotal.toFixed(1)+" mm</strong></div></div>";
       }).join("");
   }catch(e){
     box.innerHTML="<div class='loading'>Rainfall/weather unavailable — tap Refresh.</div>";
