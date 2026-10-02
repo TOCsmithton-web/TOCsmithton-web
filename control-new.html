@@ -149,6 +149,12 @@ function render(){
     boxes[0].className=envSal?(envSalOk?"env-box good":"env-box bad"):"env-box neutral";
     boxes[1].className=isFinite(previous24Total)?(env24Ok?"env-box good":"env-box bad"):"env-box neutral";
     boxes[2].className=isFinite(previous7Total)?(env7Ok?"env-box good":"env-box bad"):"env-box neutral";
+    boxes[0].style.background=envSal?(envSalOk?"#bff3cc":"#ffd0d0"):"#f4f7f8";
+    boxes[1].style.background=isFinite(previous24Total)?(env24Ok?"#bff3cc":"#ffd0d0"):"#f4f7f8";
+    boxes[2].style.background=isFinite(previous7Total)?(env7Ok?"#bff3cc":"#ffd0d0"):"#f4f7f8";
+    boxes[0].style.border="2px solid "+(envSal?(envSalOk?"#31a354":"#c62828"):"#cbd6db");
+    boxes[1].style.border="2px solid "+(isFinite(previous24Total)?(env24Ok?"#31a354":"#c62828"):"#cbd6db");
+    boxes[2].style.border="2px solid "+(isFinite(previous7Total)?(env7Ok?"#31a354":"#c62828"):"#cbd6db");
   }
   var dot=el("statusDot");
   if(dot)dot.className="status-dot "+(envReady?(envOk?"ok":"alert"):"neutral");
