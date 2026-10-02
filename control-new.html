@@ -312,7 +312,17 @@ async function riverFlow(){
   el("riverStatus").textContent=v>limit?"RIVER FLOW ALERT — above "+limit.toFixed(1)+" m³/s":"Within environmental control limit";
   el("riverStatus").style.color=v>limit?"#9d2727":"#176b3b";
   var when=fallback.updated||fallback.timestamp;
-  if(when)el("riverStatus").textContent+=" • Reading "+new Date(when).toLocaleString("en-AU");
+  if(when){
+    var readingTime=new Date(when);
+    var nextUpdate=new Date(readingTime.getTime());
+    nextUpdate.setMinutes(Math.floor(nextUpdate.getMinutes()/10)*10+10,0,0);
+    var changeText="";
+    if(isFinite(Number(fallback.change_pct))){
+      var cp=Number(fallback.change_pct);
+      changeText=" • Change "+(cp>0?"+":"")+cp.toFixed(1)+"% "+(cp>0?"↑":cp<0?"↓":"→");
+    }
+    el("riverStatus").textContent+=" • Reading "+readingTime.toLocaleString("en-AU")+changeText+" • Next update "+nextUpdate.toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"});
+  }
   if(v>limit&&window.riverAlertState!==true)alertNow("RIVER FLOW ALERT",bayName()+" river flow is "+v.toFixed(3)+" m³/s — above the "+limit.toFixed(1)+" m³/s limit.","river-flow-alert");
   window.riverCurrentFlow=v;window.riverAlertState=v>limit;updateBayBanner();render();
 }
