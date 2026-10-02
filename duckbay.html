@@ -117,6 +117,7 @@ function updateBayBanner(){
       b.style.boxShadow=green?"0 0 28px #16823b":"0 0 4px #07551f";
     },600);
   }
+  reopenRender();
 }
 function load(){try{var raw=localStorage.getItem(KEY);if(raw){var a=JSON.parse(raw);state.lastAlerts=Object.assign(state.lastAlerts,a.lastAlerts||{});state.alertEnabled=a.alertEnabled===true;}}catch(e){state.alertEnabled=false;}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify({lastAlerts:state.lastAlerts,alertEnabled:state.alertEnabled}));return true;}catch(e){return false;}}
