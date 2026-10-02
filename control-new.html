@@ -314,7 +314,7 @@ async function riverFlow(){
   var when=fallback.updated||fallback.timestamp;
   if(when){
     var readingTime=new Date(when);
-    var nextUpdate=new Date(readingTime.getTime());
+    var nextUpdate=new Date();
     nextUpdate.setMinutes(Math.floor(nextUpdate.getMinutes()/10)*10+10,0,0);
     var changeText="";
     if(isFinite(Number(fallback.change_pct))){
