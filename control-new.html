@@ -66,6 +66,7 @@
 
 <section class="card">
   <div class="card-head"><div><h2>Meat test results</h2><p class="muted">Results entered by authorised administrators. Public view is read-only.</p></div></div>
+  <div id="meatTestLimit" class="hint">Sample limit: 2.3</div>
   <div id="meatTests" class="forecast"><div class="loading">Loading meat test results…</div></div>
 </section>
 </main>
@@ -116,7 +117,7 @@ function renderMeatTests(errorText){
  if(errorText){box.innerHTML="<div class='loading'>"+errorText+"</div>";return;}
  if(!meatTests.length){box.innerHTML="<div class='loading'>No meat test results recorded for "+bayName()+".</div>";return;}
  box.innerHTML=meatTests.map(function(x){
-   return "<div class='day observed-summary'><div class='date'>"+new Date(x.test_date+"T00:00:00").toLocaleDateString("en-AU")+"</div><div class='rain'>"+String(x.result).replace(/</g,"&lt;")+"</div><div class='range'>"+(x.notes?String(x.notes).replace(/</g,"&lt;"):"No notes")+"</div></div>";
+   var numeric=Number(String(x.result).replace(",", ".")); var ok=isFinite(numeric)&&numeric<=2.3; var cls=isFinite(numeric)?(ok?"meat-good":"meat-bad"):"meat-neutral"; return "<div class='day observed-summary "+cls+"'><div class='date'>"+new Date(x.test_date+"T00:00:00").toLocaleDateString("en-AU")+"</div><div class='rain'>"+String(x.result).replace(/</g,"&lt;")+"</div><div class='range'>"+(isFinite(numeric)?(ok?"UNDER LIMIT":"OVER LIMIT"):"Result recorded")+(x.notes?" • "+String(x.notes).replace(/</g,"&lt;"):"")+"</div></div>";
  }).join("");
 }
 async function loadCentral(){
