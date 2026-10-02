@@ -7,3 +7,5 @@
 @keyframes bayFlashRed{0%,49%{background:#c62828;opacity:1;box-shadow:0 0 8px #c62828}50%,100%{background:#7f0000;opacity:.55;box-shadow:0 0 22px #c62828}}
 @keyframes bayFlashGreen{0%,49%{background:#16823b;opacity:1;box-shadow:0 0 8px #16823b}50%,100%{background:#07551f;opacity:.65;box-shadow:0 0 22px #16823b}}50%{opacity:.55}}
 .bay-banner small{display:block;font-size:.72rem;font-weight:600;letter-spacing:0;margin-top:2px}
+
+.forecast-day.under{background:#e8f7ed;border-color:#77c68f}.forecast-day.over{background:#fff0df;border-color:#f0a45a}.seven-day-total{margin-top:9px;padding-top:8px;border-top:1px solid #dce6eb;font-size:11px;font-weight:700}.forecast-day.under .seven-day-total{color:#176b3b}.forecast-day.over .seven-day-total{color:#a35a00}.observed-summary{background:#f4f7f8}
