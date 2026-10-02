@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Tasmanian Oyster Company logo">
+<circle cx="256" cy="256" r="242" fill="#fff"/>
+<circle cx="256" cy="256" r="232" fill="none" stroke="#0b4f6c" stroke-width="12"/>
+<text x="256" y="104" text-anchor="middle" font-family="Arial,sans-serif" font-size="42" font-weight="800" fill="#0b4f6c" letter-spacing="2">TASMANIAN</text>
+<text x="256" y="145" text-anchor="middle" font-family="Arial,sans-serif" font-size="30" font-weight="800" fill="#0b4f6c" letter-spacing="2">OYSTER CO</text>
+<g fill="none" stroke="#0b4f6c" stroke-width="18" stroke-linecap="round">
+ <path d="M157 277 Q256 176 355 277"/>
+ <path d="M180 313 Q256 238 332 313"/>
+ <path d="M207 347 Q256 297 305 347"/>
+</g>
+<path d="M219 365 Q256 397 293 365 Q281 412 256 427 Q231 412 219 365Z" fill="#0b4f6c"/>
+<circle cx="256" cy="256" r="92" fill="none" stroke="#0b4f6c" stroke-width="5" opacity=".35"/>
+</svg>
