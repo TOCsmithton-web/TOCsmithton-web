@@ -15,7 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fetch Duck River from the NRE map marker
+      - name: Fetch Duck River from NRE live map network data
         shell: bash
         run: |
           python3 -m pip install --quiet selenium
@@ -24,8 +24,6 @@ jobs:
           from zoneinfo import ZoneInfo
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
-          from selenium.webdriver.common.by import By
-          from selenium.webdriver.common.action_chains import ActionChains
 
           MAP_URL="https://portal.wrt.tas.gov.au/Data/Map"
           HOBART=ZoneInfo("Australia/Hobart")
@@ -36,124 +34,127 @@ jobs:
           o.add_argument("--disable-dev-shm-usage")
           o.add_argument("--window-size=1920,1080")
           o.add_argument("--disable-gpu")
+          o.set_capability("goog:loggingPrefs", {"performance":"ALL"})
           d=webdriver.Chrome(options=o)
 
-          def text():
-              try: return d.find_element(By.TAG_NAME,"body").text
-              except Exception: return ""
-
-          def parse_popup(t):
-              low=t.lower()
+          def find_ml_station(text):
+              if not text: return None
+              low=text.lower()
               if "14214" not in low and "scotchtown" not in low and "duck river" not in low:
                   return None
-              # Require an ML/day value in the same popup/page text.
               patterns=[
-                  r"(?:latest value|latest discharge|discharge)[^0-9]{0,160}([0-9]+(?:\.[0-9]+)?)\s*ml\s*/?\s*day",
-                  r"([0-9]+(?:\.[0-9]+)?)\s*ml\s*/?\s*day"
+                  r"(?:latest value|latest discharge|discharge|value)[^0-9]{0,250}([0-9]+(?:\.[0-9]+)?)\s*(?:ml\s*/?\s*day|mld)",
+                  r"([0-9]+(?:\.[0-9]+)?)\s*(?:ml\s*/?\s*day|mld)"
               ]
               for p in patterns:
-                  m=re.search(p,t,re.I|re.S)
-                  if m:
+                  for m in re.finditer(p,text,re.I|re.S):
                       v=float(m.group(1))
                       if 0 < v < 100000:
                           return v
               return None
 
           try:
+              d.execute_cdp_cmd("Network.enable", {})
               d.get(MAP_URL)
               time.sleep(8)
               try:
-                  a=d.find_element(By.XPATH,"//button[normalize-space()='Accept'] | //a[normalize-space()='Accept'] | //*[@value='Accept']")
+                  a=d.find_element("xpath","//button[normalize-space()='Accept'] | //a[normalize-space()='Accept'] | //*[@value='Accept']")
                   d.execute_script("arguments[0].click();",a)
                   time.sleep(8)
               except Exception:
                   pass
               d.get(MAP_URL)
-              time.sleep(15)
+              time.sleep(18)
 
-              # The portal defaults to latest flow in ML/day. If a selector is
-              # available, explicitly choose Discharge/Latest.
-              for el in d.find_elements(By.XPATH,"//select"):
+              # The visible portal defaults to Flow / Latest Value (ML/day).
+              # Capture all XHR/fetch responses because the map itself is canvas/SVG
+              # rendered and the station markers are not reliable DOM elements.
+              bodies=[]
+              for entry in d.get_log("performance"):
                   try:
-                      opts=[o.text.strip() for o in el.find_elements(By.TAG_NAME,"option")]
-                      hit=next((x for x in opts if x.lower()=="discharge" or "discharge" in x.lower()),None)
-                      if hit:
-                          d.execute_script("arguments[0].value=[...arguments[0].options].find(o=>o.text.trim()===arguments[1]).value; arguments[0].dispatchEvent(new Event('change',{bubbles:true}));",el,hit)
-                          time.sleep(10)
-                          break
+                      msg=json.loads(entry["message"])["message"]
+                      if msg["method"]=="Network.responseReceived":
+                          p=msg["params"]; rid=p["requestId"]; resp=p["response"]
+                          url=resp.get("url","")
+                          ctype=(resp.get("mimeType") or "").lower()
+                          if any(x in ctype for x in ("json","text","xml")):
+                              try:
+                                  body=d.execute_cdp_cmd("Network.getResponseBody",{"requestId":rid}).get("body","")
+                                  if body:
+                                      bodies.append((url,body))
+                              except Exception:
+                                  pass
                   except Exception:
                       pass
 
-              # Try every map-marker-like DOM element. When a marker is clicked,
-              # the portal opens a location popup. Accept a value only if that
-              # popup identifies station 14214 / Scotchtown / Duck River.
-              candidates=d.find_elements(By.XPATH,
-                  "//*[contains(translate(@class,'MARKER','marker'),'marker') or "
-                  "contains(translate(@class,'INDICATOR','indicator'),'indicator') or "
-                  "self::circle]")
-              print("MAP CANDIDATES:",len(candidates))
+              # Also inspect the final rendered page text.
+              try:
+                  bodies.append(("rendered-page",d.find_element("tag name","body").text))
+              except Exception:
+                  pass
 
-              seen=set()
-              for i,el in enumerate(candidates):
-                  try:
-                      key=(el.tag_name,el.get_attribute("class"),el.get_attribute("aria-label"),el.get_attribute("title"))
-                      if key in seen: continue
-                      seen.add(key)
-                      d.execute_script("arguments[0].scrollIntoView({block:'center'});",el)
-                      d.execute_script("arguments[0].click();",el)
-                      time.sleep(1.5)
-                      t=text()
-                      ml=parse_popup(t)
-                      if ml is not None:
-                          flow=ml/86.4
-                          if not (0 < flow < 200):
-                              raise RuntimeError("Invalid converted Scotchtown flow")
-                          previous_flow=None
-                          try:
-                              with open("river.json","r",encoding="utf-8") as oldf:
-                                  previous_flow=float(json.load(oldf).get("flow"))
-                          except Exception:
-                              pass
-                          change_pct=None
-                          if previous_flow is not None and previous_flow != 0:
-                              change_pct=round((flow-previous_flow)/previous_flow*100,1)
-                          now=datetime.datetime.now(datetime.timezone.utc).astimezone(HOBART)
-                          history=[]
-                          try:
-                              with open("river.json","r",encoding="utf-8") as oldf:
-                                  old_data=json.load(oldf)
-                                  history=list(old_data.get("history") or [])
-                          except Exception:
-                              history=[]
-                          point={"timestamp":now.isoformat(),"flow":round(flow,3),"ml_day":round(ml,3)}
-                          history.append(point)
-                          # Keep the latest 72 readings (12 hours at a 10-minute cadence).
-                          history=history[-72:]
-                          out={
-                              "station":"Duck River US Scotchtown Road Bridge",
-                              "station_no":"14214",
-                              "flow":round(flow,3),
-                              "ml_day":round(ml,3),
-                              "timestamp":now.isoformat(),
-                              "updated":now.isoformat(),
-                              "limit":5,
-                              "previous_flow":round(previous_flow,3) if previous_flow is not None else None,
-                              "change_pct":change_pct,
-                              "history":history,
-                              "source":"NRE Tasmania Water Information Portal — Scotchtown map Latest Value (ML/day)",
-                              "source_url":MAP_URL
-                          }
-                          with open("river.json","w",encoding="utf-8") as f:
-                              json.dump(out,f,separators=(",",":"))
-                          print("VERIFIED SCOTCHTOWN MAP READING:",json.dumps(out))
-                          break
-                  except Exception:
-                      continue
-              else:
-                  raise RuntimeError("Could not open a Scotchtown/14214 map popup containing an ML/day value")
+              candidates=[]
+              for url,body in bodies:
+                  ml=find_ml_station(body)
+                  if ml is not None:
+                      candidates.append((url,ml,body[:1000]))
 
+              # Prefer a response explicitly identifying station 14214/Scotchtown.
+              if not candidates:
+                  raise RuntimeError("No NRE network response contained a Scotchtown/14214 ML/day value")
+
+              # Require the candidate's surrounding text to contain the station identity.
+              verified=[]
+              for url,ml,sample in candidates:
+                  if re.search(r"14214|Scotchtown|Duck River",sample,re.I):
+                      verified.append((url,ml))
+              if not verified:
+                  raise RuntimeError("ML/day value found but not tied to station 14214")
+
+              ml=max(verified,key=lambda x: len(x[0]))[1]
+              flow=ml/86.4
+              if not (0 < flow < 200):
+                  raise RuntimeError("Invalid converted Scotchtown flow")
+
+              previous_flow=None
+              history=[]
+              try:
+                  with open("river.json","r",encoding="utf-8") as oldf:
+                      old=json.load(oldf)
+                      previous_flow=float(old.get("flow"))
+                      history=list(old.get("history") or [])
+              except Exception:
+                  pass
+
+              change_pct=None
+              if previous_flow is not None and previous_flow != 0:
+                  change_pct=round((flow-previous_flow)/previous_flow*100,1)
+
+              now=datetime.datetime.now(datetime.timezone.utc).astimezone(HOBART)
+              point={"timestamp":now.isoformat(),"flow":round(flow,3),"ml_day":round(ml,3)}
+              history.append(point)
+              history=history[-72:]
+
+              out={
+                  "station":"Duck River US Scotchtown Road Bridge",
+                  "station_no":"14214",
+                  "flow":round(flow,3),
+                  "ml_day":round(ml,3),
+                  "timestamp":now.isoformat(),
+                  "updated":now.isoformat(),
+                  "limit":5,
+                  "previous_flow":round(previous_flow,3) if previous_flow is not None else None,
+                  "change_pct":change_pct,
+                  "history":history,
+                  "source":"NRE Tasmania Water Information Portal — station 14214 map Latest Value (ML/day)",
+                  "source_url":MAP_URL
+              }
+              with open("river.json","w",encoding="utf-8") as f:
+                  json.dump(out,f,separators=(",",":"))
+              print("VERIFIED NRE SCOTCHTOWN READING:",json.dumps(out))
+              print("SOURCE NETWORK URL:",verified[0][0])
           except Exception as exc:
-              print("River update did not obtain a verified Scotchtown map reading:",exc)
+              print("River update did not obtain a verified NRE Scotchtown reading:",exc)
               # Keep the last verified river.json unchanged.
           finally:
               d.quit()
