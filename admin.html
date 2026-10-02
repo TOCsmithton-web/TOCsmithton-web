@@ -54,8 +54,26 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 <p id="saveMsg" class="small"></p>
 </div>
 
+<div id="meatEditor" class="admin-card" style="display:none">
+<h2>Meat test results</h2>
+<p class="small">Enter a result for the selected harvest area. These results are visible to the public in read-only mode.</p>
+<div class="grid2">
+<label>Harvest area
+<select id="meatBay" style="width:100%;padding:12px;border:1px solid #c8d3d8;border-radius:9px;font-size:16px;background:#fff">
+<option>Duck Bay</option>
+<option>Kemps Bay</option>
+</select></label>
+<label>Test date<input id="meatDate" type="date"></label>
+</div>
+<label>Result<input id="meatResult" type="text" placeholder="e.g. Satisfactory / E. coli result"></label>
+<label>Notes<input id="meatNotes" type="text" placeholder="Optional notes"></label>
+<button id="meatSaveBtn" class="button" type="button">Save meat test result</button>
+<p id="meatSaveMsg" class="small"></p>
+<div id="meatList" class="notice"></div>
+</div>
+
 <div class="admin-card">
-<a class="button secondary" href="./duckbay.html" style="display:inline-block;text-decoration:none">Back to Duck Bay control</a>
+<a class="button secondary" href="./control-new.html" style="display:inline-block;text-decoration:none">Open public control</a>
 </div>
 </div>
 
@@ -87,11 +105,39 @@ async function loadSettings(){
   $("rain7").value=d.rain_7d_limit==null?"":d.rain_7d_limit;
 }
 
+async function loadMeatList(){
+  var bay=$("meatBay").value;
+  var r=await supabase.from("meat_test_results").select("id,test_date,result,notes").eq("bay_name",bay).order("test_date",{ascending:false}).order("created_at",{ascending:false});
+  if(r.error){$("meatList").textContent="Could not load results: "+r.error.message;return;}
+  if(!r.data.length){$("meatList").textContent="No meat test results recorded for "+bay+".";return;}
+  $("meatList").innerHTML=r.data.map(function(x){
+    return "<div style='padding:10px 0;border-bottom:1px solid #dce6eb'><b>"+new Date(x.test_date+"T00:00:00").toLocaleDateString("en-AU")+"</b> — "+String(x.result).replace(/</g,"&lt;")+(x.notes?"<br><span class='small'>"+String(x.notes).replace(/</g,"&lt;")+"</span>":"")+"</div>";
+  }).join("");
+}
+async function saveMeatTest(){
+  var result=$("meatResult").value.trim();
+  var date=$("meatDate").value;
+  if(!date||!result){msg("meatSaveMsg","Enter a test date and result.",false);return;}
+  var session=(await supabase.auth.getSession()).data.session;
+  if(!session){msg("meatSaveMsg","You must be signed in.",false);return;}
+  var r=await supabase.from("meat_test_results").insert({
+    bay_name:$("meatBay").value,
+    test_date:date,
+    result:result,
+    notes:$("meatNotes").value.trim()||null,
+    entered_by:session.user.id
+  });
+  if(r.error){msg("meatSaveMsg","SAVE BLOCKED: "+r.error.message,false);return;}
+  $("meatResult").value="";$("meatNotes").value="";
+  msg("meatSaveMsg","MEAT TEST RESULT SAVED ✓",true);
+  loadMeatList();
+}
 async function showSession(session){
   if(!session){
     $("authArea").style.display="block";
     $("userArea").style.display="none";
     $("editor").style.display="none";
+    $("meatEditor").style.display="none";
     return;
   }
 
@@ -104,6 +150,7 @@ async function showSession(session){
   var admin=await isAdmin(u);
   if(admin){
     $("editor").style.display="block";
+    $("meatEditor").style.display="block";
     msg("accessMsg","ADMIN ACCESS CONFIRMED ✓",true);
     await loadSettings();
   }else{
@@ -151,6 +198,10 @@ $("saveBtn").onclick=async function(){
   else msg("saveMsg","CENTRAL SETTINGS SAVED ✓",true);
 };
 
+$("meatBay").onchange=loadMeatList;
+$("meatSaveBtn").onclick=saveMeatTest;
+$("meatDate").value=new Date().toISOString().slice(0,10);
+loadMeatList();
 supabase.auth.getSession().then(function(r){showSession(r.data.session);});
 supabase.auth.onAuthStateChange(function(event,session){showSession(session);});
 })();
