@@ -159,16 +159,11 @@ function el(id){return document.getElementById(id);}function updateBayBanner(){
   var b=el("bayBanner"); if(!b)return;
   b.className="bay-banner "+(open?"open":"closed");
   b.textContent=bayName().toUpperCase()+" "+(open?"OPEN":"CLOSED");
-  if(window.bayFlashTimer)clearInterval(window.bayFlashTimer);
+  if(window.bayFlashTimer){clearInterval(window.bayFlashTimer);window.bayFlashTimer=null;}
+  b.style.backgroundColor=open?"#16823b":"#c62828";
+  b.style.color="#fff";
   b.style.opacity="1";
-  var bright=false;
-  window.bayFlashTimer=setInterval(function(){
-    bright=!bright;
-    b.style.backgroundColor=open?(bright?"#16823b":"#07551f"):(bright?"#ff0000":"#7a0000");
-    b.style.color="#fff";
-    b.style.opacity=bright?"1":"0.55";
-    b.style.boxShadow=bright?(open?"0 0 28px #16823b":"0 0 28px #ff0000"):(open?"0 0 4px #07551f":"0 0 4px #7a0000");
-  },open?600:450);
+  b.style.boxShadow="none";
 }
 
 function load(){try{var raw=localStorage.getItem(KEY);if(raw){Object.assign(state,JSON.parse(raw));} state.alertEnabled=localStorage.getItem("toc-smithton-alert-enabled")==="true";}catch(e){state.alertEnabled=false;}}
