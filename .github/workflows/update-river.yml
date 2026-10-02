@@ -41,8 +41,18 @@ jobs:
           driver = webdriver.Chrome(options=options)
           try:
               driver.get(URL)
+              # The portal now presents an acceptance page on a fresh runner.
+              # Accept it once, then reload the requested live-data page.
+              time.sleep(3)
+              try:
+                  accept = driver.find_element("xpath", "//button[normalize-space()='Accept'] | //a[normalize-space()='Accept'] | //*[@value='Accept']")
+                  driver.execute_script("arguments[0].click();", accept)
+                  time.sleep(4)
+              except Exception:
+                  pass
+              driver.get(URL)
               # Allow the Aquarius chart/data controls to finish loading.
-              time.sleep(12)
+              time.sleep(15)
               text = driver.find_element("tag name", "body").text
               print(text[:12000])
 
@@ -60,13 +70,18 @@ jobs:
               if not matches:
                   raise SystemExit("Could not find the live Duck River discharge value in the rendered NRE portal")
 
-              # Prefer a value close to the chart's current reading. Remove obvious
-              # axis values and retain the largest precision value when duplicates exist.
               values = [float(x) for x in matches if 0 <= float(x) < 1000]
               if not values:
                   raise SystemExit("No valid discharge value found")
 
-              flow = max(values)
+              # Prefer the first value from the explicit Discharge pattern.
+              discharge_matches = re.findall(patterns[-1], text, flags=re.I)
+              if discharge_matches:
+                  flow = float(discharge_matches[0])
+              else:
+                  # Fall back to the first unit-labelled value rather than taking
+                  # the maximum, which can accidentally select a chart-axis value.
+                  flow = values[0]
 
               now = datetime.datetime.now(datetime.timezone.utc).astimezone(HOBART)
               out = {
