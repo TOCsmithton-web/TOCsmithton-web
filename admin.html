@@ -69,6 +69,21 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 <a class="button secondary" href="https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas" target="_blank" rel="noopener">Check NRE classification</a>
 </div>
 
+
+<div id="biotoxinEditor" class="admin-card" style="display:none">
+<h2>Boomer Bay — Weekly biotoxin test</h2>
+<p class="small"><b>Management Plan requirement:</b> representative shellfish biotoxin testing weekly. Record each test here; the public Boomer Bay page calculates the next due date from the latest test.</p>
+<div class="grid2">
+<label>Test date<input id="biotoxinDate" type="date"></label>
+<label>Result
+<select id="biotoxinResult" style="width:100%;padding:12px;border:1px solid #c8d3d8;border-radius:9px;font-size:16px;background:#fff"><option value="">Select result</option><option value="PASS">PASS</option><option value="FAIL">FAIL</option></select></label>
+</div>
+<label>Notes<input id="biotoxinNotes" type="text" placeholder="Optional laboratory/test notes"></label>
+<button id="biotoxinSaveBtn" class="button" type="button">Save biotoxin test</button>
+<p id="biotoxinSaveMsg" class="small"></p>
+<div id="biotoxinList" class="notice"></div>
+</div>
+
 <div id="meatEditor" class="admin-card" style="display:none">
 <h2>Meat test results</h2>
 <p class="small">Enter a result for the selected harvest area. These results are visible to the public in read-only mode. <b>Sample limit: 2.3</b> — under 2.3 is green; over 2.3 is red.</p>
@@ -145,6 +160,23 @@ async function loadSettings(){
   $("rain7").value=d.rain_7d_limit==null?"":d.rain_7d_limit;
 }
 
+
+async function loadBiotoxinList(){
+  var r=await supabase.from("meat_test_results").select("id,test_date,result,notes").eq("bay_name","Boomer Bay Biotoxin").order("test_date",{ascending:false}).order("created_at",{ascending:false});
+  if(r.error){$("biotoxinList").textContent="Could not load biotoxin tests: "+r.error.message;return;}
+  if(!r.data.length){$("biotoxinList").textContent="No weekly Boomer Bay biotoxin tests recorded.";return;}
+  $("biotoxinList").innerHTML=r.data.map(function(x){var pass=String(x.result).toUpperCase()==="PASS";return "<div style='padding:10px 0;border-bottom:1px solid #dce6eb'><b>"+new Date(x.test_date+"T00:00:00").toLocaleDateString("en-AU")+"</b> — <b style='color:"+(pass?"#176b3b":"#9d2727")+"'>"+String(x.result).replace(/</g,"&lt;")+"</b>"+(x.notes?"<br><span class='small'>"+String(x.notes).replace(/</g,"&lt;")+"</span>":"")+"</div>";}).join("");
+}
+async function saveBiotoxin(){
+  var date=$("biotoxinDate").value,result=$("biotoxinResult").value;
+  if(!date||!result){msg("biotoxinSaveMsg","Enter a test date and result.",false);return;}
+  var session=(await supabase.auth.getSession()).data.session;
+  if(!session){msg("biotoxinSaveMsg","You must be signed in.",false);return;}
+  var r=await supabase.from("meat_test_results").insert({bay_name:"Boomer Bay Biotoxin",test_date:date,result:result,notes:$("biotoxinNotes").value.trim()||null,entered_by:session.user.id});
+  if(r.error){msg("biotoxinSaveMsg","SAVE BLOCKED: "+r.error.message,false);return;}
+  $("biotoxinResult").value="";$("biotoxinNotes").value="";msg("biotoxinSaveMsg","BIOTOXIN TEST SAVED ✓",true);loadBiotoxinList();
+}
+
 async function loadMeatList(){
   var bay=$("meatBay").value;
   var r=await supabase.from("meat_test_results").select("id,test_date,result,notes").eq("bay_name",bay).order("test_date",{ascending:false}).order("created_at",{ascending:false});
@@ -178,6 +210,7 @@ async function showSession(session){
     $("userArea").style.display="none";
     $("editor").style.display="none";
     $("meatEditor").style.display="none";
+    $("biotoxinEditor").style.display="none";
     return;
   }
 
@@ -191,6 +224,7 @@ async function showSession(session){
   if(admin){
     $("editor").style.display="block";
     $("meatEditor").style.display="block";
+    $("biotoxinEditor").style.display="block";
     $("reopenEditor").style.display="block";
     reopenLoad();
     reopenWatch();
@@ -242,6 +276,9 @@ $("saveBtn").onclick=async function(){
 };
 
 $("meatBay").onchange=loadMeatList;
+$("biotoxinSaveBtn").onclick=saveBiotoxin;
+$("biotoxinDate").value=new Date().toISOString().slice(0,10);
+loadBiotoxinList();
 $("meatSaveBtn").onclick=saveMeatTest;
 ["reopenT0Time","reopenT0Sal","reopenT1Time","reopenT1Sal","reopenT2Time","reopenT2Sal"].forEach(function(id){$(id).onchange=function(){reopenSet(id,$(id).value);};});
 $("meatDate").value=new Date().toISOString().slice(0,10);
