@@ -93,6 +93,11 @@
   <div id="forecast" class="forecast"><div class="loading">Loading rainfall…</div></div>
 </section>
 
+
+<section class="card">
+  <div class="card-head"><div><h2>Weekly biotoxin test</h2><p class="muted">Boomer Bay Management Plan requirement: representative shellfish biotoxin testing is required weekly.</p></div><span id="biotoxinBadge" class="badge">CHECKING</span></div>
+  <div id="biotoxinStatus" class="notice">Checking the latest Boomer Bay biotoxin test…</div>
+</section>
 <section class="card">
   <div class="card-head">
     <div><h2>Meat test results</h2><p class="muted">Results entered by authorised administrators. Public view is read-only.</p></div>
@@ -244,6 +249,25 @@ async function weather(){
   }
 }
 
+
+async function biotoxin(){
+  try{
+    var client=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
+    var r=await client.from("meat_test_results").select("test_date,result,notes,created_at").eq("bay_name","Boomer Bay Biotoxin").order("test_date",{ascending:false}).order("created_at",{ascending:false}).limit(10);
+    if(r.error)throw r.error;
+    var rows=r.data||[], latest=rows[0];
+    var badge=el("biotoxinBadge"),box=el("biotoxinStatus");
+    if(!latest){badge.textContent="OVERDUE";badge.style.background="#c62828";box.innerHTML="<b>BIOTOXIN TEST OVERDUE</b><br>No weekly biotoxin test has been recorded. Harvest status remains CLOSED until the required testing is recorded.";return;}
+    var d=new Date(latest.test_date+"T00:00:00"), due=new Date(d); due.setDate(due.getDate()+7);
+    var result=String(latest.result||"").toUpperCase(), passed=result==="PASS"||result==="PASSED";
+    var overdue=new Date()>new Date(due.getTime()+86399999);
+    var closed=!passed||overdue;
+    badge.textContent=closed?"CLOSED / ACTION REQUIRED":"CURRENT"; badge.style.background=closed?"#c62828":"#16823b";
+    box.style.background=closed?"#ffd0d0":"#d8f3df"; box.style.border="2px solid "+(closed?"#c62828":"#31a354");
+    box.innerHTML="<b>Last test:</b> "+d.toLocaleDateString("en-AU")+"<br><b>Result:</b> "+result+"<br><b>Next test due:</b> "+due.toLocaleDateString("en-AU")+(overdue?"<br><b>WEEKLY TEST IS OVERDUE — HARVEST CLOSED</b>":"")+(latest.notes?"<br>"+String(latest.notes).replace(/</g,"&lt;"):"");
+  }catch(e){el("biotoxinBadge").textContent="UNAVAILABLE";el("biotoxinStatus").textContent="Biotoxin test status unavailable — do not rely on this display for harvest clearance.";}
+}
+
 async function meat(){
   try{
     var client=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
@@ -271,7 +295,9 @@ loadSalinity();
 setZone();
 weather();
 meat();
+biotoxin();
 setInterval(weather,3600000);
+setInterval(biotoxin,3600000);
 </script>
 </body>
 </html>
