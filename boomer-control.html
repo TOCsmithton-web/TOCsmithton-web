@@ -125,7 +125,7 @@ var zoneData={
   narrows:{name:"Zone Narrows",min:27,r3:35,r7:60},
   east:{name:"East",min:29,r3:30,r7:60}
 };
-var zoneKey="little",zone=zoneData.little,rain3=0,rain7=0;
+var zoneKey="little",zone=zoneData.little,rain3=0,rain7=0,biotoxinCurrent=false;
 var salinity={little:"",narrows:"",east:""};
 
 function el(id){return document.getElementById(id);}
@@ -138,7 +138,7 @@ function loadSalinity(){
 
 function zoneIsOpen(k){
   var z=zoneData[k],s=Number(salinity[k]);
-  return salinity[k]!=="" && isFinite(s) && s>=z.min && rain3<z.r3 && rain7<z.r7;
+  return biotoxinCurrent && salinity[k]!=="" && isFinite(s) && s>=z.min && rain3<z.r3 && rain7<z.r7;
 }
 
 function setBannerCard(id,k){
@@ -165,7 +165,7 @@ function updateSelectedStatus(){
   var okSal=sal!==""&&isFinite(s)&&s>=zone.min;
   var ok3=rain3<zone.r3;
   var ok7=rain7<zone.r7;
-  var open=okSal&&ok3&&ok7;
+  var open=biotoxinCurrent&&okSal&&ok3&&ok7;
 
   el("criteria").textContent=zone.name+" • Salinity ≥ "+zone.min+" ppt • 3-day rainfall < "+zone.r3+" mm • 7-day rainfall < "+zone.r7+" mm";
   el("salMin").value=zone.min;
@@ -257,15 +257,15 @@ async function biotoxin(){
     if(r.error)throw r.error;
     var rows=r.data||[], latest=rows[0];
     var badge=el("biotoxinBadge"),box=el("biotoxinStatus");
-    if(!latest){badge.textContent="OVERDUE";badge.style.background="#c62828";box.innerHTML="<b>BIOTOXIN TEST OVERDUE</b><br>No weekly biotoxin test has been recorded. Harvest status remains CLOSED until the required testing is recorded.";return;}
+    if(!latest){biotoxinCurrent=false;badge.textContent="OVERDUE";badge.style.background="#c62828";box.innerHTML="<b>BIOTOXIN TEST OVERDUE</b><br>No weekly biotoxin test has been recorded. Harvest status remains CLOSED until the required testing is recorded.";updateSelectedStatus();return;}
     var d=new Date(latest.test_date+"T00:00:00"), due=new Date(d); due.setDate(due.getDate()+7);
     var result=String(latest.result||"").toUpperCase(), passed=result==="PASS"||result==="PASSED";
     var overdue=new Date()>new Date(due.getTime()+86399999);
-    var closed=!passed||overdue;
+    biotoxinCurrent=passed&&!overdue; var closed=!biotoxinCurrent;
     badge.textContent=closed?"CLOSED / ACTION REQUIRED":"CURRENT"; badge.style.background=closed?"#c62828":"#16823b";
     box.style.background=closed?"#ffd0d0":"#d8f3df"; box.style.border="2px solid "+(closed?"#c62828":"#31a354");
     box.innerHTML="<b>Last test:</b> "+d.toLocaleDateString("en-AU")+"<br><b>Result:</b> "+result+"<br><b>Next test due:</b> "+due.toLocaleDateString("en-AU")+(overdue?"<br><b>WEEKLY TEST IS OVERDUE — HARVEST CLOSED</b>":"")+(latest.notes?"<br>"+String(latest.notes).replace(/</g,"&lt;"):"");
-  }catch(e){el("biotoxinBadge").textContent="UNAVAILABLE";el("biotoxinStatus").textContent="Biotoxin test status unavailable — do not rely on this display for harvest clearance.";}
+   }catch(e){biotoxinCurrent=false;el("biotoxinBadge").textContent="UNAVAILABLE";el("biotoxinStatus").textContent="Biotoxin test status unavailable — harvest status remains CLOSED until the biotoxin status can be verified.";updateSelectedStatus();}
 }
 
 async function meat(){
