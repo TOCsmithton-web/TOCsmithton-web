@@ -374,6 +374,10 @@ function checkAlerts(){
 }
 function render(){
   var salRequired=bayUsesSalinity(), riverRequired=bayUsesRiver(), limit=bayRainLimit();
+  var salOk=!salRequired||(state.salinity!==""&&isFinite(Number(state.salinity))&&(currentBay.salinity_min==null||Number(state.salinity)>=Number(currentBay.salinity_min))&&(currentBay.salinity_max==null||Number(state.salinity)<=Number(currentBay.salinity_max)));
+  var rain24Ok=isFinite(previous24Total)&&previous24Total<Number(state.rainThreshold||25);
+  var rain3Ok=bayName()==="Duck Bay" ? (isFinite(previous3Total)&&previous3Total<DUCK_RAIN3_LIMIT) : true;
+  var rain7Ok=isFinite(previous7Total)&&previous7Total<limit;
   el("salinityInput").value=state.salinity||"";
   el("salinityMin").value=currentBay&&currentBay.salinity_min!=null?currentBay.salinity_min:"";
   el("salinityMax").value=currentBay&&currentBay.salinity_max!=null?currentBay.salinity_max:"";
