@@ -55,17 +55,17 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 </div>
 
 <div id="reopenEditor" class="admin-card" style="display:none">
-<h2>Duck Bay — 48-hour salinity reopening</h2>
+<h2>Duck Bay — 48-hour salinity reopening check</h2>
 <p id="reopenStatus" class="small">Waiting for all environmental controls to be within limits.</p>
 <div class="grid2">
 <label>T0 — date/time<input id="reopenT0Time" type="datetime-local"></label>
 <label>T0 — salinity (ppt)<input id="reopenT0Sal" type="number" step="0.1" min="0"></label>
-<label>T1 — date/time<input id="reopenT1Time" type="datetime-local"></label>
-<label>T1 — salinity (ppt)<input id="reopenT1Sal" type="number" step="0.1" min="0"></label>
-<label>T2 — date/time<input id="reopenT2Time" type="datetime-local"></label>
-<label>T2 — salinity (ppt)<input id="reopenT2Sal" type="number" step="0.1" min="0"></label>
+<label>T24 — date/time<input id="reopenT24Time" type="datetime-local"></label>
+<label>T24 — salinity (ppt)<input id="reopenT24Sal" type="number" step="0.1" min="0"></label>
+<label>T48 — date/time<input id="reopenT48Time" type="datetime-local"></label>
+<label>T48 — salinity (ppt)<input id="reopenT48Sal" type="number" step="0.1" min="0"></label>
 </div>
-<p class="small">T0, T1 and T2 must be taken at low tide, at representative lease locations, within 48 hours. All other environmental criteria must also remain satisfied.</p>
+<p class="small">T0, T24 and T48 must be taken at low tide, at representative lease locations. These records are saved centrally so the public page shows the same live readings on every device.</p><button id="saveReopenBtn" class="button" type="button">Save 48-hour salinity check</button><p id="reopenSaveMsg" class="small"></p>
 <a class="button secondary" href="https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas" target="_blank" rel="noopener">Check NRE classification</a>
 </div>
 
@@ -114,7 +114,7 @@ var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUP
 var $=function(id){return document.getElementById(id);};
 var REOPEN_KEY="toc-duckbay-reopen-admin-v1";
 function reopenSet(id,value){try{var x=JSON.parse(localStorage.getItem(REOPEN_KEY)||"{}");x[id]=value;localStorage.setItem(REOPEN_KEY,JSON.stringify(x));}catch(e){}}
-function reopenLoad(){try{var x=JSON.parse(localStorage.getItem(REOPEN_KEY)||"{}");["startedAt","reopenT0Time","reopenT0Sal","reopenT1Time","reopenT1Sal","reopenT2Time","reopenT2Sal"].forEach(function(id){if(x[id]&&$(id))$(id).value=x[id];});return x;}catch(e){return {};}}
+function reopenLoad(){try{var x=JSON.parse(localStorage.getItem(REOPEN_KEY)||"{}");["startedAt","reopenT0Time","reopenT0Sal","reopenT24Time","reopenT24Sal","reopenT48Time","reopenT48Sal"].forEach(function(id){if(x[id]&&$(id))$(id).value=x[id];});return x;}catch(e){return {};}}
 function reopenWatch(){
   var sal=Number($("salinity").value), min=Number($("salinityMin").value||32.5), rain24=Number($("rain24").value), rain7=Number($("rain7").value);
   fetch("./river.json?ts="+Date.now(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(d){
@@ -166,6 +166,23 @@ async function loadBiotoxinList(){
   if(r.error){$("biotoxinList").textContent="Could not load biotoxin tests: "+r.error.message;return;}
   if(!r.data.length){$("biotoxinList").textContent="No weekly Boomer Bay biotoxin tests recorded.";return;}
   $("biotoxinList").innerHTML=r.data.map(function(x){var pass=String(x.result).toUpperCase()==="PASS";return "<div style='padding:10px 0;border-bottom:1px solid #dce6eb'><b>"+new Date(x.test_date+"T00:00:00").toLocaleDateString("en-AU")+"</b> — <b style='color:"+(pass?"#176b3b":"#9d2727")+"'>"+String(x.result).replace(/</g,"&lt;")+"</b>"+(x.notes?"<br><span class='small'>"+String(x.notes).replace(/</g,"&lt;")+"</span>":"")+"</div>";}).join("");
+}
+async function saveReopenChecks(){
+  var session=(await supabase.auth.getSession()).data.session;
+  if(!session){msg("reopenSaveMsg","You must be signed in.",false);return;}
+  var checks=[
+    {label:"T0",time:$("reopenT0Time").value,sal:$("reopenT0Sal").value,name:"Duck Bay Salinity T0"},
+    {label:"T24",time:$("reopenT24Time").value,sal:$("reopenT24Sal").value,name:"Duck Bay Salinity T24"},
+    {label:"T48",time:$("reopenT48Time").value,sal:$("reopenT48Sal").value,name:"Duck Bay Salinity T48"}
+  ];
+  var entered=checks.filter(function(x){return x.time&&x.sal!=="";});
+  if(!entered.length){msg("reopenSaveMsg","Enter at least one date/time and salinity reading.",false);return;}
+  for(var i=0;i<entered.length;i++){
+    var x=entered[i];
+    var r=await supabase.from("meat_test_results").insert({bay_name:x.name,test_date:x.time.slice(0,10),result:Number(x.sal),notes:x.time,entered_by:session.user.id});
+    if(r.error){msg("reopenSaveMsg","SAVE BLOCKED at "+x.label+": "+r.error.message,false);return;}
+  }
+  msg("reopenSaveMsg","48-HOUR SALINITY CHECK SAVED CENTRALLY ✓ — public page will update on all devices.",true);
 }
 async function saveBiotoxin(){
   var date=$("biotoxinDate").value,result=$("biotoxinResult").value;
@@ -280,7 +297,8 @@ $("biotoxinSaveBtn").onclick=saveBiotoxin;
 $("biotoxinDate").value=new Date().toISOString().slice(0,10);
 loadBiotoxinList();
 $("meatSaveBtn").onclick=saveMeatTest;
-["reopenT0Time","reopenT0Sal","reopenT1Time","reopenT1Sal","reopenT2Time","reopenT2Sal"].forEach(function(id){$(id).onchange=function(){reopenSet(id,$(id).value);};});
+["reopenT0Time","reopenT0Sal","reopenT24Time","reopenT24Sal","reopenT48Time","reopenT48Sal"].forEach(function(id){$(id).onchange=function(){reopenSet(id,$(id).value);};});
+$("saveReopenBtn").onclick=saveReopenChecks;
 $("meatDate").value=new Date().toISOString().slice(0,10);
 loadMeatList();
 supabase.auth.getSession().then(function(r){showSession(r.data.session);});
