@@ -279,6 +279,7 @@ async function loadCentral(){
 function el(id){return document.getElementById(id);}function updateBayBanner(){
   var sal=Number(state.salinity), min=currentBay&&currentBay.salinity_min!=null?Number(currentBay.salinity_min):null, max=currentBay&&currentBay.salinity_max!=null?Number(currentBay.salinity_max):null;
   var salOk=!bayUsesSalinity()||(state.salinity!==""&&isFinite(sal)&&(min==null||sal>=min)&&(max==null||sal<=max));
+  var rain24Ok=isFinite(previous24Total)&&previous24Total<Number(state.rainThreshold||25);
   var rain3Ok=bayName()==="Duck Bay" ? (isFinite(previous3Total)&&previous3Total<DUCK_RAIN3_LIMIT) : true;
   var rain7Ok=isFinite(previous7Total)&&previous7Total<bayRainLimit();
   var riverOk=!bayUsesRiver()||(isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<Number(currentBay.river_flow_limit));
@@ -405,15 +406,15 @@ function render(){
   var boxes=document.querySelectorAll(".status-grid .metric-row > div");
   if(boxes.length>=3){
     boxes[0].className=salRequired?(salOk?"env-box good":"env-box bad"):"env-box neutral";
-    boxes[1].className="env-box neutral";
+    boxes[1].className=rain24Ok?"env-box good":"env-box bad";
     boxes[2].className=bayName()==="Duck Bay"?(rain3Ok?"env-box good":"env-box bad"):"env-box neutral";
     boxes[3].className=rain7Ok?"env-box good":"env-box bad";
     boxes[0].style.background=salRequired?(salOk?"#bff3cc":"#ffd0d0"):"#f4f7f8";
-    boxes[1].style.background="#f4f7f8";
+    boxes[1].style.background=rain24Ok?"#bff3cc":"#ffd0d0";
     boxes[2].style.background=bayName()==="Duck Bay"?(rain3Ok?"#bff3cc":"#ffd0d0"):"#f4f7f8";
     boxes[3].style.background=rain7Ok?"#bff3cc":"#ffd0d0";
     boxes[0].style.border="2px solid "+(salRequired?(salOk?"#31a354":"#c62828"):"#cbd6db");
-    boxes[1].style.border="2px solid #cbd6db";
+    boxes[1].style.border="2px solid "+(rain24Ok?"#31a354":"#c62828");
     boxes[2].style.border="2px solid "+(bayName()==="Duck Bay"?(rain3Ok?"#31a354":"#c62828"):"#cbd6db");
     boxes[3].style.border="2px solid "+(rain7Ok?"#31a354":"#c62828");
   }
