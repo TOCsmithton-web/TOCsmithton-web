@@ -59,6 +59,19 @@
 <div><span>Control limit</span><strong>5.0</strong><small>m³/s</small></div>
 </div>
 <div id="riverStatus" class="hint">Loading river flow…</div>
+<div id="riverThresholdEvents" style="margin-top:14px">
+  <div class="grid two">
+    <div class="notice" style="margin:0">
+      <strong>Last went OVER 5.0 m³/s</strong>
+      <div id="riverLastOver" class="hint" style="margin:6px 0 0">No crossing recorded.</div>
+    </div>
+    <div class="notice" style="margin:0">
+      <strong>Last went UNDER 5.0 m³/s</strong>
+      <div id="riverLastUnder" class="hint" style="margin:6px 0 0">No crossing recorded.</div>
+    </div>
+  </div>
+  <p class="hint" style="margin-bottom:0">Times shown are the NRE portal reading times that first recorded the river on the new side of the 5.0 m³/s limit.</p>
+</div>
 </section>
 
 <section class="card"><div class="card-head"><div><h2>Smithton rainfall — previous 7 days + next 7 days</h2><p class="muted">Previous 7-day total is observed rainfall; the next 7 days are forecast rainfall supplied by Open-Meteo.</p></div><button id="refreshWeather" class="button secondary" type="button">Refresh</button></div>
@@ -516,6 +529,27 @@ function renderRiverHistory(history){
     "</svg>";
   box.innerHTML=svg;
 }
+function renderRiverThresholdEvents(events){
+  var overEl=el("riverLastOver"),underEl=el("riverLastUnder");
+  if(!overEl||!underEl)return;
+  var list=Array.isArray(events)?events:[];
+  var over=null,under=null;
+  list.forEach(function(x){
+    if(!x||!x.timestamp||!isFinite(new Date(x.timestamp).getTime()))return;
+    if(x.type==="over")over=x;
+    if(x.type==="under")under=x;
+  });
+  function formatEvent(x){
+    if(!x)return "No crossing recorded.";
+    var d=new Date(x.timestamp);
+    var flow=isFinite(Number(x.flow))?Number(x.flow).toFixed(3)+" m³/s":"—";
+    return d.toLocaleDateString("en-AU",{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"})+
+      " at "+d.toLocaleTimeString("en-AU",{hour:"2-digit",minute:"2-digit",second:"2-digit"})+
+      " • portal reading "+flow;
+  }
+  overEl.textContent=formatEvent(over);
+  underEl.textContent=formatEvent(under);
+}
 async function riverFlow(){
   var section=document.querySelector("#riverFlow")?.closest("section");
   if(!bayUsesRiver()){if(section)section.style.display="none";window.riverCurrentFlow=0;updateBayBanner();return;}
@@ -538,6 +572,7 @@ async function riverFlow(){
     el("riverStatus").textContent+=" • Portal reading "+readingTime.toLocaleString("en-AU")+" • Checked "+(checkedTime&&isFinite(checkedTime.getTime())?checkedTime.toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit",second:"2-digit"}):"—");
   }
   renderRiverHistory(fallback.history||[]);
+  renderRiverThresholdEvents(fallback.threshold_events||[]);
   if(v>limit&&window.riverAlertState!==true)alertNow("RIVER FLOW ALERT",bayName()+" river flow is "+v.toFixed(3)+" m³/s — above the "+limit.toFixed(1)+" m³/s limit.","river-flow-alert");
   window.riverCurrentFlow=v;window.riverAlertState=v>limit;updateBayBanner();render();
 }
