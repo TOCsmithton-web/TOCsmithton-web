@@ -305,55 +305,73 @@ function el(id){return document.getElementById(id);}function updateBayBanner(){
   b.style.boxShadow="none";
 }
 
+var publicReopen={T0:null,T24:null,T48:null,error:null};
+
+async function loadPublicReopen(){
+  try{
+    var names=["Duck Bay Salinity T0","Duck Bay Salinity T24","Duck Bay Salinity T48"];
+    var r=await supabase.from("meat_test_results")
+      .select("id,bay_name,test_date,result,notes,created_at")
+      .in("bay_name",names)
+      .order("created_at",{ascending:false})
+      .limit(30);
+    if(r.error)throw r.error;
+    var latest={};
+    (r.data||[]).forEach(function(row){
+      var name=String(row.bay_name||"");
+      var key=name==="Duck Bay Salinity T0"?"T0":name==="Duck Bay Salinity T24"?"T24":name==="Duck Bay Salinity T48"?"T48":null;
+      if(key&&!latest[key])latest[key]=row;
+    });
+    publicReopen={T0:latest.T0||null,T24:latest.T24||null,T48:latest.T48||null,error:null};
+    renderPublicReopen();
+  }catch(e){
+    publicReopen={T0:null,T24:null,T48:null,error:e};
+    renderPublicReopen();
+  }
+}
+
 function renderPublicReopen(){
   var badge=el("publicReopenBadge"),statusEl=el("publicReopenStatus");
   if(!badge||!statusEl)return;
 
-  // The administrator records the 48-hour reopening checks in localStorage.
-  // Use the same key here so the public/read-only page shows the same T0/T24/T48
-  // date/time and salinity values on the same device.
-  var x={};
-  try{
-    x=JSON.parse(localStorage.getItem("toc-duckbay-reopen-admin-v1")||"{}");
-  }catch(e){x={};}
-
-  function show(id,value,isSalinity){
-    var target=el(id);
-    if(!target)return;
-    if(value===undefined||value===null||value===""){
-      target.textContent="—";
-      return;
-    }
-    if(isSalinity){
-      var n=Number(value);
-      target.textContent=isFinite(n)?n.toFixed(1):String(value);
-    }else{
-      var d=new Date(value);
-      target.textContent=isFinite(d.getTime())?d.toLocaleString("en-AU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):String(value);
-    }
+  function reading(row){
+    if(!row)return {time:"—",sal:"—"};
+    var rawTime=row.notes||"";
+    var d=rawTime?new Date(rawTime):null;
+    if(!d||!isFinite(d.getTime())) d=new Date(String(row.test_date||"")+"T00:00:00");
+    var time=isFinite(d.getTime())?d.toLocaleString("en-AU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):String(rawTime||row.test_date||"—");
+    var n=Number(row.result);
+    return {time:time,sal:isFinite(n)?n.toFixed(1):String(row.result||"—")};
   }
+  var a=reading(publicReopen.T0),b=reading(publicReopen.T24),c=reading(publicReopen.T48);
+  el("publicT0Time").textContent=a.time;el("publicT0Sal").textContent=a.sal;
+  el("publicT1Time").textContent=b.time;el("publicT1Sal").textContent=b.sal;
+  el("publicT2Time").textContent=c.time;el("publicT2Sal").textContent=c.sal;
 
-  show("publicT0Time",x.reopenT0Time,false);
-  show("publicT0Sal",x.reopenT0Sal,true);
-  show("publicT1Time",x.reopenT1Time,false);
-  show("publicT1Sal",x.reopenT1Sal,true);
-  show("publicT2Time",x.reopenT2Time,false);
-  show("publicT2Sal",x.reopenT2Sal,true);
+  var threshold=Number((currentBay&&currentBay.salinity_min!=null)?currentBay.salinity_min:32.5);
+  var vals=[publicReopen.T0,publicReopen.T24,publicReopen.T48];
+  var complete=vals.every(function(x){return x&&isFinite(Number(x.result));});
+  var failed=vals.some(function(x){return x&&isFinite(Number(x.result))&&Number(x.result)<threshold;});
+  var started=!!publicReopen.T0;
+  var satisfied=complete&&!failed&&vals.every(function(x){return Number(x.result)>=threshold;});
 
-  var ready=isFinite(previous7Total)&&(bayName()==="Duck Bay"?isFinite(previous3Total):true)&&(state.salinity!==""&&isFinite(Number(state.salinity)))&&(!bayUsesRiver()||isFinite(Number(window.riverCurrentFlow)));
-  var started=!!x.startedAt;
-  badge.textContent=started?"IN PROGRESS":(ready?"READY TO START":"WAITING");
-  badge.style.background=started?"#fff0df":(ready?"#bff3cc":"#f4f7f8");
-  badge.style.color=started?"#a35a00":(ready?"#176b3b":"#52636d");
-
-  if(started){
-    var startedDate=new Date(x.startedAt);
-    var startedText=isFinite(startedDate.getTime())?startedDate.toLocaleString("en-AU"):"";
-    statusEl.textContent="48-hour salinity check started"+(startedText?" "+startedText:"")+". T0, T24 and T48 readings are shown above.";
-  }else if(ready){
-    statusEl.textContent="All available environmental readings are within the required range. The 48-hour salinity check can be commenced and recorded at T0, T24 and T48.";
+  if(publicReopen.error){
+    badge.textContent="LIVE DATA UNAVAILABLE";badge.style.background="#ffd0d0";badge.style.color="#9d2727";
+    statusEl.textContent="Unable to load the central 48-hour salinity records. The page will retry automatically.";
+    return;
+  }
+  if(satisfied){
+    badge.textContent="48 HOURS SATISFIED";badge.style.background="#bff3cc";badge.style.color="#176b3b";
+    statusEl.textContent="All three salinity checks are at or above "+threshold.toFixed(1)+" ppt. Confirm the current NRE classification before harvesting.";
+  }else if(failed){
+    badge.textContent="FAILED";badge.style.background="#ffd0d0";badge.style.color="#9d2727";
+    statusEl.textContent="At least one recorded salinity check is below "+threshold.toFixed(1)+" ppt. The 48-hour reopening requirement has not been satisfied.";
+  }else if(started){
+    badge.textContent="IN PROGRESS";badge.style.background="#fff0df";badge.style.color="#a35a00";
+    statusEl.textContent="Central live record: 48-hour salinity check in progress. T0, T24 and T48 readings update automatically on every device.";
   }else{
-    statusEl.textContent="Waiting for all required environmental readings before the 48-hour check starts.";
+    badge.textContent="NOT STARTED";badge.style.background="#f4f7f8";badge.style.color="#52636d";
+    statusEl.textContent="No central 48-hour salinity check has been recorded yet. When started, T0, T24 and T48 will appear here live.";
   }
 }
 function load(){try{var raw=localStorage.getItem(KEY);if(raw){Object.assign(state,JSON.parse(raw));} state.alertEnabled=localStorage.getItem("toc-smithton-alert-enabled")==="true";}catch(e){state.alertEnabled=false;}}
