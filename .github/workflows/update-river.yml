@@ -115,18 +115,29 @@ jobs:
 
           previous_flow=None
           history=[]
+          threshold_events=[]
           old={}
           try:
               with open("river.json","r",encoding="utf-8") as f:
                   old=json.load(f)
               previous_flow=float(old.get("flow"))
               history=list(old.get("history") or [])
+              threshold_events=list(old.get("threshold_events") or [])
           except Exception:
               pass
 
           change_pct=None
           if previous_flow is not None and previous_flow != 0:
               change_pct=round((flow-previous_flow)/previous_flow*100,1)
+
+          # Record every observed crossing of the 5.0 m³/s environmental limit.
+          # The event timestamp is the NRE portal reading timestamp that first
+          # reports the river on the new side of the limit.
+          if previous_flow is not None:
+              if previous_flow <= 5 and flow > 5:
+                  threshold_events.append({"type":"over","timestamp":None,"flow":flow,"limit":5})
+              elif previous_flow > 5 and flow <= 5:
+                  threshold_events.append({"type":"under","timestamp":None,"flow":flow,"limit":5})
 
           now=datetime.datetime.now(datetime.timezone.utc).astimezone(HOBART)
           try:
@@ -156,6 +167,15 @@ jobs:
                   pass
           history=trimmed[-1000:]
 
+          # Fill the timestamp for a newly-created crossing event now that the
+          # NRE source timestamp has been validated.
+          if threshold_events and threshold_events[-1].get("timestamp") is None:
+              threshold_events[-1]["timestamp"]=source_timestamp
+
+          # Keep a useful event history without allowing the JSON file to grow
+          # indefinitely.
+          threshold_events=threshold_events[-100:]
+
           out={
               "station":"Duck River US Scotchtown Road Bridge",
               "station_no":"14214",
@@ -166,6 +186,7 @@ jobs:
               "limit":5,
               "previous_flow":round(previous_flow,3) if previous_flow is not None else None,
               "change_pct":change_pct,
+              "threshold_events":threshold_events,
               "history":history,
               "source":"NRE Tasmania Water Information Portal — station 14214 Discharge.1 export",
               "source_url":EXPORT_URL
