@@ -539,6 +539,18 @@ function renderRiverThresholdEvents(events){
     if(x.type==="over")over=x;
     if(x.type==="under")under=x;
   });
+  // Backfill from the retained portal history if threshold_events was
+  // introduced after a crossing had already occurred.
+  if(!over||!under){
+    var rows=Array.isArray(window.riverHistoryForEvents)?window.riverHistoryForEvents:[];
+    for(var i=1;i<rows.length;i++){
+      var prev=Number(rows[i-1].flow),cur=Number(rows[i].flow);
+      if(!isFinite(prev)||!isFinite(cur)||!rows[i].timestamp)continue;
+      var ev={timestamp:rows[i].timestamp,flow:cur,limit:5};
+      if(!over&&prev<=5&&cur>5){ev.type="over";over=ev;}
+      if(!under&&prev>5&&cur<=5){ev.type="under";under=ev;}
+    }
+  }
   function formatEvent(x){
     if(!x)return "No crossing recorded.";
     var d=new Date(x.timestamp);
@@ -571,6 +583,7 @@ async function riverFlow(){
     var checkedTime=fallback.updated?new Date(fallback.updated):null;
     el("riverStatus").textContent+=" • Portal reading "+readingTime.toLocaleString("en-AU")+" • Checked "+(checkedTime&&isFinite(checkedTime.getTime())?checkedTime.toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit",second:"2-digit"}):"—");
   }
+  window.riverHistoryForEvents=fallback.history||[];
   renderRiverHistory(fallback.history||[]);
   renderRiverThresholdEvents(fallback.threshold_events||[]);
   if(v>limit&&window.riverAlertState!==true)alertNow("RIVER FLOW ALERT",bayName()+" river flow is "+v.toFixed(3)+" m³/s — above the "+limit.toFixed(1)+" m³/s limit.","river-flow-alert");
