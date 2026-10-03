@@ -15,6 +15,11 @@
 .boomer-zone-status.open{background:#16823b}
 .boomer-zone-status.closed{background:#c62828}
 .boomer-zone-status.waiting{background:#6b7280}
+.env-control-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.env-control{padding:12px;border-radius:10px;border:2px solid #cbd6db;font-weight:700}
+.env-control.good{background:#bff3cc;border-color:#31a354;color:#176b3b}
+.env-control.bad{background:#ffd0d0;border-color:#c62828;color:#9d2727}
+@media(max-width:700px){.env-control-grid{grid-template-columns:1fr}}
 .boomer-zone-status .zone-name{font-size:.82rem;display:block;margin-bottom:4px}
 .boomer-zone-status .zone-state{font-size:1.15rem;display:block}
 .boomer-zone-status .zone-detail{font-size:.72rem;font-weight:600;display:block;margin-top:4px;opacity:.95}
@@ -65,7 +70,12 @@
     <div><span>Previous 3-day rainfall</span><strong id="rain3Value">—</strong><small>mm</small></div>
     <div><span>Previous 7-day rainfall</span><strong id="rain7Value">—</strong><small>mm</small></div>
   </div>
-  <p id="lastUpdated" class="muted">No readings yet.</p>
+  <div id="environmentControls" class="env-control-grid">
+<div id="envSalinity" class="env-control">Salinity: CHECKING</div>
+<div id="envRain3" class="env-control">Previous 3-day rainfall: CHECKING</div>
+<div id="envRain7" class="env-control">Previous 7-day rainfall: CHECKING</div>
+</div>
+<p id="lastUpdated" class="muted">No readings yet.</p>
 </article>
 </section>
 
@@ -174,6 +184,11 @@ function updateSelectedStatus(){
   el("salinityInput").value=sal;
 
   el("salinityValue").textContent=sal||"—";
+var c1=el("envSalinity"),c2=el("envRain3"),c3=el("envRain7");
+c1.className="env-control "+(okSal?"good":"bad"); c2.className="env-control "+(ok3?"good":"bad"); c3.className="env-control "+(ok7?"good":"bad");
+c1.textContent="Salinity: "+(sal?Number(sal).toFixed(1)+" ppt":"NOT ENTERED")+" • Limit ≥ "+zone.min+" ppt";
+c2.textContent="Previous 3-day rainfall: "+rain3.toFixed(1)+" mm • Limit < "+zone.r3+" mm";
+c3.textContent="Previous 7-day rainfall: "+rain7.toFixed(1)+" mm • Limit < "+zone.r7+" mm";
   el("rain3Value").textContent=rain3.toFixed(1);
   el("rain7Value").textContent=rain7.toFixed(1);
   el("statusText").textContent=open?"ENVIRONMENTAL CONDITIONS OK":"ENVIRONMENTAL CONTROL ALERT";
