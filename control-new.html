@@ -307,17 +307,53 @@ function el(id){return document.getElementById(id);}function updateBayBanner(){
 function renderPublicReopen(){
   var badge=el("publicReopenBadge"),statusEl=el("publicReopenStatus");
   if(!badge||!statusEl)return;
+
+  // The administrator records the 48-hour reopening checks in localStorage.
+  // Use the same key here so the public/read-only page shows the same T0/T24/T48
+  // date/time and salinity values on the same device.
+  var x={};
+  try{
+    x=JSON.parse(localStorage.getItem("toc-duckbay-reopen-admin-v1")||"{}");
+  }catch(e){x={};}
+
+  function show(id,value,isSalinity){
+    var target=el(id);
+    if(!target)return;
+    if(value===undefined||value===null||value===""){
+      target.textContent="—";
+      return;
+    }
+    if(isSalinity){
+      var n=Number(value);
+      target.textContent=isFinite(n)?n.toFixed(1):String(value);
+    }else{
+      var d=new Date(value);
+      target.textContent=isFinite(d.getTime())?d.toLocaleString("en-AU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):String(value);
+    }
+  }
+
+  show("publicT0Time",x.reopenT0Time,false);
+  show("publicT0Sal",x.reopenT0Sal,true);
+  show("publicT1Time",x.reopenT1Time,false);
+  show("publicT1Sal",x.reopenT1Sal,true);
+  show("publicT2Time",x.reopenT2Time,false);
+  show("publicT2Sal",x.reopenT2Sal,true);
+
   var ready=isFinite(previous7Total)&&(bayName()==="Duck Bay"?isFinite(previous3Total):true)&&(state.salinity!==""&&isFinite(Number(state.salinity)))&&(!bayUsesRiver()||isFinite(Number(window.riverCurrentFlow)));
-  badge.textContent=ready?"READY TO START":"WAITING";
-  badge.style.background=ready?"#bff3cc":"#f4f7f8";
-  badge.style.color=ready?"#176b3b":"#52636d";
-  if(ready){
+  var started=!!x.startedAt;
+  badge.textContent=started?"IN PROGRESS":(ready?"READY TO START":"WAITING");
+  badge.style.background=started?"#fff0df":(ready?"#bff3cc":"#f4f7f8");
+  badge.style.color=started?"#a35a00":(ready?"#176b3b":"#52636d");
+
+  if(started){
+    var startedDate=new Date(x.startedAt);
+    var startedText=isFinite(startedDate.getTime())?startedDate.toLocaleString("en-AU"):"";
+    statusEl.textContent="48-hour salinity check started"+(startedText?" "+startedText:"")+". T0, T24 and T48 readings are shown above.";
+  }else if(ready){
     statusEl.textContent="All available environmental readings are within the required range. The 48-hour salinity check can be commenced and recorded at T0, T24 and T48.";
   }else{
     statusEl.textContent="Waiting for all required environmental readings before the 48-hour check starts.";
   }
-  var v=state.salinity!==""&&isFinite(Number(state.salinity))?Number(state.salinity).toFixed(1):"—";
-  el("publicT0Sal").textContent=v;
 }
 function load(){try{var raw=localStorage.getItem(KEY);if(raw){Object.assign(state,JSON.parse(raw));} state.alertEnabled=localStorage.getItem("toc-smithton-alert-enabled")==="true";}catch(e){state.alertEnabled=false;}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));return true;}catch(e){return false;}}
