@@ -43,17 +43,17 @@
 </section>
 
 <section id="salinityReopenCard" class="card">
-<div class="card-head"><div><h2>Duck Bay — 48-hour salinity reopening</h2><p id="reopenStart" class="muted">48-hour check not started.</p></div><span class="badge">Reopening check</span></div>
-<p class="hint">Record the three salinity checks during the 48-hour period. After 48 hours of satisfactory readings, check the current NRE classification before reopening.</p>
+<div class="card-head"><div><h2>Duck Bay — 48-hour salinity reopening check</h2><p id="reopenStart" class="muted">Live check status loading…</p></div><span id="reopenBadge" class="badge">CHECKING</span></div>
+<p class="hint">Three salinity measurements at low tide: T0, T24 and T48. This information is centrally stored and is visible live on every device.</p>
 <div class="grid2">
 <label>T0 date/time<input id="t0Time" type="datetime-local" disabled></label>
 <label>T0 salinity (ppt)<input id="t0Salinity" type="number" step="0.1" disabled></label>
-<label>T1 date/time<input id="t1Time" type="datetime-local" disabled></label>
-<label>T1 salinity (ppt)<input id="t1Salinity" type="number" step="0.1" disabled></label>
-<label>T2 date/time<input id="t2Time" type="datetime-local" disabled></label>
-<label>T2 salinity (ppt)<input id="t2Salinity" type="number" step="0.1" disabled></label>
+<label>T24 date/time<input id="t24Time" type="datetime-local" disabled></label>
+<label>T24 salinity (ppt)<input id="t24Salinity" type="number" step="0.1" disabled></label>
+<label>T48 date/time<input id="t48Time" type="datetime-local" disabled></label>
+<label>T48 salinity (ppt)<input id="t48Salinity" type="number" step="0.1" disabled></label>
 </div>
-
+<div id="reopenLiveNote" class="notice" style="margin-top:14px">Live reopening status loading…</div>
 </section>
 
 <section class="card">
@@ -89,26 +89,47 @@ function controlsWithinLimits(){
   var riverOk=isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<=5;
   return salOk&&rain24Ok&&rain7Ok&&riverOk;
 }
-function reopenRender(){
-  var raw=null;try{raw=localStorage.getItem(REOPEN_KEY);raw=raw?JSON.parse(raw):null;}catch(e){}
-  var card=el("salinityReopenCard"),note=el("reopenNote");
-  card.style.display="block";
-  if(!controlsWithinLimits()){
-    if(raw&&raw.startedAt){
-      note.textContent="48-hour check paused — all environmental controls must be within limits."; 
-      el("reopenStart").textContent="48-hour check started: "+new Date(raw.startedAt).toLocaleString("en-AU");
-    } else {
-      note.textContent="Waiting for all environmental controls to be within limits before the 48-hour check starts.";
-      el("reopenStart").textContent="48-hour check not started.";
+async function loadReopenLive(){
+  var client=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
+  try{
+    var names=["Duck Bay Salinity T0","Duck Bay Salinity T24","Duck Bay Salinity T48"];
+    var r=await client.from("meat_test_results").select("bay_name,test_date,result,notes,created_at").in("bay_name",names).order("created_at",{ascending:false}).limit(20);
+    if(r.error)throw r.error;
+    var latest={};
+    (r.data||[]).forEach(function(x){if(!latest[x.bay_name])latest[x.bay_name]=x;});
+    var rows=[
+      {key:"Duck Bay Salinity T0",time:"t0Time",sal:"t0Salinity"},
+      {key:"Duck Bay Salinity T24",time:"t24Time",sal:"t24Salinity"},
+      {key:"Duck Bay Salinity T48",time:"t48Time",sal:"t48Salinity"}
+    ];
+    rows.forEach(function(x){
+      var v=latest[x.key]; el(x.time).value=""; el(x.sal).value="";
+      if(v){el(x.time).value=v.notes||v.test_date||"";el(x.sal).value=v.result==null?"":v.result;}
+    });
+    var t0=latest["Duck Bay Salinity T0"],t24=latest["Duck Bay Salinity T24"],t48=latest["Duck Bay Salinity T48"];
+    var badge=el("reopenBadge"),startEl=el("reopenStart"),note=el("reopenLiveNote");
+    var threshold=Number(state.salinityMin||32.5);
+    function val(x){return x&&isFinite(Number(x.result))?Number(x.result):NaN;}
+    var v0=val(t0),v24=val(t24),v48=val(t48);
+    var ok0=isFinite(v0)&&v0>=threshold,ok24=isFinite(v24)&&v24>=threshold,ok48=isFinite(v48)&&v48>=threshold;
+    if(!t0){
+      badge.textContent="NOT STARTED"; badge.style.background="#6b7280";
+      startEl.textContent="48-hour check has not been started.";
+      note.textContent="Waiting for the administrator to enter the T0 low-tide salinity measurement.";
+    }else if(!t48){
+      badge.textContent="IN PROGRESS"; badge.style.background="#f2c078";
+      startEl.textContent="48-hour salinity check started "+new Date(t0.notes||t0.test_date).toLocaleString("en-AU")+".";
+      note.innerHTML="T0: <b>"+(ok0?v0.toFixed(1)+" ppt ✓":(isFinite(v0)?v0.toFixed(1)+" ppt ✗":"—"))+"</b> &nbsp; • &nbsp; T24: <b>"+(isFinite(v24)?(ok24?v24.toFixed(1)+" ppt ✓":v24.toFixed(1)+" ppt ✗"):"PENDING")+"</b> &nbsp; • &nbsp; T48: <b>PENDING</b>";
+    }else{
+      var allOk=ok0&&ok24&&ok48;
+      badge.textContent=allOk?"48 HOURS SATISFIED":"FAILED"; badge.style.background=allOk?"#16823b":"#c62828";
+      startEl.textContent="48-hour salinity check completed "+new Date(t48.notes||t48.test_date).toLocaleString("en-AU")+".";
+      note.innerHTML="T0: <b>"+(isFinite(v0)?(ok0?v0.toFixed(1)+" ppt ✓":v0.toFixed(1)+" ppt ✗"):"—")+"</b> &nbsp; • &nbsp; T24: <b>"+(isFinite(v24)?(ok24?v24.toFixed(1)+" ppt ✓":v24.toFixed(1)+" ppt ✗"):"—")+"</b> &nbsp; • &nbsp; T48: <b>"+(isFinite(v48)?(ok48?v48.toFixed(1)+" ppt ✓":v48.toFixed(1)+" ppt ✗"):"—")+"</b><br><span style='display:block;margin-top:8px;font-weight:700'>"+(allOk?"48-hour salinity requirement satisfied — check current NRE classification before reopening.":"48-hour salinity requirement NOT satisfied.")+"</span>";
     }
-    return;
+  }catch(e){
+    el("reopenBadge").textContent="UNAVAILABLE"; el("reopenStart").textContent="Live reopening data unavailable.";
+    el("reopenLiveNote").textContent="Could not load the central reopening record. Harvest status should not be changed based on this unavailable data.";
   }
-  if(!raw||!raw.startedAt){raw={startedAt:new Date().toISOString()};try{localStorage.setItem(REOPEN_KEY,JSON.stringify(raw));}catch(e){}}
-  card.style.display="block";
-  el("reopenStart").textContent="48-hour check started: "+new Date(raw.startedAt).toLocaleString("en-AU");
-  note.textContent="ALL ENVIRONMENTAL CONTROLS WITHIN LIMITS — 48-hour salinity reopening check started.";
-  ["t0Time","t0Salinity","t1Time","t1Salinity","t2Time","t2Salinity"].forEach(function(id){var e=el(id);if(e&&raw[id])e.value=raw[id];});
-  ["t0Time","t0Salinity","t1Time","t1Salinity","t2Time","t2Salinity"].forEach(function(id){var e=el(id);if(e)e.onchange=function(){try{var x=JSON.parse(localStorage.getItem(REOPEN_KEY)||"{}");x[id]=e.value;localStorage.setItem(REOPEN_KEY,JSON.stringify(x));}catch(err){}};});
 }
 function updateBayBanner(){
   var sal=Number(state.salinity), min=Number(state.salinityMin), max=Number(state.salinityMax);
@@ -265,9 +286,9 @@ function init(){
   el("notifyBtn").addEventListener("click",async function(){if(state.alertEnabled){state.alertEnabled=false;save();updateNotifyButton();status("ALERTS OFF — this device will not receive environmental notifications.",true);return;}if(!("Notification" in window)){status("ALERTS NOT SUPPORTED",false);return;}try{var p=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(p!=="granted"){status("ALERTS BLOCKED — allow notifications in Chrome settings",false);return;}state.alertEnabled=true;save();updateNotifyButton();var reg=await navigator.serviceWorker.ready;await reg.showNotification("TOC Smithton Control",{body:"Environmental alerts are enabled on this device.",tag:"toc-test"});status("ALERTS ON ✓ — this setting will stay on until you turn it off.",true);}catch(e){status("ALERT SETUP FAILED",false);}});
 }
 load();render();init();updateNotifyButton();status("CONNECTING TO CENTRAL CONTROL…",true);
-loadCentral().then(function(ok){status(ok?"CENTRAL CONTROL CONNECTED ✓":"CENTRAL CONTROL UNAVAILABLE",ok);updateBayBanner();checkAlerts();});
+loadCentral().then(function(ok){status(ok?"CENTRAL CONTROL CONNECTED ✓":"CENTRAL CONTROL UNAVAILABLE",ok);updateBayBanner();checkAlerts();loadReopenLive();});
 weather();riverFlow();
-setInterval(loadCentral,30000);
+setInterval(function(){loadCentral();loadReopenLive();},30000);
 setInterval(weather,3600000);
 setInterval(riverFlow,300000);
 })();
