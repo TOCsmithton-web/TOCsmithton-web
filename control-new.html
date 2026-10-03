@@ -172,7 +172,7 @@ var DUCK_RAIN3_LIMIT=25;
 var bays=[];
 var currentBay=null;
 var meatTests=[];
-var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
+var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY,{global:{fetch:function(url,options){options=options||{};return fetch(url,Object.assign({},options,{cache:"no-store"}));}}});
 async function loadBays(){
  try{
   var r=await supabase.from("bay_settings").select("*").eq("active",true).order("id");
