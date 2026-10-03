@@ -184,6 +184,15 @@ function updateSelectedStatus(){
   el("salinityInput").value=sal;
 
   el("salinityValue").textContent=sal||"—";
+  var metricBoxes=document.querySelectorAll(".metric-row > div");
+  if(metricBoxes.length>=3){
+    metricBoxes[0].style.background=okSal?"#bff3cc":"#ffd0d0";
+    metricBoxes[0].style.border="2px solid "+(okSal?"#31a354":"#c62828");
+    metricBoxes[1].style.background=ok3?"#bff3cc":"#ffd0d0";
+    metricBoxes[1].style.border="2px solid "+(ok3?"#31a354":"#c62828");
+    metricBoxes[2].style.background=ok7?"#bff3cc":"#ffd0d0";
+    metricBoxes[2].style.border="2px solid "+(ok7?"#31a354":"#c62828");
+  }
 var c1=el("envSalinity"),c2=el("envRain3"),c3=el("envRain7");
 c1.className="env-control "+(okSal?"good":"bad"); c2.className="env-control "+(ok3?"good":"bad"); c3.className="env-control "+(ok7?"good":"bad");
 c1.textContent="Salinity: "+(sal?Number(sal).toFixed(1)+" ppt":"NOT ENTERED")+" • Limit ≥ "+zone.min+" ppt";
