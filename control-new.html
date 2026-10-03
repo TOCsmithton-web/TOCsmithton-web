@@ -380,6 +380,17 @@ function render(){
   el("rainThreshold").value=currentBay&&currentBay.rainfall_7d_limit!=null?currentBay.rainfall_7d_limit:"";
   el("rain7Threshold").value=limit;
   el("salinityValue").textContent=salRequired?(state.salinity===""?"—":Number(state.salinity).toFixed(1)):"N/A";
+  var mainMetricBoxes=document.querySelectorAll(".status-grid .metric-row > div");
+  if(mainMetricBoxes.length>=4){
+    mainMetricBoxes[0].style.background=salOk?"#bff3cc":"#ffd0d0";
+    mainMetricBoxes[0].style.border="2px solid "+(salOk?"#31a354":"#c62828");
+    mainMetricBoxes[1].style.background=rain24Ok?"#bff3cc":"#ffd0d0";
+    mainMetricBoxes[1].style.border="2px solid "+(rain24Ok?"#31a354":"#c62828");
+    mainMetricBoxes[2].style.background=rain3Ok?"#bff3cc":"#ffd0d0";
+    mainMetricBoxes[2].style.border="2px solid "+(rain3Ok?"#31a354":"#c62828");
+    mainMetricBoxes[3].style.background=rain7Ok?"#bff3cc":"#ffd0d0";
+    mainMetricBoxes[3].style.border="2px solid "+(rain7Ok?"#31a354":"#c62828");
+  }
   el("rainValue").textContent=isFinite(previous7Total)?previous7Total.toFixed(1):"—";
   el("rain24Value").textContent=previous24Total.toFixed(1);
   el("rain3Value").textContent=bayName()==="Duck Bay"?previous3Total.toFixed(1):"N/A";
