@@ -57,6 +57,7 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 <div id="reopenEditor" class="admin-card" style="display:none">
 <h2>Duck Bay — 48-hour salinity reopening check</h2>
 <p id="reopenStatus" class="small">Waiting for all environmental controls to be within limits.</p>
+<div id="reopenRecordStatus" class="notice" style="font-weight:800">STATUS: IN PROGRESS — saved data is published live and remains editable.</div>
 <div class="grid2">
 <label>T0 — date/time<input id="reopenT0Time" type="datetime-local"></label>
 <label>T0 — salinity (ppt)<input id="reopenT0Sal" type="number" step="0.1" min="0"></label>
@@ -65,7 +66,10 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 <label>T48 — date/time<input id="reopenT48Time" type="datetime-local"></label>
 <label>T48 — salinity (ppt)<input id="reopenT48Sal" type="number" step="0.1" min="0"></label>
 </div>
-<p class="small">T0, T24 and T48 must be taken at low tide, at representative lease locations. These records are saved centrally so the public page shows the same live readings on every device.</p><button id="saveReopenBtn" class="button" type="button">Save 48-hour salinity check</button><p id="reopenSaveMsg" class="small"></p>
+<p class="small">T0, T24 and T48 must be taken at low tide, at representative lease locations. Use <b>Save & Publish Progress</b> whenever you add or change a reading. The saved information is central and remains editable.</p>
+<button id="saveReopenBtn" class="button" type="button">Save & Publish Progress</button>
+<button id="completeReopenBtn" class="button" type="button" style="background:#176b3b;margin-left:8px">Completed & Submitted to NRE</button>
+<p id="reopenSaveMsg" class="small"></p>
 <a class="button secondary" href="https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas" target="_blank" rel="noopener">Check NRE classification</a>
 </div>
 
@@ -112,28 +116,37 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 "use strict";
 var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
 var $=function(id){return document.getElementById(id);};
-var REOPEN_KEY="toc-duckbay-reopen-admin-v1";
-function reopenSet(id,value){try{var x=JSON.parse(localStorage.getItem(REOPEN_KEY)||"{}");x[id]=value;localStorage.setItem(REOPEN_KEY,JSON.stringify(x));}catch(e){}}
-function reopenLoad(){try{var x=JSON.parse(localStorage.getItem(REOPEN_KEY)||"{}");["startedAt","reopenT0Time","reopenT0Sal","reopenT24Time","reopenT24Sal","reopenT48Time","reopenT48Sal"].forEach(function(id){if(x[id]&&$(id))$(id).value=x[id];});return x;}catch(e){return {};}}
+var REOPEN_STATUS="Duck Bay Salinity Reopening Status";
+async function loadReopenAdmin(){
+  var names=["Duck Bay Salinity T0","Duck Bay Salinity T24","Duck Bay Salinity T48",REOPEN_STATUS];
+  var r=await supabase.from("meat_test_results").select("bay_name,test_date,result,notes,created_at").in("bay_name",names).order("created_at",{ascending:false}).limit(30);
+  if(r.error){msg("reopenSaveMsg","Could not load the central reopening record: "+r.error.message,false);return;}
+  var latest={};
+  (r.data||[]).forEach(function(x){if(!latest[x.bay_name])latest[x.bay_name]=x;});
+  var map=[
+    ["Duck Bay Salinity T0","reopenT0Time","reopenT0Sal"],
+    ["Duck Bay Salinity T24","reopenT24Time","reopenT24Sal"],
+    ["Duck Bay Salinity T48","reopenT48Time","reopenT48Sal"]
+  ];
+  map.forEach(function(m){var x=latest[m[0]];$(m[1]).value=x?(x.notes||x.test_date||""):"";$(m[2]).value=x&&x.result!=null?x.result:"";});
+  var status=latest[REOPEN_STATUS]&&String(latest[REOPEN_STATUS].result||"IN PROGRESS").toUpperCase();
+  $("reopenRecordStatus").textContent=status==="COMPLETED AND SUBMITTED TO NRE"?"STATUS: COMPLETED AND SUBMITTED TO NRE — record remains editable for additional data.":"STATUS: IN PROGRESS — saved data is published live and remains editable.";
+  $("reopenRecordStatus").style.background=status==="COMPLETED AND SUBMITTED TO NRE"?"#dff5e8":"#eef4f7";
+  $("reopenRecordStatus").style.color=status==="COMPLETED AND SUBMITTED TO NRE"?"#176b3b":"#52636d";
+}
 function reopenWatch(){
   var sal=Number($("salinity").value), min=Number($("salinityMin").value||32.5), rain24=Number($("rain24").value), rain7=Number($("rain7").value);
   fetch("./river.json?ts="+Date.now(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(d){
     var river=Number(d&&d.flow), ok=isFinite(sal)&&sal>=min&&isFinite(rain24)&&rain24<=25&&isFinite(rain7)&&rain7<=40&&isFinite(river)&&river<=5;
-    var x=reopenLoad();
-    if(ok){
-      if(!x.startedAt){x.startedAt=new Date().toISOString();try{localStorage.setItem(REOPEN_KEY,JSON.stringify(x));}catch(e){}}
-      $("reopenEditor").style.display="block";
-      $("reopenStatus").textContent="ALL ENVIRONMENTAL CONTROLS WITHIN LIMITS — 48-hour check started "+new Date(x.startedAt).toLocaleString("en-AU")+".";
-      $("reopenStatus").style.color="#176b3b";
-    }else{
-      $("reopenEditor").style.display="block";
-      $("reopenStatus").textContent="Waiting — all environmental controls must be within limits before the 48-hour check starts.";
-      $("reopenStatus").style.color="#9d2727";
-    }
+    $("reopenEditor").style.display="block";
+    $("reopenStatus").textContent=ok?"ALL ENVIRONMENTAL CONTROLS WITHIN LIMITS — 48-hour check can be progressed.":"Waiting — all environmental controls must be within limits before the 48-hour check can be progressed.";
+    $("reopenStatus").style.color=ok?"#176b3b":"#9d2727";
+    loadReopenAdmin();
   }).catch(function(){
     $("reopenEditor").style.display="block";
-    $("reopenStatus").textContent="Waiting — river data unavailable.";
+    $("reopenStatus").textContent="Environmental control status unavailable — record remains editable.";
     $("reopenStatus").style.color="#9d2727";
+    loadReopenAdmin();
   });
 }
 
@@ -182,7 +195,27 @@ async function saveReopenChecks(){
     var r=await supabase.from("meat_test_results").insert({bay_name:x.name,test_date:x.time.slice(0,10),result:Number(x.sal),notes:x.time,entered_by:session.user.id});
     if(r.error){msg("reopenSaveMsg","SAVE BLOCKED at "+x.label+": "+r.error.message,false);return;}
   }
-  msg("reopenSaveMsg","48-HOUR SALINITY CHECK SAVED CENTRALLY ✓ — public page will update on all devices.",true);
+  var existing=await supabase.from("meat_test_results").select("result").eq("bay_name",REOPEN_STATUS).order("created_at",{ascending:false}).limit(1);
+  var current=existing.data&&existing.data[0]?String(existing.data[0].result).toUpperCase():"";
+  if(current!=="COMPLETED AND SUBMITTED TO NRE"){
+    var sr=await supabase.from("meat_test_results").insert({bay_name:REOPEN_STATUS,test_date:new Date().toISOString().slice(0,10),result:"IN PROGRESS",notes:"Saved and published "+new Date().toISOString(),entered_by:session.user.id});
+    if(sr.error){msg("reopenSaveMsg","Readings saved, but status could not be updated: "+sr.error.message,false);return;}
+  }
+  await loadReopenAdmin();
+  msg("reopenSaveMsg","SAVED & PUBLISHED ✓ — you can add T24/T48 data later without losing the saved record.",true);
+}
+async function completeReopen(){
+  var session=(await supabase.auth.getSession()).data.session;
+  if(!session){msg("reopenSaveMsg","You must be signed in.",false);return;}
+  var vals=["reopenT0Time","reopenT24Time","reopenT48Time","reopenT0Sal","reopenT24Sal","reopenT48Sal"];
+  for(var i=0;i<vals.length;i++){if(!$(vals[i]).value){msg("reopenSaveMsg","Cannot submit yet — all T0, T24 and T48 date/time and salinity fields are required.",false);return;}}
+  var min=Number($("salinityMin").value||32.5);
+  var sals=[Number($("reopenT0Sal").value),Number($("reopenT24Sal").value),Number($("reopenT48Sal").value)];
+  if(sals.some(function(v){return !isFinite(v)||v<min;})){msg("reopenSaveMsg","Cannot submit — all three salinity readings must be at or above "+min.toFixed(1)+" ppt.",false);return;}
+  var r=await supabase.from("meat_test_results").insert({bay_name:REOPEN_STATUS,test_date:new Date().toISOString().slice(0,10),result:"COMPLETED AND SUBMITTED TO NRE",notes:"Completed/submitted "+new Date().toISOString(),entered_by:session.user.id});
+  if(r.error){msg("reopenSaveMsg","SUBMISSION BLOCKED: "+r.error.message,false);return;}
+  await loadReopenAdmin();
+  msg("reopenSaveMsg","COMPLETED AND SUBMITTED TO NRE ✓ — the public page is updated.",true);
 }
 async function saveBiotoxin(){
   var date=$("biotoxinDate").value,result=$("biotoxinResult").value;
@@ -243,8 +276,8 @@ async function showSession(session){
     $("meatEditor").style.display="block";
     $("biotoxinEditor").style.display="block";
     $("reopenEditor").style.display="block";
-    reopenLoad();
     reopenWatch();
+    loadReopenAdmin();
     msg("accessMsg","ADMIN ACCESS CONFIRMED ✓",true);
     await loadSettings();
   }else{
@@ -294,11 +327,12 @@ $("saveBtn").onclick=async function(){
 
 $("meatBay").onchange=loadMeatList;
 $("biotoxinSaveBtn").onclick=saveBiotoxin;
+$("completeReopenBtn").onclick=completeReopen;
 $("biotoxinDate").value=new Date().toISOString().slice(0,10);
 loadBiotoxinList();
 $("meatSaveBtn").onclick=saveMeatTest;
-["reopenT0Time","reopenT0Sal","reopenT24Time","reopenT24Sal","reopenT48Time","reopenT48Sal"].forEach(function(id){$(id).onchange=function(){reopenSet(id,$(id).value);};});
 $("saveReopenBtn").onclick=saveReopenChecks;
+$("completeReopenBtn").onclick=completeReopen;
 $("meatDate").value=new Date().toISOString().slice(0,10);
 loadMeatList();
 supabase.auth.getSession().then(function(r){showSession(r.data.session);});
