@@ -92,8 +92,8 @@ function controlsWithinLimits(){
 async function loadReopenLive(){
   var client=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
   try{
-    var names=["Duck Bay Salinity T0","Duck Bay Salinity T24","Duck Bay Salinity T48"];
-    var r=await client.from("meat_test_results").select("bay_name,test_date,result,notes,created_at").in("bay_name",names).order("created_at",{ascending:false}).limit(20);
+    var names=["Duck Bay Salinity T0","Duck Bay Salinity T24","Duck Bay Salinity T48","Duck Bay Salinity Reopening Status"];
+    var r=await client.from("meat_test_results").select("bay_name,test_date,result,notes,created_at").in("bay_name",names).order("created_at",{ascending:false}).limit(30);
     if(r.error)throw r.error;
     var latest={};
     (r.data||[]).forEach(function(x){if(!latest[x.bay_name])latest[x.bay_name]=x;});
@@ -107,6 +107,8 @@ async function loadReopenLive(){
       if(v){el(x.time).value=v.notes||v.test_date||"";el(x.sal).value=v.result==null?"":v.result;}
     });
     var t0=latest["Duck Bay Salinity T0"],t24=latest["Duck Bay Salinity T24"],t48=latest["Duck Bay Salinity T48"];
+    var statusRow=latest["Duck Bay Salinity Reopening Status"];
+    var submitted=statusRow&&String(statusRow.result||"").toUpperCase()==="COMPLETED AND SUBMITTED TO NRE";
     var badge=el("reopenBadge"),startEl=el("reopenStart"),note=el("reopenLiveNote");
     var threshold=Number(state.salinityMin||32.5);
     function val(x){return x&&isFinite(Number(x.result))?Number(x.result):NaN;}
@@ -116,15 +118,15 @@ async function loadReopenLive(){
       badge.textContent="NOT STARTED"; badge.style.background="#6b7280";
       startEl.textContent="48-hour check has not been started.";
       note.textContent="Waiting for the administrator to enter the T0 low-tide salinity measurement.";
-    }else if(!t48){
-      badge.textContent="IN PROGRESS"; badge.style.background="#f2c078";
-      startEl.textContent="48-hour salinity check started "+new Date(t0.notes||t0.test_date).toLocaleString("en-AU")+".";
-      note.innerHTML="T0: <b>"+(ok0?v0.toFixed(1)+" ppt ✓":(isFinite(v0)?v0.toFixed(1)+" ppt ✗":"—"))+"</b> &nbsp; • &nbsp; T24: <b>"+(isFinite(v24)?(ok24?v24.toFixed(1)+" ppt ✓":v24.toFixed(1)+" ppt ✗"):"PENDING")+"</b> &nbsp; • &nbsp; T48: <b>PENDING</b>";
-    }else{
+    }else if(submitted){
       var allOk=ok0&&ok24&&ok48;
-      badge.textContent=allOk?"48 HOURS SATISFIED":"FAILED"; badge.style.background=allOk?"#16823b":"#c62828";
-      startEl.textContent="48-hour salinity check completed "+new Date(t48.notes||t48.test_date).toLocaleString("en-AU")+".";
-      note.innerHTML="T0: <b>"+(isFinite(v0)?(ok0?v0.toFixed(1)+" ppt ✓":v0.toFixed(1)+" ppt ✗"):"—")+"</b> &nbsp; • &nbsp; T24: <b>"+(isFinite(v24)?(ok24?v24.toFixed(1)+" ppt ✓":v24.toFixed(1)+" ppt ✗"):"—")+"</b> &nbsp; • &nbsp; T48: <b>"+(isFinite(v48)?(ok48?v48.toFixed(1)+" ppt ✓":v48.toFixed(1)+" ppt ✗"):"—")+"</b><br><span style='display:block;margin-top:8px;font-weight:700'>"+(allOk?"48-hour salinity requirement satisfied — check current NRE classification before reopening.":"48-hour salinity requirement NOT satisfied.")+"</span>";
+      badge.textContent="COMPLETED AND SUBMITTED TO NRE"; badge.style.background=allOk?"#16823b":"#c62828";
+      startEl.textContent="48-hour salinity check completed and submitted to NRE "+new Date(statusRow.notes||statusRow.test_date).toLocaleString("en-AU")+".";
+      note.innerHTML="T0: <b>"+(isFinite(v0)?(ok0?v0.toFixed(1)+" ppt ✓":v0.toFixed(1)+" ppt ✗"):"—")+"</b> &nbsp; • &nbsp; T24: <b>"+(isFinite(v24)?(ok24?v24.toFixed(1)+" ppt ✓":v24.toFixed(1)+" ppt ✗"):"—")+"</b> &nbsp; • &nbsp; T48: <b>"+(isFinite(v48)?(ok48?v48.toFixed(1)+" ppt ✓":v48.toFixed(1)+" ppt ✗"):"—")+"</b><br><span style='display:block;margin-top:8px;font-weight:700'>"+(allOk?"COMPLETED AND SUBMITTED TO NRE — saved readings remain available and editable in Admin.":"Submitted status recorded, but one or more readings are now below the salinity limit.")+"</span>";
+    }else{
+      badge.textContent="IN PROGRESS"; badge.style.background="#f2c078";
+      startEl.textContent="48-hour salinity check in progress — saved readings are published live.";
+      note.innerHTML="T0: <b>"+(ok0?v0.toFixed(1)+" ppt ✓":(isFinite(v0)?v0.toFixed(1)+" ppt ✗":"—"))+"</b> &nbsp; • &nbsp; T24: <b>"+(isFinite(v24)?(ok24?v24.toFixed(1)+" ppt ✓":v24.toFixed(1)+" ppt ✗"):"PENDING")+"</b> &nbsp; • &nbsp; T48: <b>"+(isFinite(v48)?(ok48?v48.toFixed(1)+" ppt ✓":v48.toFixed(1)+" ppt ✗"):"PENDING")+"</b>";
     }
   }catch(e){
     el("reopenBadge").textContent="UNAVAILABLE"; el("reopenStart").textContent="Live reopening data unavailable.";
