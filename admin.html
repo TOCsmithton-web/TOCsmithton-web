@@ -276,10 +276,10 @@ async function showSession(session){
     $("meatEditor").style.display="block";
     $("biotoxinEditor").style.display="block";
     $("reopenEditor").style.display="block";
-    reopenWatch();
-    loadReopenAdmin();
     msg("accessMsg","ADMIN ACCESS CONFIRMED ✓",true);
     await loadSettings();
+    await loadReopenAdmin();
+    reopenWatch();
   }else{
     $("editor").style.display="none";
     msg("accessMsg","READ-ONLY ACCOUNT — this account is not authorised to edit Smithton Control.",false);
@@ -327,7 +327,6 @@ $("saveBtn").onclick=async function(){
 
 $("meatBay").onchange=loadMeatList;
 $("biotoxinSaveBtn").onclick=saveBiotoxin;
-$("completeReopenBtn").onclick=completeReopen;
 $("biotoxinDate").value=new Date().toISOString().slice(0,10);
 loadBiotoxinList();
 $("meatSaveBtn").onclick=saveMeatTest;
