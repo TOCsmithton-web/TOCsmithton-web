@@ -1,19 +1,18 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="icon" href="./icons/toc-logo-shortcut.jpg?v=6" type="image/jpeg">
-<link rel="apple-touch-icon" href="./icons/toc-logo-shortcut.jpg?v=6">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<meta http-equiv="refresh" content="0; url=./control-public.html?v=202610061100">
-<title>TOC Smithton Environmental Control</title>
-<script>location.replace("./control-public.html?v=202610061100");</script>
-</head>
-<body>
-<p>Opening TOC Smithton Environmental Control…</p>
-<p><a href="./control-public.html?v=202610061100">Open dashboard</a></p>
-</body>
-</html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><title>Refreshing TOC Smithton Control</title></head>
+<body><p>Refreshing TOC Smithton Control…</p>
+<script>
+(async function(){
+  try{
+    if("serviceWorker" in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(function(r){return r.unregister();}));
+    }
+    if(window.caches){
+      const keys=await caches.keys();
+      await Promise.all(keys.map(function(k){return caches.delete(k);}));
+    }
+  }catch(e){}
+  location.replace("./control-public.html?v=202610061700");
+})();
+</script></body></html>
