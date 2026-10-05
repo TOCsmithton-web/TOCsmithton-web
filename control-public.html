@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0b4f6c">
 <link rel="icon" href="./icons/toc-logo-shortcut.jpg?v=6" type="image/jpeg">
 <link rel="apple-touch-icon" href="./icons/toc-logo-shortcut.jpg?v=6">
-<title>TOC Smithton Control</title>
+<title>TOC Smithton Control — Live</title>
 <link rel="manifest" href="manifest.json?v=3">
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -32,10 +32,10 @@
   <div class="card-head"><div><h2>Harvest area</h2><p class="muted">Select the bay you want to monitor.</p></div></div>
   <label>Bay
     <select id="baySelect" style="width:100%;padding:12px;border:1px solid #c8d3d8;border-radius:9px;font-size:16px;background:#fff">
-      <option value="">Loading bays…</option>
+      <option value="Duck Bay">Duck Bay</option>
     </select>
   </label>
-  <p id="bayCriteria" class="hint"></p>
+  <p id="bayCriteria" class="hint">Duck Bay • Salinity ≥ 32.5 ppt • River flow &lt;5.0 m³/s • 7-day rainfall closure threshold: 40.0 mm • 3-day rainfall closure threshold: 25.0 mm</p>
 </section>
 <section class="status-grid"><article class="card hero">
   <div class="card-head"><div><span class="label">Environmental status</span><h2 id="statusText">Awaiting readings</h2></div><span id="statusDot" class="status-dot neutral"></span></div>
