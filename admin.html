@@ -186,7 +186,7 @@ async function saveReopenChecks(){
   var checks=[
     {label:"T0",time:$("reopenT0Time").value,sal:$("reopenT0Sal").value,lowTide:$("reopenT0LowTide").value,name:"Duck Bay Salinity T0"},
     {label:"T24",time:$("reopenT24Time").value,sal:$("reopenT24Sal").value,lowTide:$("reopenT24LowTide").value,name:"Duck Bay Salinity T24"},
-    {label:"T48",time:$("reopenT48Time").value,sal:$("reopenT48Sal").value,name:"Duck Bay Salinity T48"}
+    {label:"T48",time:$("reopenT48Time").value,sal:$("reopenT48Sal").value,lowTide:$("reopenT48LowTide").value,name:"Duck Bay Salinity T48"}
   ];
   var entered=checks.filter(function(x){return x.time&&x.sal!==""&&x.lowTide;});
   if(!entered.length){msg("reopenSaveMsg","Enter at least one salinity date/time, salinity reading and low tide time.",false);return;}
