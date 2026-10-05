@@ -1,0 +1,81 @@
+name: Update NRE Duck Bay Classification
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7 * * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update-classification:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download current NRE ShellMAP classification notice
+        run: |
+          curl -fL --retry 3 --retry-delay 5 \
+            "https://nre.tas.gov.au/SiteAssets/ShellMAP%20Current%20Harvest%20Status.pdf" \
+            -o /tmp/shellmap-current.pdf
+          pdftotext -layout /tmp/shellmap-current.pdf /tmp/shellmap-current.txt
+
+      - name: Extract Duck Bay status and notice number
+        run: |
+          python - <<'PY'
+          import json, re
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          text = Path("/tmp/shellmap-current.txt").read_text(encoding="utf-8", errors="ignore")
+          compact = re.sub(r"\s+", " ", text)
+
+          notice = re.search(r"Classification Notice No\.\s*(\d{4}/\d+)", compact)
+          if not notice:
+              raise SystemExit("Could not find the current NRE classification notice number.")
+
+          start = compact.find("Duck Bay Harvest Area (Duck Bay)")
+          end = compact.find("Kemps Bay Harvest Area (Duck Bay)", start)
+          if start < 0:
+              raise SystemExit("Could not find Duck Bay Harvest Area in the NRE notice.")
+          if end < 0:
+              end = min(len(compact), start + 5000)
+
+          block = compact[start:end]
+          status = re.search(r"Duck Bay Harvest Area \(Duck Bay\)\s+(OPEN(?: \(CONDITIONAL\))?|CLOSED)", block)
+          if not status:
+              raise SystemExit("Could not determine Duck Bay status from the NRE notice.")
+
+          status_label = status.group(1)
+          open_state = status_label.startswith("OPEN")
+          effective = re.search(r"Duck Bay Harvest Area is\s+(OPEN|CLOSED).*?from\s+([0-9]{4}hrs\s+[0-9]{2}/[0-9]{2}/[0-9]{4})", block)
+
+          data = {
+              "source": "NRE Tasmania ShellMAP current harvest status",
+              "sourceUrl": "https://nre.tas.gov.au/SiteAssets/ShellMAP%20Current%20Harvest%20Status.pdf",
+              "area": "Duck Bay Harvest Area",
+              "status": "OPEN" if open_state else "CLOSED",
+              "statusLabel": status_label,
+              "conditional": "CONDITIONAL" in status_label,
+              "classificationNotice": notice.group(1),
+              "effectiveFrom": effective.group(2) if effective else "",
+              "checkedAt": datetime.now(timezone.utc).isoformat().replace("+00:00","Z")
+          }
+
+          Path("nre-classification.json").write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps(data, indent=2))
+          PY
+
+      - name: Commit changed classification
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add nre-classification.json
+          if git diff --cached --quiet; then
+            echo "No NRE classification change."
+            exit 0
+          fi
+          git commit -m "Update NRE Duck Bay classification"
+          git push
