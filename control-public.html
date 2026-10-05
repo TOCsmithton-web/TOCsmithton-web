@@ -200,7 +200,20 @@ async function loadBays(){
     new Promise(function(_,reject){setTimeout(function(){reject(new Error("Bay settings timeout"));},8000);})
   ]);
   if(r.error)throw r.error;
-  bays=r.data||[];
+  var liveBays=r.data||[];
+  // Normalise the public controls so a missing/null Supabase setting cannot hide a required control.
+  // Duck Bay: salinity >=32.5 ppt, river flow <5.0 m3/s, 7-day rainfall <40 mm, 3-day rainfall <25 mm.
+  // Kemps Bay: 7-day rainfall <25 mm and fortnightly meat testing; no salinity/river control.
+  var byName={};
+  liveBays.forEach(function(b){if(b&&b.bay_name)byName[String(b.bay_name).trim().toLowerCase()]=b;});
+  function publicBay(name,fallback){
+    var b=byName[name.toLowerCase()]||{};
+    return Object.assign({},b,fallback,{bay_name:name,active:true});
+  }
+  bays=[
+    publicBay("Duck Bay",{id:1,salinity_min:32.5,salinity_max:null,rainfall_7d_limit:40,river_flow_limit:5}),
+    publicBay("Kemps Bay",{id:2,salinity_min:null,salinity_max:null,rainfall_7d_limit:25,river_flow_limit:null})
+  ];
   var select=el("baySelect");
   var saved=localStorage.getItem("toc-smithton-bay")||"Duck Bay";
   select.innerHTML=bays.map(function(b){return "<option value=\""+b.bay_name.replace(/"/g,"&quot;")+"\">"+b.bay_name+"</option>";}).join("");
@@ -573,19 +586,23 @@ async function weather(){
 
     var nowParts=Object.fromEntries(new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Hobart",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).filter(function(p){return p.type!=="literal";}).map(function(p){return [p.type,p.value];}));
     var todayKey=nowParts.year+"-"+nowParts.month+"-"+nowParts.day;
-    var end9=new Date(todayKey+"T09:00:00+10:00");
-    var start7=new Date(end9);start7.setDate(start7.getDate()-7);
-    var start3=new Date(end9);start3.setDate(start3.getDate()-3);
-    var start24=new Date(end9);start24.setDate(start24.getDate()-1);
+    function shiftDateKey(key,days){
+      var a=key.split("-").map(Number), d=new Date(Date.UTC(a[0],a[1]-1,a[2]));
+      d.setUTCDate(d.getUTCDate()+days);
+      return d.toISOString().slice(0,10);
+    }
+    var endKey=todayKey+"T09:00";
+    var start7Key=shiftDateKey(todayKey,-7)+"T09:00";
+    var start3Key=shiftDateKey(todayKey,-3)+"T09:00";
+    var start24Key=shiftDateKey(todayKey,-1)+"T09:00";
 
     previous7Total=0;previous3Total=0;previous24Total=0;
     for(var i=0;i<data.hourly.time.length;i++){
-      var t=new Date(String(data.hourly.time[i]).replace(" ","T")+":00+10:00");
+      var key=String(data.hourly.time[i]).slice(0,13)+":00";
       var rain=Number(data.hourly.precipitation[i]||0);
-      if(!isFinite(t.getTime()))continue;
-      if(t>start7&&t<=end9)previous7Total+=rain;
-      if(t>start3&&t<=end9)previous3Total+=rain;
-      if(t>start24&&t<=end9)previous24Total+=rain;
+      if(key>start7Key&&key<=endKey)previous7Total+=rain;
+      if(key>start3Key&&key<=endKey)previous3Total+=rain;
+      if(key>start24Key&&key<=endKey)previous24Total+=rain;
     }
 
     var future=data.daily.time.map(function(date,i){
@@ -602,9 +619,8 @@ async function weather(){
       for(var k=1;k<=6;k++){
         if(i-k>=0) total+=Number(future[i-k].rain||0);
         else{
-          var d=new Date(x.date+"T00:00:00");
-          d.setDate(d.getDate()-k);
-          total+=Number(observedByDate[isoDate(d)]||0);
+          var priorDate=shiftDateKey(x.date,-k);
+          total+=Number(observedByDate[priorDate]||0);
         }
       }
       x.sevenDayTotal=total;
@@ -622,7 +638,7 @@ async function weather(){
   }catch(e){
     previous7Total=NaN;previous3Total=NaN;previous24Total=NaN;
     render();
-    box.innerHTML="<div class='loading'>Rainfall/weather unavailable — tap Refresh.</div>";
+    box.innerHTML="<div class='loading'>Rainfall/weather unavailable — tap Refresh. The control will retry automatically.</div>";
     console.error("Smithton weather:",e);
   }
 }
