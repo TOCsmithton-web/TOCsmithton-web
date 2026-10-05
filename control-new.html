@@ -318,8 +318,20 @@ async function loadPublicReopen(){
       .order("created_at",{ascending:false})
       .limit(30);
     if(r.error)throw r.error;
+    var sr=await supabase.from("meat_test_results")
+      .select("result,notes,created_at")
+      .eq("bay_name","Duck Bay Salinity Reopening Status")
+      .order("created_at",{ascending:false})
+      .limit(1);
+    if(sr.error)throw sr.error;
+    var status=sr.data&&sr.data[0]?sr.data[0]:null;
+    var resetAt=0;
+    if(status&&String(status.result||"").toUpperCase()==="RESET AFTER CLOSURE"){
+      try{resetAt=new Date(JSON.parse(status.notes||"{}").resetAt||status.created_at).getTime()||0;}catch(e){resetAt=new Date(status.created_at).getTime()||0;}
+    }
     var latest={};
     (r.data||[]).forEach(function(row){
+      if(resetAt&&new Date(row.created_at).getTime()<=resetAt)return;
       var name=String(row.bay_name||"");
       var key=name==="Duck Bay Salinity T0"?"T0":name==="Duck Bay Salinity T24"?"T24":name==="Duck Bay Salinity T48"?"T48":null;
       if(key&&!latest[key])latest[key]=row;
