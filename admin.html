@@ -326,6 +326,8 @@ async function showSession(session){
     await loadSettings();
     await loadReopenAdmin();
     reopenWatch();
+    clearInterval(window.reopenWatchTimer);
+    window.reopenWatchTimer=setInterval(reopenWatch,60000);
   }else{
     $("editor").style.display="none";
     msg("accessMsg","READ-ONLY ACCOUNT — this account is not authorised to edit Smithton Control.",false);
