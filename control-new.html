@@ -176,9 +176,9 @@ var currentBay=null;
 var meatTests=[];
 var nreClassification=null;
 var nreClassificationError=false;
-var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY,{global:{fetch:function(url,options){options=options||{};return fetch(url,Object.assign({},options,{cache:"no-store"}));}}});
+var supabase=null;\ntry{if(window.supabase&&window.TOC_SUPABASE_URL&&window.TOC_SUPABASE_PUBLISHABLE_KEY){supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY,{global:{fetch:function(url,options){options=options||{};return fetch(url,Object.assign({},options,{cache:"no-store"}));}}});}}catch(e){console.error("Supabase startup failed:",e);}\nvar SUPABASE_AVAILABLE=!!supabase;
 async function loadBays(){
- try{
+ try{\n  if(!supabase){\n    bays=[{id:1,bay_name:"Duck Bay",active:true,salinity_min:32.5,salinity_max:null,rainfall_7d_limit:40,river_flow_limit:5}];\n    var fallbackSelect=el("baySelect");\n    fallbackSelect.innerHTML="<option value=\"Duck Bay\">Duck Bay</option>";\n    fallbackSelect.value="Duck Bay";\n    currentBay=bays[0];\n    render();\n    return;\n  }
   var r=await supabase.from("bay_settings").select("*").eq("active",true).order("id");
   if(r.error)throw r.error;
   bays=r.data||[];
@@ -265,7 +265,7 @@ function renderMeatTests(errorText){
  }).join("");
 }
 async function loadCentral(){
- try{
+ try{\n  if(!supabase){status("LIVE DATABASE UNAVAILABLE — local control defaults active",false);return;}
   var r=await supabase.from("control_settings").select("salinity,salinity_min,salinity_max,rain_24h_limit,rain_7d_limit,updated_at").eq("id",1).maybeSingle();
   if(r.error)throw r.error;
   if(r.data){
