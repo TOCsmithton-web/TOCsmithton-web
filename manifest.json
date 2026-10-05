@@ -1,8 +1,8 @@
 {
-  "id": "./toc-smithton-v5",
+  "id": "./toc-smithton-v6",
   "name": "TOC Smithton Control",
   "short_name": "TOC Smithton",
-  "start_url": "./control-public.html?v=202610062000",
+  "start_url": "./control-public.html?v=202610061100",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
