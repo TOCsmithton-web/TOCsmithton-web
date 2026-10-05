@@ -59,14 +59,14 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 <p id="reopenStatus" class="small">Waiting for all environmental controls to be within limits.</p>
 <div id="reopenRecordStatus" class="notice" style="font-weight:800">STATUS: IN PROGRESS — saved data is published live and remains editable.</div>
 <div class="grid2">
-<label>T0 — date/time<input id="reopenT0Time" type="datetime-local"></label>
+<label>T0 — low tide date/time<input id="reopenT0Time" type="datetime-local"></label>
 <label>T0 — salinity (ppt)<input id="reopenT0Sal" type="number" step="0.1" min="0"></label>
-<label>T24 — date/time<input id="reopenT24Time" type="datetime-local"></label>
+<label>T24 — low tide date/time<input id="reopenT24Time" type="datetime-local"></label>
 <label>T24 — salinity (ppt)<input id="reopenT24Sal" type="number" step="0.1" min="0"></label>
-<label>T48 — date/time<input id="reopenT48Time" type="datetime-local"></label>
+<label>T48 — low tide date/time<input id="reopenT48Time" type="datetime-local"></label>
 <label>T48 — salinity (ppt)<input id="reopenT48Sal" type="number" step="0.1" min="0"></label>
 </div>
-<p class="small">T0, T24 and T48 must be taken at low tide, at representative lease locations. Use <b>Save & Publish Progress</b> whenever you add or change a reading. The saved information is central and remains editable.</p>
+<p class="small">Enter the low tide date/time for each T0, T24 and T48 reading. Use <b>Save & Publish Progress</b> whenever you add or change a reading. The saved information is central and remains editable.</p>
 <button id="saveReopenBtn" class="button" type="button">Save & Publish Progress</button>
 <button id="completeReopenBtn" class="button" type="button" style="background:#176b3b;margin-left:8px">Completed & Submitted to NRE</button>
 <p id="reopenSaveMsg" class="small"></p>
