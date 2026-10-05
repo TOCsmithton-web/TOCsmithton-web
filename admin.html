@@ -59,14 +59,14 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 <p id="reopenStatus" class="small">Waiting for all environmental controls to be within limits.</p>
 <div id="reopenRecordStatus" class="notice" style="font-weight:800">STATUS: IN PROGRESS — saved data is published live and remains editable.</div>
 <div class="grid2">
-<label>T0 — low tide date/time<input id="reopenT0Time" type="datetime-local"></label>
-<label>T0 — salinity (ppt)<input id="reopenT0Sal" type="number" step="0.1" min="0"></label>
-<label>T24 — low tide date/time<input id="reopenT24Time" type="datetime-local"></label>
-<label>T24 — salinity (ppt)<input id="reopenT24Sal" type="number" step="0.1" min="0"></label>
-<label>T48 — low tide date/time<input id="reopenT48Time" type="datetime-local"></label>
-<label>T48 — salinity (ppt)<input id="reopenT48Sal" type="number" step="0.1" min="0"></label>
+<label>T0 — salinity date/time<input id="reopenT0Time" type="datetime-local"></label>
+<label>T0 — salinity (ppt)<input id="reopenT0Sal" type="number" step="0.1" min="0"><label>T0 — low tide time<input id="reopenT0LowTide" type="time"></label></label>
+<label>T24 — salinity date/time<input id="reopenT24Time" type="datetime-local"></label>
+<label>T24 — salinity (ppt)<input id="reopenT24Sal" type="number" step="0.1" min="0"><label>T24 — low tide time<input id="reopenT24LowTide" type="time"></label></label>
+<label>T48 — salinity date/time<input id="reopenT48Time" type="datetime-local"></label>
+<label>T48 — salinity (ppt)<input id="reopenT48Sal" type="number" step="0.1" min="0"><label>T48 — low tide time<input id="reopenT48LowTide" type="time"></label></label>
 </div>
-<p class="small">Enter the low tide date/time for each T0, T24 and T48 reading. Use <b>Save & Publish Progress</b> whenever you add or change a reading. The saved information is central and remains editable.</p>
+<p class="small">Enter the salinity date/time and the time of low tide for each T0, T24 and T48 reading. Use <b>Save & Publish Progress</b> whenever you add or change a reading. The saved information is central and remains editable.</p>
 <button id="saveReopenBtn" class="button" type="button">Save & Publish Progress</button>
 <button id="completeReopenBtn" class="button" type="button" style="background:#176b3b;margin-left:8px">Completed & Submitted to NRE</button>
 <p id="reopenSaveMsg" class="small"></p>
@@ -124,11 +124,11 @@ async function loadReopenAdmin(){
   var latest={};
   (r.data||[]).forEach(function(x){if(!latest[x.bay_name])latest[x.bay_name]=x;});
   var map=[
-    ["Duck Bay Salinity T0","reopenT0Time","reopenT0Sal"],
-    ["Duck Bay Salinity T24","reopenT24Time","reopenT24Sal"],
+    ["Duck Bay Salinity T0","reopenT0Time","reopenT0Sal","reopenT0LowTide"],
+    ["Duck Bay Salinity T24","reopenT24Time","reopenT24Sal","reopenT24LowTide"],
     ["Duck Bay Salinity T48","reopenT48Time","reopenT48Sal"]
   ];
-  map.forEach(function(m){var x=latest[m[0]];$(m[1]).value=x?(x.notes||x.test_date||""):"";$(m[2]).value=x&&x.result!=null?x.result:"";});
+  map.forEach(function(m){var x=latest[m[0]];var meta={};try{meta=x&&x.notes?JSON.parse(x.notes):{};}catch(e){}$(m[1]).value=x?(meta.salinityTime||x.notes||x.test_date||""):"";$(m[2]).value=x&&x.result!=null?x.result:"";$(m[3]).value=meta.lowTideTime||"";});
   var status=latest[REOPEN_STATUS]&&String(latest[REOPEN_STATUS].result||"IN PROGRESS").toUpperCase();
   $("reopenRecordStatus").textContent=status==="COMPLETED AND SUBMITTED TO NRE"?"STATUS: COMPLETED AND SUBMITTED TO NRE — record remains editable for additional data.":"STATUS: IN PROGRESS — saved data is published live and remains editable.";
   $("reopenRecordStatus").style.background=status==="COMPLETED AND SUBMITTED TO NRE"?"#dff5e8":"#eef4f7";
@@ -184,15 +184,15 @@ async function saveReopenChecks(){
   var session=(await supabase.auth.getSession()).data.session;
   if(!session){msg("reopenSaveMsg","You must be signed in.",false);return;}
   var checks=[
-    {label:"T0",time:$("reopenT0Time").value,sal:$("reopenT0Sal").value,name:"Duck Bay Salinity T0"},
-    {label:"T24",time:$("reopenT24Time").value,sal:$("reopenT24Sal").value,name:"Duck Bay Salinity T24"},
+    {label:"T0",time:$("reopenT0Time").value,sal:$("reopenT0Sal").value,lowTide:$("reopenT0LowTide").value,name:"Duck Bay Salinity T0"},
+    {label:"T24",time:$("reopenT24Time").value,sal:$("reopenT24Sal").value,lowTide:$("reopenT24LowTide").value,name:"Duck Bay Salinity T24"},
     {label:"T48",time:$("reopenT48Time").value,sal:$("reopenT48Sal").value,name:"Duck Bay Salinity T48"}
   ];
-  var entered=checks.filter(function(x){return x.time&&x.sal!=="";});
-  if(!entered.length){msg("reopenSaveMsg","Enter at least one date/time and salinity reading.",false);return;}
+  var entered=checks.filter(function(x){return x.time&&x.sal!==""&&x.lowTide;});
+  if(!entered.length){msg("reopenSaveMsg","Enter at least one salinity date/time, salinity reading and low tide time.",false);return;}
   for(var i=0;i<entered.length;i++){
     var x=entered[i];
-    var r=await supabase.from("meat_test_results").insert({bay_name:x.name,test_date:x.time.slice(0,10),result:Number(x.sal),notes:x.time,entered_by:session.user.id});
+    var r=await supabase.from("meat_test_results").insert({bay_name:x.name,test_date:x.time.slice(0,10),result:Number(x.sal),notes:JSON.stringify({salinityTime:x.time,lowTideTime:x.lowTide}),entered_by:session.user.id});
     if(r.error){msg("reopenSaveMsg","SAVE BLOCKED at "+x.label+": "+r.error.message,false);return;}
   }
   var existing=await supabase.from("meat_test_results").select("result").eq("bay_name",REOPEN_STATUS).order("created_at",{ascending:false}).limit(1);
@@ -207,7 +207,7 @@ async function saveReopenChecks(){
 async function completeReopen(){
   var session=(await supabase.auth.getSession()).data.session;
   if(!session){msg("reopenSaveMsg","You must be signed in.",false);return;}
-  var vals=["reopenT0Time","reopenT24Time","reopenT48Time","reopenT0Sal","reopenT24Sal","reopenT48Sal"];
+  var vals=["reopenT0Time","reopenT24Time","reopenT48Time","reopenT0Sal","reopenT24Sal","reopenT48Sal","reopenT0LowTide","reopenT24LowTide","reopenT48LowTide"];
   for(var i=0;i<vals.length;i++){if(!$(vals[i]).value){msg("reopenSaveMsg","Cannot submit yet — all T0, T24 and T48 date/time and salinity fields are required.",false);return;}}
   var min=Number($("salinityMin").value||32.5);
   var sals=[Number($("reopenT0Sal").value),Number($("reopenT24Sal").value),Number($("reopenT48Sal").value)];
