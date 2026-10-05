@@ -6,7 +6,7 @@ on:
     paths-ignore:
       - "river.json"
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "7 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -15,7 +15,7 @@ permissions:
 # Prevent scheduled and push-triggered river updates from racing each other.
 concurrency:
   group: duck-river-update
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   update-river:
