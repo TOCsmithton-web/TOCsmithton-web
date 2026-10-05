@@ -174,6 +174,8 @@ var DUCK_RAIN3_LIMIT=25;
 var bays=[];
 var currentBay=null;
 var meatTests=[];
+var nreClassification=null;
+var nreClassificationError=false;
 var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY,{global:{fetch:function(url,options){options=options||{};return fetch(url,Object.assign({},options,{cache:"no-store"}));}}});
 async function loadBays(){
  try{
@@ -278,7 +280,22 @@ async function loadCentral(){
   }
  }catch(e){status("CENTRAL CONTROL UNAVAILABLE",false);}
 }
-function el(id){return document.getElementById(id);}function updateBayBanner(){
+function el(id){return document.getElementById(id);}
+async function loadNreClassification(){
+  try{
+    var r=await fetch("./nre-classification.json?ts="+Date.now(),{cache:"no-store"});
+    if(!r.ok)throw new Error("NRE classification unavailable");
+    var d=await r.json();
+    if(!d||d.area!=="Duck Bay Harvest Area"||!d.classificationNotice||!d.status)throw new Error("Invalid NRE classification data");
+    nreClassification=d;
+    nreClassificationError=false;
+  }catch(e){
+    nreClassification=null;
+    nreClassificationError=true;
+  }
+  updateBayBanner();
+}
+function updateBayBanner(){
   var sal=Number(state.salinity), min=currentBay&&currentBay.salinity_min!=null?Number(currentBay.salinity_min):null, max=currentBay&&currentBay.salinity_max!=null?Number(currentBay.salinity_max):null;
   var salOk=!bayUsesSalinity()||(state.salinity!==""&&isFinite(sal)&&(min==null||sal>=min)&&(max==null||sal<=max));
   var rain24Ok=isFinite(previous24Total)&&previous24Total<Number(state.rainThreshold||25);
@@ -296,10 +313,26 @@ function el(id){return document.getElementById(id);}function updateBayBanner(){
   } else if(isKemps) {
     meatDueOk=false;
   }
-  var open=salOk&&rain3Ok&&rain7Ok&&riverOk&&meatOk&&meatDueOk;
+  var environmentalOpen=salOk&&rain3Ok&&rain7Ok&&riverOk&&meatOk&&meatDueOk;
+  var isDuck=bayName().trim().toLowerCase()==="duck bay";
+  var nreOpen=!!(nreClassification&&String(nreClassification.status).toUpperCase()==="OPEN");
+  var open=isDuck ? (environmentalOpen&&nreOpen&&!nreClassificationError) : environmentalOpen;
   var b=el("bayBanner"); if(!b)return;
   b.className="bay-banner "+(open?"open":"closed");
-  b.innerHTML=bayName().toUpperCase()+" "+(open?"OPEN":"CLOSED")+"<a href=\"https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas\" target=\"_blank\" rel=\"noopener\" style=\"display:block;color:#fff;text-decoration:underline;font-size:.72em;margin-top:4px;font-weight:700\">CHECK NRE CLASSIFICATION BEFORE HARVESTING</a>";
+  if(isDuck){
+    if(nreClassificationError){
+      b.innerHTML="<strong>DUCK BAY STATUS UNVERIFIED</strong><span style=\"display:block;font-size:.76em;margin-top:4px;font-weight:700\">NRE CLASSIFICATION COULD NOT BE CONFIRMED — CHECK NRE BEFORE HARVESTING</span><a href=\"https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas\" target=\"_blank\" rel=\"noopener\" style=\"display:block;color:#fff;text-decoration:underline;font-size:.70em;margin-top:4px;font-weight:700\">OPEN NRE CLASSIFICATION NOTICE</a>";
+    }else if(nreOpen){
+      var notice=String(nreClassification.classificationNotice||"");
+      var conditional=nreClassification.conditional?" (CONDITIONAL)":"";
+      b.innerHTML="<strong>DUCK BAY OPEN</strong><span style=\"display:block;font-size:.76em;margin-top:4px;font-weight:700\">NRE CONFIRMED OPEN"+conditional+" • CLASSIFICATION NOTICE NO. "+notice+"</span><a href=\"https://nre.tas.gov.au/SiteAssets/ShellMAP%20Current%20Harvest%20Status.pdf\" target=\"_blank\" rel=\"noopener\" style=\"display:block;color:#fff;text-decoration:underline;font-size:.70em;margin-top:4px;font-weight:700\">OPEN NRE CLASSIFICATION NOTICE</a>";
+    }else{
+      var closedNotice=String(nreClassification.classificationNotice||"");
+      b.innerHTML="<strong>DUCK BAY CLOSED</strong><span style=\"display:block;font-size:.76em;margin-top:4px;font-weight:700\">NRE CONFIRMED CLOSED • CLASSIFICATION NOTICE NO. "+closedNotice+"</span><a href=\"https://nre.tas.gov.au/SiteAssets/ShellMAP%20Current%20Harvest%20Status.pdf\" target=\"_blank\" rel=\"noopener\" style=\"display:block;color:#fff;text-decoration:underline;font-size:.70em;margin-top:4px;font-weight:700\">OPEN NRE CLASSIFICATION NOTICE</a>";
+    }
+  }else{
+    b.innerHTML=bayName().toUpperCase()+" "+(open?"OPEN":"CLOSED")+"<a href=\"https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas\" target=\"_blank\" rel=\"noopener\" style=\"display:block;color:#fff;text-decoration:underline;font-size:.72em;margin-top:4px;font-weight:700\">CHECK NRE CLASSIFICATION BEFORE HARVESTING</a>";
+  }
   if(window.bayFlashTimer){clearInterval(window.bayFlashTimer);window.bayFlashTimer=null;}
   b.style.backgroundColor=open?"#16823b":"#c62828";
   b.style.color="#fff";
@@ -679,7 +712,8 @@ function init(){
   el("baySelect").addEventListener("change",function(){setTimeout(function(){riverFlow();weather();loadMeatTests();},50);});
   el("notifyBtn").addEventListener("click",async function(){if(state.alertEnabled){state.alertEnabled=false;try{localStorage.setItem("toc-smithton-alert-enabled","false");}catch(e){}updateNotifyButton();status("ALERTS OFF — this device will not receive environmental notifications.",true);return;}if(!("Notification" in window)){status("ALERTS NOT SUPPORTED",false);return;}try{var p=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(p!=="granted"){status("ALERTS BLOCKED — allow notifications in Chrome settings",false);return;}state.alertEnabled=true;try{localStorage.setItem("toc-smithton-alert-enabled","true");}catch(e){}updateNotifyButton();var reg=await navigator.serviceWorker.ready;await reg.showNotification("TOC Smithton Control",{body:"Environmental alerts are enabled on this device. This setting stays on until you turn it off.",tag:"toc-test"});status("ALERTS ON ✓ — this setting stays on until you turn it off.",true);}catch(e){status("ALERT SETUP FAILED",false);}});
 }
-load();render();init();updateNotifyButton();status("APP READY ✓",true);updateMeatCompliance();loadBays();loadCentral();weather();riverFlow();loadMeatTests();loadPublicReopen();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,60000);setInterval(loadMeatTests,10000);setInterval(loadPublicReopen,10000);
+load();render();init();updateNotifyButton();status("APP READY ✓",true);updateMeatCompliance();loadNreClassification();
+loadBays();loadCentral();weather();riverFlow();loadMeatTests();loadPublicReopen();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,60000);setInterval(loadMeatTests,10000);setInterval(loadPublicReopen,10000);
 })();
 </script>
 <script>
