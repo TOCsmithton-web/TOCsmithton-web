@@ -309,7 +309,7 @@ function el(id){return document.getElementById(id);}function updateBayBanner(){
 
 var publicReopen={T0:null,T24:null,T48:null,error:null};
 
-async async function loadPublicReopen(){
+async function loadPublicReopen(){
   try{
     var names=["Duck Bay Salinity T0","Duck Bay Salinity T24","Duck Bay Salinity T48"];
     var r=await supabase.from("meat_test_results")
