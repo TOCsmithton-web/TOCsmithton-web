@@ -203,7 +203,17 @@ async function loadBays(){
   await loadMeatTests();
   weather();
   riverFlow();
- }catch(e){el("baySelect").innerHTML="<option>Bay data unavailable</option>";}
+ }catch(e){
+  console.warn("Bay settings unavailable; using public fallback.",e);
+  bays=[{id:1,bay_name:"Duck Bay",active:true,salinity_min:32.5,salinity_max:null,rainfall_7d_limit:40,river_flow_limit:5}];
+  var fallbackSelect=el("baySelect");
+  fallbackSelect.innerHTML='<option value="Duck Bay">Duck Bay</option>';
+  fallbackSelect.value="Duck Bay";
+  currentBay=bays[0];
+  render();
+  weather();
+  riverFlow();
+ }
 }
 function bayUsesRiver(){return !!(currentBay&&currentBay.river_flow_limit!=null);}
 function bayUsesSalinity(){return !!(currentBay&&(currentBay.salinity_min!=null||currentBay.salinity_max!=null));}
@@ -533,7 +543,10 @@ async function weather(){
   var box=el("forecast");box.innerHTML="<div class='loading'>Loading Smithton rainfall…</div>";
   try{
     var url="https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&hourly=precipitation&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&past_days=8&forecast_days=7&timezone=Australia%2FHobart";
-    var response=await fetch(url,{cache:"no-store"});
+    var controller=new AbortController();
+    var timeout=setTimeout(function(){controller.abort();},12000);
+    var response=await fetch(url,{cache:"no-store",signal:controller.signal});
+    clearTimeout(timeout);
     if(!response.ok)throw new Error("weather service "+response.status);
     var data=await response.json();
     if(!data.hourly||!data.daily)throw new Error("incomplete weather data");
@@ -697,7 +710,10 @@ async function riverFlow(){
   if(section)section.style.display="";
   var fallback=null;
   try{
-    var response=await fetch("./river.json?ts="+Date.now(),{cache:"no-store",headers:{"Cache-Control":"no-cache"}});
+    var controller=new AbortController();
+    var timeout=setTimeout(function(){controller.abort();},10000);
+    var response=await fetch("./river.json?ts="+Date.now(),{cache:"no-store",headers:{"Cache-Control":"no-cache"},signal:controller.signal});
+    clearTimeout(timeout);
     if(response.ok){var d=await response.json();if(isFinite(Number(d.flow)))fallback=d;}
   }catch(e){}
   if(!fallback){el("riverFlow").textContent="—";el("riverStatus").textContent="River flow unavailable";window.riverCurrentFlow=NaN;updateBayBanner();return;}
