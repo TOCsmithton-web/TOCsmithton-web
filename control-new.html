@@ -190,7 +190,10 @@ async function loadBays(){
     render();
     return;
   }
-  var r=await supabase.from("bay_settings").select("*").eq("active",true).order("id");
+  var r=await Promise.race([
+    supabase.from("bay_settings").select("*").eq("active",true).order("id"),
+    new Promise(function(_,reject){setTimeout(function(){reject(new Error("Bay settings timeout"));},8000);})
+  ]);
   if(r.error)throw r.error;
   bays=r.data||[];
   var select=el("baySelect");
@@ -221,7 +224,10 @@ function bayRainLimit(){return currentBay&&currentBay.rainfall_7d_limit!=null?Nu
 function bayName(){return currentBay?currentBay.bay_name:"Duck Bay";}
 async function loadMeatTests(){
  try{
-  var r=await supabase.from("meat_test_results").select("id,bay_name,test_date,result,notes,created_at,updated_at").order("test_date",{ascending:false}).order("created_at",{ascending:false}).limit(200);
+  var r=await Promise.race([
+    supabase.from("meat_test_results").select("id,bay_name,test_date,result,notes,created_at,updated_at").order("test_date",{ascending:false}).order("created_at",{ascending:false}).limit(200),
+    new Promise(function(_,reject){setTimeout(function(){reject(new Error("Meat tests timeout"));},8000);})
+  ]);
   if(r.error)throw r.error;
   var wanted=bayName().trim().toLowerCase();
   meatTests=(r.data||[]).filter(function(x){return String(x.bay_name||"").trim().toLowerCase()===wanted;}).slice(0,5);
@@ -288,7 +294,10 @@ function renderMeatTests(errorText){
 async function loadCentral(){
  try{
   if(!supabase){status("LIVE DATABASE UNAVAILABLE — local control defaults active",false);return;}
-  var r=await supabase.from("control_settings").select("salinity,salinity_min,salinity_max,rain_24h_limit,rain_7d_limit,updated_at").eq("id",1).maybeSingle();
+  var r=await Promise.race([
+    supabase.from("control_settings").select("salinity,salinity_min,salinity_max,rain_24h_limit,rain_7d_limit,updated_at").eq("id",1).maybeSingle(),
+    new Promise(function(_,reject){setTimeout(function(){reject(new Error("Control settings timeout"));},8000);})
+  ]);
   if(r.error)throw r.error;
   if(r.data){
    state.salinity=r.data.salinity==null?"":String(r.data.salinity);
