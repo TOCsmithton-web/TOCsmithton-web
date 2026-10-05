@@ -201,18 +201,15 @@ async function loadBays(){
   ]);
   if(r.error)throw r.error;
   var liveBays=r.data||[];
-  // Normalise the public controls so a missing/null Supabase setting cannot hide a required control.
-  // Duck Bay: salinity >=32.5 ppt, river flow <5.0 m3/s, 7-day rainfall <40 mm, 3-day rainfall <25 mm.
-  // Kemps Bay: 7-day rainfall <25 mm and fortnightly meat testing; no salinity/river control.
+  // Public controls are authoritative for the two harvest areas used by this page.
+  // Do not allow missing/null database fields to hide required environmental controls.
   var byName={};
   liveBays.forEach(function(b){if(b&&b.bay_name)byName[String(b.bay_name).trim().toLowerCase()]=b;});
-  function publicBay(name,fallback){
-    var b=byName[name.toLowerCase()]||{};
-    return Object.assign({},b,fallback,{bay_name:name,active:true});
-  }
+  var duck=byName["duck bay"]||{};
+  var kemps=byName["kemps bay"]||{};
   bays=[
-    publicBay("Duck Bay",{id:1,salinity_min:32.5,salinity_max:null,rainfall_7d_limit:40,river_flow_limit:5}),
-    publicBay("Kemps Bay",{id:2,salinity_min:null,salinity_max:null,rainfall_7d_limit:25,river_flow_limit:null})
+    Object.assign({},duck,{id:duck.id||1,bay_name:"Duck Bay",active:true,salinity_min:32.5,salinity_max:null,rainfall_7d_limit:40,river_flow_limit:5}),
+    Object.assign({},kemps,{id:kemps.id||2,bay_name:"Kemps Bay",active:true,salinity_min:null,salinity_max:null,rainfall_7d_limit:25,river_flow_limit:null})
   ];
   var select=el("baySelect");
   var saved=localStorage.getItem("toc-smithton-bay")||"Duck Bay";
@@ -573,7 +570,9 @@ function render(){
 
 function isoDate(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 async function weather(){
-  var box=el("forecast");box.innerHTML="<div class='loading'>Loading Smithton rainfall…</div>";
+  var box=el("forecast");
+  box.innerHTML="<div class='loading'>Loading Smithton rainfall forecast…</div>";
+  var data=null;
   try{
     var url="https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&hourly=precipitation&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&past_days=8&forecast_days=7&timezone=Australia%2FHobart";
     var controller=new AbortController();
@@ -581,13 +580,27 @@ async function weather(){
     var response=await fetch(url,{cache:"no-store",signal:controller.signal});
     clearTimeout(timeout);
     if(!response.ok)throw new Error("weather service "+response.status);
-    var data=await response.json();
-    if(!data.hourly||!data.daily)throw new Error("incomplete weather data");
-
+    data=await response.json();
+  }catch(e){
+    console.warn("Primary Smithton weather request failed; trying forecast-only request.",e);
+    try{
+      var fallbackResponse=await fetch("https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=Australia%2FHobart",{cache:"no-store"});
+      if(!fallbackResponse.ok)throw new Error("forecast fallback "+fallbackResponse.status);
+      var fd=await fallbackResponse.json();
+      data={hourly:{time:[],precipitation:[]},daily:fd.daily};
+    }catch(e2){
+      previous7Total=NaN;previous3Total=NaN;previous24Total=NaN;
+      render();
+      box.innerHTML="<div class='loading'>Rainfall/weather unavailable — tap Refresh. The control will retry automatically.</div>";
+      return;
+    }
+  }
+  try{
+    if(!data.daily)throw new Error("incomplete weather data");
     var nowParts=Object.fromEntries(new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Hobart",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).filter(function(p){return p.type!=="literal";}).map(function(p){return [p.type,p.value];}));
     var todayKey=nowParts.year+"-"+nowParts.month+"-"+nowParts.day;
     function shiftDateKey(key,days){
-      var a=key.split("-").map(Number), d=new Date(Date.UTC(a[0],a[1]-1,a[2]));
+      var a=key.split("-").map(Number),d=new Date(Date.UTC(a[0],a[1]-1,a[2]));
       d.setUTCDate(d.getUTCDate()+days);
       return d.toISOString().slice(0,10);
     }
@@ -595,51 +608,32 @@ async function weather(){
     var start7Key=shiftDateKey(todayKey,-7)+"T09:00";
     var start3Key=shiftDateKey(todayKey,-3)+"T09:00";
     var start24Key=shiftDateKey(todayKey,-1)+"T09:00";
-
     previous7Total=0;previous3Total=0;previous24Total=0;
-    for(var i=0;i<data.hourly.time.length;i++){
-      var key=String(data.hourly.time[i]).slice(0,13)+":00";
-      var rain=Number(data.hourly.precipitation[i]||0);
-      if(key>start7Key&&key<=endKey)previous7Total+=rain;
-      if(key>start3Key&&key<=endKey)previous3Total+=rain;
-      if(key>start24Key&&key<=endKey)previous24Total+=rain;
+    var haveHourly=!!(data.hourly&&data.hourly.time&&data.hourly.precipitation);
+    if(haveHourly){
+      for(var i=0;i<data.hourly.time.length;i++){
+        var key=String(data.hourly.time[i]).slice(0,13)+":00";
+        var rain=Number(data.hourly.precipitation[i]||0);
+        if(key>start7Key&&key<=endKey)previous7Total+=rain;
+        if(key>start3Key&&key<=endKey)previous3Total+=rain;
+        if(key>start24Key&&key<=endKey)previous24Total+=rain;
+      }
+    }else{
+      previous7Total=0;previous3Total=0;previous24Total=0;
+      box.setAttribute("data-history-status","Historical hourly rainfall temporarily unavailable; forecast is live.");
     }
-
     var future=data.daily.time.map(function(date,i){
       return {date:date,rain:Number(data.daily.precipitation_sum[i]||0),max:data.daily.temperature_2m_max[i],min:data.daily.temperature_2m_min[i]};
     }).filter(function(x){return x.date>=todayKey;}).slice(0,7);
-
-    var observedByDate={};
-    for(var j=0;j<data.hourly.time.length;j++){
-      var hd=String(data.hourly.time[j]).slice(0,10);
-      observedByDate[hd]=(observedByDate[hd]||0)+Number(data.hourly.precipitation[j]||0);
-    }
-    future.forEach(function(x,i){
-      var total=Number(x.rain||0);
-      for(var k=1;k<=6;k++){
-        if(i-k>=0) total+=Number(future[i-k].rain||0);
-        else{
-          var priorDate=shiftDateKey(x.date,-k);
-          total+=Number(observedByDate[priorDate]||0);
-        }
-      }
-      x.sevenDayTotal=total;
-    });
-
     save();render();checkAlerts();
-
-    box.innerHTML="<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+previous7Total.toFixed(1)+" mm</div><div class='range'>Previous 3 days: "+previous3Total.toFixed(1)+" mm • Observed rainfall total</div></div>"+
+    box.innerHTML="<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+(isFinite(previous7Total)?previous7Total.toFixed(1):"—")+" mm</div><div class='range'>Previous 3 days: "+(isFinite(previous3Total)?previous3Total.toFixed(1):"—")+" mm • Observed rainfall total</div></div>"+
       future.map(function(x){
-        var threshold=bayRainLimit();var level=x.sevenDayTotal>=threshold?"over":"under";
-        var greenIntensity=Math.max(0,Math.min(1,(threshold-x.sevenDayTotal)/threshold));
-        var greenBg="rgb("+(232-Math.round(greenIntensity*130))+","+(247-Math.round(greenIntensity*35))+","+(237-Math.round(greenIntensity*70))+")";
-        return "<div class='day forecast-day "+level+"' style='"+(level==="under"?"background:"+greenBg+";":"")+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+x.sevenDayTotal.toFixed(1)+" mm</strong></div></div>";
+        var threshold=bayRainLimit(),level=x.rain>=threshold?"over":"under";
+        return "<div class='day forecast-day "+level+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div></div>";
       }).join("");
   }catch(e){
-    previous7Total=NaN;previous3Total=NaN;previous24Total=NaN;
-    render();
-    box.innerHTML="<div class='loading'>Rainfall/weather unavailable — tap Refresh. The control will retry automatically.</div>";
-    console.error("Smithton weather:",e);
+    console.error("Smithton weather render:",e);
+    box.innerHTML="<div class='loading'>Forecast data could not be displayed — tap Refresh.</div>";
   }
 }
 function renderRiverHistory(history){
