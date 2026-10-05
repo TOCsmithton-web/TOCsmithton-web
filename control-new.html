@@ -106,14 +106,14 @@
     <table style="width:100%;border-collapse:collapse">
       <thead><tr>
         <th style="text-align:left;padding:10px;border-bottom:2px solid #c8d3d8">Check</th>
-        <th style="text-align:left;padding:10px;border-bottom:2px solid #c8d3d8">Low tide date / time</th>
+        <th style="text-align:left;padding:10px;border-bottom:2px solid #c8d3d8">Salinity date / time</th><th style="text-align:left;padding:10px;border-bottom:2px solid #c8d3d8">Low tide time</th>
         <th style="text-align:left;padding:10px;border-bottom:2px solid #c8d3d8">Salinity (ppt)</th>
         
       </tr></thead>
       <tbody>
-        <tr><td style="padding:10px;border-bottom:1px solid #dce6eb"><strong>T0</strong></td><td id="publicT0Time" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td id="publicT0Sal" style="padding:10px;border-bottom:1px solid #dce6eb">—</td></tr>
-        <tr><td style="padding:10px;border-bottom:1px solid #dce6eb"><strong>T24</strong></td><td id="publicT1Time" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td id="publicT1Sal" style="padding:10px;border-bottom:1px solid #dce6eb">—</td></tr>
-        <tr><td style="padding:10px"><strong>T48</strong></td><td id="publicT2Time" style="padding:10px">—</td><td id="publicT2Sal" style="padding:10px">—</td></tr>
+        <tr><td style="padding:10px;border-bottom:1px solid #dce6eb"><strong>T0</strong></td><td id="publicT0Time" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td id="publicT0LowTide" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td id="publicT0Sal" style="padding:10px;border-bottom:1px solid #dce6eb">—</td></tr>
+        <tr><td style="padding:10px;border-bottom:1px solid #dce6eb"><strong>T24</strong></td><td id="publicT1Time" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td id="publicT1LowTide" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td id="publicT1Sal" style="padding:10px;border-bottom:1px solid #dce6eb">—</td></tr>
+        <tr><td style="padding:10px"><strong>T48</strong></td><td id="publicT2Time" style="padding:10px">—</td><td id="publicT2LowTide" style="padding:10px">—</td><td id="publicT2Sal" style="padding:10px">—</td></tr>
       </tbody>
     </table>
   </div>
@@ -337,18 +337,18 @@ function renderPublicReopen(){
   if(!badge||!statusEl)return;
 
   function reading(row){
-    if(!row)return {time:"—",sal:"—"};
-    var rawTime=row.notes||"";
+    if(!row)return {time:"—",lowTide:"—",sal:"—"};
+    var rawTime="";var lowTide="";try{var meta=JSON.parse(row.notes||"{}");rawTime=meta.salinityTime||"";lowTide=meta.lowTideTime||"";}catch(e){rawTime=row.notes||"";}
     var d=rawTime?new Date(rawTime):null;
     if(!d||!isFinite(d.getTime())) d=new Date(String(row.test_date||"")+"T00:00:00");
     var time=isFinite(d.getTime())?d.toLocaleString("en-AU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):String(rawTime||row.test_date||"—");
     var n=Number(row.result);
-    return {time:time,sal:isFinite(n)?n.toFixed(1):String(row.result||"—")};
+    return {time:time,lowTide:lowTide||"—",sal:isFinite(n)?n.toFixed(1):String(row.result||"—")};
   }
   var a=reading(publicReopen.T0),b=reading(publicReopen.T24),c=reading(publicReopen.T48);
-  el("publicT0Time").textContent=a.time;el("publicT0Sal").textContent=a.sal;
-  el("publicT1Time").textContent=b.time;el("publicT1Sal").textContent=b.sal;
-  el("publicT2Time").textContent=c.time;el("publicT2Sal").textContent=c.sal;
+  el("publicT0Time").textContent=a.time;el("publicT0LowTide").textContent=a.lowTide;el("publicT0Sal").textContent=a.sal;
+  el("publicT1Time").textContent=b.time;el("publicT1LowTide").textContent=b.lowTide;el("publicT1Sal").textContent=b.sal;
+  el("publicT2Time").textContent=c.time;el("publicT2LowTide").textContent=c.lowTide;el("publicT2Sal").textContent=c.sal;
 
   var threshold=Number((currentBay&&currentBay.salinity_min!=null)?currentBay.salinity_min:32.5);
   var vals=[publicReopen.T0,publicReopen.T24,publicReopen.T48];
