@@ -1,1 +1,20 @@
-{"id":"./toc-smithton-v4","name":"TOC Smithton Control","short_name":"TOC Smithton","start_url":"./control-new.html","scope":"./","display":"standalone","orientation":"portrait","background_color":"#eef4f7","theme_color":"#0b4f6c","description":"TOC Smithton environmental control dashboard","icons":[{"src":"./icons/toc-logo-shortcut.jpg?v=5","sizes":"96x96","type":"image/jpeg","purpose":"any maskable"}]}
+{
+  "id": "./toc-smithton-v5",
+  "name": "TOC Smithton Control",
+  "short_name": "TOC Smithton",
+  "start_url": "./control-public.html?v=202610062000",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef4f7",
+  "theme_color": "#0b4f6c",
+  "description": "TOC Smithton environmental control dashboard",
+  "icons": [
+    {
+      "src": "./icons/toc-logo-shortcut.jpg?v=6",
+      "sizes": "96x96",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
