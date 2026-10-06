@@ -6,8 +6,20 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- TOC_CACHE_BUST_20261006 -->
+<!-- TOC_CACHE_BUST_20261006_FRESH -->
 <meta name="theme-color" content="#0b4f6c">
+<script>
+(function(){
+  try{
+    if("serviceWorker" in navigator){
+      navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});}).catch(function(){});
+    }
+    if("caches" in window){
+      caches.keys().then(function(keys){keys.forEach(function(k){caches.delete(k);});}).catch(function(){});
+    }
+  }catch(e){}
+})();
+</script>
 <link rel="icon" href="./icons/toc-logo-shortcut.jpg?v=6" type="image/jpeg">
 <link rel="apple-touch-icon" href="./icons/toc-logo-shortcut.jpg?v=6">
 <title>TOC Smithton Control — Live V2</title>
