@@ -624,7 +624,8 @@ function renderWeatherSnapshot(data,box){
 async function weather(){
  var box=el("forecast");
  box.innerHTML="<div class='loading'>Loading Smithton rainfall forecast…</div>";
- var data=(window.TOC_WEATHER_DATA&&typeof window.TOC_WEATHER_DATA==="object")?window.TOC_WEATHER_DATA:null;\n if(data)renderWeatherSnapshot(data,box);
+ var data=(window.TOC_WEATHER_DATA&&typeof window.TOC_WEATHER_DATA==="object")?window.TOC_WEATHER_DATA:null;
+ if(data)renderWeatherSnapshot(data,box);
  try{
    var localController=new AbortController();
    var localTimeout=setTimeout(function(){localController.abort();},6000);
@@ -797,7 +798,8 @@ async function riverFlow(){
   var section=document.querySelector("#riverFlow")?.closest("section");
   if(!bayUsesRiver()){if(section)section.style.display="none";window.riverCurrentFlow=0;updateBayBanner();return;}
   if(section)section.style.display="";
-  var fallback=(window.TOC_RIVER_DATA&&typeof window.TOC_RIVER_DATA==="object")?window.TOC_RIVER_DATA:null;\n  if(fallback)renderRiverSnapshot(fallback);
+  var fallback=(window.TOC_RIVER_DATA&&typeof window.TOC_RIVER_DATA==="object")?window.TOC_RIVER_DATA:null;
+  if(fallback)renderRiverSnapshot(fallback);
   try{
     var controller=new AbortController();
     var timeout=setTimeout(function(){controller.abort();},10000);
