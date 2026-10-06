@@ -172,7 +172,9 @@ var previous3Total=0;
 var previous7Total=0;
 var DUCK_RAIN3_LIMIT=25;
 var bays=[];
-var currentBay=null;
+// Public Smithton dashboard must start with the authoritative Duck Bay controls immediately.
+// This prevents the first render from temporarily treating salinity and river flow as not required.
+var currentBay={id:1,bay_name:"Duck Bay",active:true,salinity_min:32.5,salinity_max:null,rainfall_7d_limit:40,river_flow_limit:5};
 var meatTests=[];
 var nreClassification=null;
 var nreClassificationError=false;
