@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0b4f6c">
 <link rel="icon" href="./icons/toc-logo-shortcut.jpg?v=6" type="image/jpeg">
 <link rel="apple-touch-icon" href="./icons/toc-logo-shortcut.jpg?v=6">
-<title>TOC Smithton Control — Live</title>
+<title>TOC Smithton Control — Live V2</title>
 <link rel="manifest" href="manifest.json?v=3">
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -774,9 +774,5 @@ load();render();init();updateNotifyButton();status("APP READY ✓",true);updateM
 loadBays();loadCentral();weather();riverFlow();loadMeatTests();loadPublicReopen();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,60000);setInterval(loadMeatTests,10000);setInterval(loadPublicReopen,10000);
 })();
 </script>
-<script>
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});
-}
-</script>
+<script>/* Public dashboard deliberately does not register a service worker. */</script>
 </body></html>
