@@ -66,7 +66,7 @@ NRE VERIFIED — Duck Bay is OPEN
 </div>
 <div class="grid2">
 <label>Classification notice number<input id="nreNoticeNumber" type="text" value="2026/055" placeholder="e.g. 2026/055"></label>
-<label>Verified date/time<input id="nreVerifiedAt" type="text" disabled></label>
+<label>NRE open from (as stated in classification notice)<input id="nreVerifiedAt" type="text" disabled></label>
 </div>
 <button id="saveNreVerificationBtn" class="button" type="button">Save NRE verification</button>
 <p id="nreVerificationMsg" class="small"></p>
@@ -225,6 +225,16 @@ async function isAdmin(user){
   return !r.error && !!r.data;
 }
 
+function formatNreOpenFrom(value){
+  if(!value)return "";
+  var m=String(value).match(/(\d{3,4})hrs\s+(\d{2})\/(\d{2})\/(\d{4})/i);
+  if(m){
+    var raw=m[1].padStart(4,"0");
+    return m[2]+"/"+m[3]+"/"+m[4]+" "+raw.slice(0,2)+":"+raw.slice(2);
+  }
+  var d=new Date(value);
+  return isFinite(d.getTime())?d.toLocaleString("en-AU"):"";
+}
 async function loadNreVerification(){
   try{
     var ar=await fetch("./nre.json?ts="+Date.now(),{cache:"no-store"});
@@ -233,8 +243,8 @@ async function loadNreVerification(){
       if(ad&&ad.duck_bay_open===true){
         $("nreVerified").checked=true;
         $("nreNoticeNumber").value=ad.notice_number||"";
-        $("nreVerifiedAt").value=ad.checked_at?new Date(ad.checked_at).toLocaleString("en-AU"):"";
-        msg("nreVerificationMsg","AUTO-VERIFIED FROM CURRENT NRE CLASSIFICATION NOTICE ✓",true);
+        $("nreVerifiedAt").value=formatNreOpenFrom(ad.duck_bay_open_from);
+        msg("nreVerificationMsg","AUTO-VERIFIED FROM CURRENT NRE CLASSIFICATION NOTICE ✓ — OPEN FROM "+formatNreOpenFrom(ad.duck_bay_open_from),true);
         return;
       }
     }
