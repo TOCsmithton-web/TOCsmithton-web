@@ -99,7 +99,7 @@
   <div class="notice" id="publicNreNotice">
     <strong>NRE VERIFIED — Duck Bay is OPEN</strong>
     <p class="hint" style="margin:6px 0 0">Classification notice: <strong id="publicNreNoticeNumber">—</strong></p>
-    <p class="hint" style="margin:6px 0 0">Verified: <span id="publicNreVerifiedAt">—</span></p>
+    <p class="hint" style="margin:6px 0 0">NRE open from: <span id="publicNreVerifiedAt">—</span></p>
   </div>
   <a href="https://nre.tas.gov.au/SiteAssets/ShellMAP%20Current%20Harvest%20Status.pdf" target="_blank" rel="noopener">Open current NRE Classification Notice</a>
 </section>
@@ -183,6 +183,7 @@ var bays=[];
 var currentBay=null;
 var meatTests=[];
 var nreVerification={verified:false,noticeNumber:"",verifiedAt:""};
+var nreAutoVerification={available:false,verified:false,noticeNumber:"",openFrom:""};
 var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
 async function loadBays(){
  try{
@@ -210,13 +211,25 @@ async function loadNreAuto(){
   var r=await fetch("./nre.json?ts="+Date.now(),{cache:"no-store"});
   if(!r.ok)throw new Error("NRE status unavailable");
   var d=await r.json();
-  if(bayName().trim().toLowerCase()==="duck bay" && d && d.duck_bay_open===true){
-    nreVerification={verified:true,noticeNumber:d.notice_number||"",verifiedAt:d.checked_at||d.duck_bay_open_from||""};
-  } else if(bayName().trim().toLowerCase()==="duck bay") {
-    nreVerification={verified:false,noticeNumber:d&&d.notice_number||"",verifiedAt:d&&d.checked_at||""};
+  if(bayName().trim().toLowerCase()==="duck bay"){
+    nreAutoVerification={
+      available:true,
+      verified:!!(d&&d.duck_bay_open===true),
+      noticeNumber:d&&d.notice_number||"",
+      openFrom:d&&d.duck_bay_open_from||""
+    };
+    if(nreAutoVerification.verified){
+      nreVerification={verified:true,noticeNumber:nreAutoVerification.noticeNumber,verifiedAt:nreAutoVerification.openFrom};
+    }else{
+      nreVerification={verified:false,noticeNumber:nreAutoVerification.noticeNumber,verifiedAt:nreAutoVerification.openFrom};
+    }
+  }else{
+    nreAutoVerification={available:false,verified:false,noticeNumber:"",openFrom:""};
   }
   updateNreVerificationDisplay();updateBayBanner();
- }catch(e){}
+ }catch(e){
+  nreAutoVerification.available=false;
+ }
 }
 async function loadMeatTests(){
  try{
@@ -226,17 +239,22 @@ async function loadMeatTests(){
   var allRows=r.data||[];
   meatTests=allRows.filter(function(x){return String(x.bay_name||"").trim().toLowerCase()===wanted;}).slice(0,5);
   if(bayName().trim().toLowerCase()==="duck bay"){
-    var nr=allRows.find(function(x){return String(x.bay_name||"").trim().toLowerCase()==="duck bay nre classification";});
-    nreVerification={verified:!!(nr&&String(nr.result||"").toUpperCase()==="VERIFIED"),noticeNumber:"",verifiedAt:""};
-    try{
-      var meta=nr&&nr.notes?JSON.parse(nr.notes):{};
-      nreVerification.noticeNumber=meta.noticeNumber||"";
-      nreVerification.verifiedAt=meta.verifiedAt||nr&&nr.created_at||"";
-    }catch(e){
-      nreVerification.noticeNumber="";
-      nreVerification.verifiedAt=nr&&nr.created_at||"";
+    if(!nreAutoVerification.available){
+      var nr=allRows.find(function(x){return String(x.bay_name||"").trim().toLowerCase()==="duck bay nre classification";});
+      nreVerification={verified:!!(nr&&String(nr.result||"").toUpperCase()==="VERIFIED"),noticeNumber:"",verifiedAt:""};
+      try{
+        var meta=nr&&nr.notes?JSON.parse(nr.notes):{};
+        nreVerification.noticeNumber=meta.noticeNumber||"";
+        nreVerification.verifiedAt=meta.verifiedAt||nr&&nr.created_at||"";
+      }catch(e){
+        nreVerification.noticeNumber="";
+        nreVerification.verifiedAt=nr&&nr.created_at||"";
+      }
+    }else{
+      nreVerification={verified:nreAutoVerification.verified,noticeNumber:nreAutoVerification.noticeNumber,verifiedAt:nreAutoVerification.openFrom};
     }
   }else{
+    nreAutoVerification={available:false,verified:false,noticeNumber:"",openFrom:""};
     nreVerification={verified:true,noticeNumber:"",verifiedAt:""};
   }
   renderMeatTests();
@@ -316,22 +334,37 @@ async function loadCentral(){
   }
  }catch(e){status("CENTRAL CONTROL UNAVAILABLE",false);}
 }
-function el(id){return document.getElementById(id);}function updateNreVerificationDisplay(){
+function el(id){return document.getElementById(id);}function formatNreOpenFrom(value){
+  if(!value)return "—";
+  var m=String(value).match(/(\d{3,4})hrs\s+(\d{2})\/(\d{2})\/(\d{4})/i);
+  if(m){
+    var raw=m[1].padStart(4,"0");
+    return m[2]+"/"+m[3]+"/"+m[4]+" "+raw.slice(0,2)+":"+raw.slice(2);
+  }
+  var d=new Date(value);
+  return isFinite(d.getTime())?d.toLocaleString("en-AU"):"—";
+}
+function updateNreVerificationDisplay(){
   var card=el("nreVerificationCard"),badge=el("publicNreBadge"),notice=el("publicNreNotice");
   if(!card||!badge||!notice)return;
   var isDuck=bayName().trim().toLowerCase()==="duck bay";
   card.style.display=isDuck?"":"none";
   if(!isDuck)return;
+  if(nreAutoVerification.available){
+    nreVerification.verified=nreAutoVerification.verified;
+    nreVerification.noticeNumber=nreAutoVerification.noticeNumber;
+    nreVerification.verifiedAt=nreAutoVerification.openFrom;
+  }
   if(nreVerification.verified){
     badge.textContent="NRE VERIFIED ✓";badge.style.background="#bff3cc";badge.style.color="#176b3b";
     notice.style.background="#effaf2";notice.style.border="2px solid #31a354";
     el("publicNreNoticeNumber").textContent=nreVerification.noticeNumber||"—";
-    var d=new Date(nreVerification.verifiedAt);
-    el("publicNreVerifiedAt").textContent=isFinite(d.getTime())?d.toLocaleString("en-AU"):"—";
+    el("publicNreVerifiedAt").textContent=formatNreOpenFrom(nreVerification.verifiedAt);
+    notice.querySelector("strong").textContent="NRE VERIFIED — Duck Bay is OPEN";
   }else{
     badge.textContent="NOT VERIFIED";badge.style.background="#ffd0d0";badge.style.color="#9d2727";
     notice.style.background="#fff0f0";notice.style.border="2px solid #c62828";
-    el("publicNreNoticeNumber").textContent="—";
+    el("publicNreNoticeNumber").textContent=nreVerification.noticeNumber||"—";
     el("publicNreVerifiedAt").textContent="—";
     notice.querySelector("strong").textContent="NRE VERIFICATION REQUIRED — CHECK NRE WEBSITE";
   }
