@@ -28,6 +28,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./supabase-config.js?v=20261006-1715"></script>
 <script>
+// TOC_SW_RETIRE_20261006_2100 — actively retire any older installed service worker/cache.
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js?v=20261006-2100",{updateViaCache:"none"}).then(function(reg){ return reg.update(); }).catch(function(){});
+}
+</script>
+<script>
 
 </script>
 </head>
