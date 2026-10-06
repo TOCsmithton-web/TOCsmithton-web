@@ -1,6 +1,9 @@
 name: Deploy TOC Smithton Control
 
 on:
+  workflow_run:
+    workflows: ["Update Smithton Weather", "Update Duck River Flow", "Update NRE Duck Bay Classification"]
+    types: [completed]
   schedule:
     - cron: "*/15 * * * *"
   push:
@@ -19,6 +22,8 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
