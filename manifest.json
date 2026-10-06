@@ -2,7 +2,7 @@
   "id": "./toc-smithton-v10",
   "name": "TOC Smithton Control",
   "short_name": "TOC Smithton",
-  "start_url": "./control-new.html?live=20261006-2200",
+  "start_url": "./smithton-control-rebuild.html?v=20261007-REBUILD",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
