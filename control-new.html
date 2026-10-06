@@ -592,10 +592,32 @@ function render(){
 }
 
 function isoDate(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function renderWeatherSnapshot(data,box){
+  if(!data||!data.daily)return false;
+  try{
+    var nowParts=Object.fromEntries(new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Hobart",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).filter(function(p){return p.type!=="literal";}).map(function(p){return [p.type,p.value];}));
+    var todayKey=nowParts.year+"-"+nowParts.month+"-"+nowParts.day;
+    function shiftDateKeyFast(key,days){var a=key.split("-").map(Number),d=new Date(Date.UTC(a[0],a[1]-1,a[2]));d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10);}
+    var end7=todayKey+"T09:00",start7=shiftDateKeyFast(todayKey,-7)+"T09:00",start3=shiftDateKeyFast(todayKey,-3)+"T09:00",start24=shiftDateKeyFast(todayKey,-1)+"T09:00";
+    previous7Total=0;previous3Total=0;previous24Total=0;
+    if(data.hourly&&data.hourly.time&&data.hourly.precipitation){
+      for(var i=0;i<data.hourly.time.length;i++){
+        var key=String(data.hourly.time[i]).slice(0,13)+":00",rain=Number(data.hourly.precipitation[i]||0);
+        if(key>start7&&key<=end7)previous7Total+=rain;
+        if(key>start3&&key<=end7)previous3Total+=rain;
+        if(key>start24&&key<=end7)previous24Total+=rain;
+      }
+    }
+    var future=(data.daily.time||[]).map(function(date,i){return {date:date,rain:Number((data.daily.precipitation_sum||[])[i]||0),max:(data.daily.temperature_2m_max||[])[i],min:(data.daily.temperature_2m_min||[])[i]};}).filter(function(x){return x.date>=todayKey;}).slice(0,7);
+    save();render();checkAlerts();
+    box.innerHTML="<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+previous7Total.toFixed(1)+" mm</div><div class='range'>Previous 3 days: "+previous3Total.toFixed(1)+" mm • Observed rainfall total</div></div>"+future.map(function(x){var threshold=bayRainLimit(),level=x.rain>=threshold?"over":"under";return "<div class='day forecast-day "+level+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(Number(x.min))+"° / "+Math.round(Number(x.max))+"°C</div></div>";}).join("");
+    return true;
+  }catch(e){console.error("Smithton weather snapshot render:",e);return false;}
+}
 async function weather(){
  var box=el("forecast");
  box.innerHTML="<div class='loading'>Loading Smithton rainfall forecast…</div>";
- var data=(window.TOC_WEATHER_DATA&&typeof window.TOC_WEATHER_DATA==="object")?window.TOC_WEATHER_DATA:null;
+ var data=(window.TOC_WEATHER_DATA&&typeof window.TOC_WEATHER_DATA==="object")?window.TOC_WEATHER_DATA:null;\n if(data)renderWeatherSnapshot(data,box);
  try{
    var localController=new AbortController();
    var localTimeout=setTimeout(function(){localController.abort();},6000);
@@ -745,11 +767,30 @@ function renderRiverThresholdEvents(events){
   overEl.textContent=formatEvent(over);
   underEl.textContent=formatEvent(under);
 }
+function renderRiverSnapshot(fallback){
+  if(!fallback||!isFinite(Number(fallback.flow)))return false;
+  try{
+    var v=Number(fallback.flow),limit=Number(currentBay.river_flow_limit);
+    el("riverFlow").textContent=v.toFixed(3);
+    el("riverStatus").textContent=v>limit?"RIVER FLOW ALERT — above "+limit.toFixed(1)+" m³/s":"Within environmental control limit";
+    el("riverStatus").style.color=v>limit?"#9d2727":"#176b3b";
+    if(fallback.timestamp){
+      var rt=new Date(fallback.timestamp),ct=fallback.updated?new Date(fallback.updated):null;
+      el("riverStatus").textContent+=" • Portal reading "+rt.toLocaleString("en-AU")+" • Checked "+(ct&&isFinite(ct.getTime())?ct.toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit",second:"2-digit"}):"—");
+    }
+    window.riverHistoryForEvents=fallback.history||[];
+    renderRiverHistory(fallback.history||[]);
+    renderRiverThresholdEvents(fallback.threshold_events||[]);
+    window.riverCurrentFlow=v;window.riverAlertState=v>limit;
+    updateBayBanner();render();
+    return true;
+  }catch(e){console.error("Duck River snapshot render:",e);return false;}
+}
 async function riverFlow(){
   var section=document.querySelector("#riverFlow")?.closest("section");
   if(!bayUsesRiver()){if(section)section.style.display="none";window.riverCurrentFlow=0;updateBayBanner();return;}
   if(section)section.style.display="";
-  var fallback=(window.TOC_RIVER_DATA&&typeof window.TOC_RIVER_DATA==="object")?window.TOC_RIVER_DATA:null;
+  var fallback=(window.TOC_RIVER_DATA&&typeof window.TOC_RIVER_DATA==="object")?window.TOC_RIVER_DATA:null;\n  if(fallback)renderRiverSnapshot(fallback);
   try{
     var controller=new AbortController();
     var timeout=setTimeout(function(){controller.abort();},10000);
