@@ -1,8 +1,8 @@
 {
-  "id": "./toc-smithton-v10",
+  "id": "./toc-smithton-rebuild-20261007",
   "name": "TOC Smithton Control",
   "short_name": "TOC Smithton",
-  "start_url": "./smithton-control-rebuild.html?v=20261007-REBUILD",
+  "start_url": "./control-new.html?build=20261007-rebuild",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
