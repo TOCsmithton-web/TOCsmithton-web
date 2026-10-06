@@ -38,13 +38,14 @@ jobs:
           window.TOC_SUPABASE_PUBLISHABLE_KEY = "$SUPABASE_PUBLISHABLE_KEY";
           EOF
 
+      # Force a fresh Pages artifact after control-page repairs.
       - name: Prepare Pages artifact
         run: |
           touch .nojekyll
           printf '%s\n' "${GITHUB_SHA}" > .pages-deployment-sha
           printf '%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .pages-deployment-time
 
-      - name: Upload artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: .
