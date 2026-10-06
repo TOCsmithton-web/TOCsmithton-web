@@ -38,6 +38,12 @@ jobs:
           window.TOC_SUPABASE_PUBLISHABLE_KEY = "$SUPABASE_PUBLISHABLE_KEY";
           EOF
 
+      - name: Prepare Pages artifact
+        run: |
+          touch .nojekyll
+          printf '%s\n' "${GITHUB_SHA}" > .pages-deployment-sha
+          printf '%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .pages-deployment-time
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
