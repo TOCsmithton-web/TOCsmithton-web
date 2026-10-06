@@ -1,16 +1,3 @@
-const SW_VERSION="20261006-4";
+// TOC Smithton service-worker retirement build 2026-10-06
 self.addEventListener("install",function(e){self.skipWaiting();});
-self.addEventListener("activate",function(e){
-  e.waitUntil((async function(){
-    const keys=await caches.keys();
-    await Promise.all(keys.map(function(k){return caches.delete(k);}));
-    await self.clients.claim();
-  })());
-});
-self.addEventListener("fetch",function(e){
-  if(e.request.mode!=="navigate")return;
-  const url=new URL(e.request.url);
-  if(url.pathname.endsWith("/control-public.html")||url.pathname.endsWith("/control-new.html")||url.pathname.endsWith("/index.html")||url.pathname.endsWith("/")){
-    e.respondWith(fetch(e.request,{cache:"no-store"}));
-  }
-});
+self.addEventListener("activate",function(e){e.waitUntil((async function(){try{const keys=await caches.keys();await Promise.all(keys.map(function(k){return caches.delete(k);}));}catch(e){}try{await self.registration.unregister();}catch(e){}try{const cs=await self.clients.matchAll({type:"window"});cs.forEach(function(c){try{c.navigate(c.url);}catch(e){}});}catch(e){}})());});
