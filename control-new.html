@@ -305,55 +305,83 @@ function el(id){return document.getElementById(id);}function updateBayBanner(){
   b.style.boxShadow="none";
 }
 
-function renderPublicReopen(){
+var publicReopenCacheAt=0;
+var publicReopenLoading=false;
+async function renderPublicReopen(){
   var badge=el("publicReopenBadge"),statusEl=el("publicReopenStatus");
   if(!badge||!statusEl)return;
-
-  // The administrator records the 48-hour reopening checks in localStorage.
-  // Use the same key here so the public/read-only page shows the same T0/T24/T48
-  // date/time and salinity values on the same device.
-  var x={};
+  var now=Date.now();
+  if(publicReopenLoading || (now-publicReopenCacheAt)<30000)return;
+  publicReopenLoading=true;
   try{
-    x=JSON.parse(localStorage.getItem("toc-duckbay-reopen-admin-v1")||"{}");
-  }catch(e){x={};}
-
-  function show(id,value,isSalinity){
-    var target=el(id);
-    if(!target)return;
-    if(value===undefined||value===null||value===""){
-      target.textContent="—";
-      return;
+    var names=["Duck Bay Salinity T0","Duck Bay Salinity T24","Duck Bay Salinity T48","Duck Bay Salinity Reopening Status"];
+    var r=await supabase.from("meat_test_results").select("bay_name,test_date,result,notes,created_at").in("bay_name",names).order("created_at",{ascending:false}).limit(50);
+    if(r.error)throw r.error;
+    var latest={};
+    (r.data||[]).forEach(function(x){if(!latest[x.bay_name])latest[x.bay_name]=x;});
+    var resetAt=0;
+    var statusRow=latest["Duck Bay Salinity Reopening Status"];
+    if(statusRow && String(statusRow.result||"").toUpperCase()==="RESET AFTER CLOSURE"){
+      try{
+        resetAt=new Date(JSON.parse(statusRow.notes||"{}").resetAt||statusRow.created_at).getTime()||0;
+      }catch(e){
+        resetAt=new Date(statusRow.created_at).getTime()||0;
+      }
     }
-    if(isSalinity){
-      var n=Number(value);
-      target.textContent=isFinite(n)?n.toFixed(1):String(value);
+    function activeRow(name){
+      var x=latest[name];
+      if(x&&resetAt&&new Date(x.created_at).getTime()<=resetAt)return null;
+      return x||null;
+    }
+    function show(id,value,isSalinity){
+      var target=el(id);if(!target)return;
+      if(value===undefined||value===null||value===""){target.textContent="—";return;}
+      if(isSalinity){
+        var n=Number(value);target.textContent=isFinite(n)?n.toFixed(1):String(value);
+      }else{
+        var d=new Date(value);
+        target.textContent=isFinite(d.getTime())?d.toLocaleString("en-AU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):String(value);
+      }
+    }
+    var t0=activeRow("Duck Bay Salinity T0");
+    var t24=activeRow("Duck Bay Salinity T24");
+    var t48=activeRow("Duck Bay Salinity T48");
+    function rowTime(x){
+      if(!x)return "";
+      try{
+        var meta=x.notes?JSON.parse(x.notes):{};
+        return meta.salinityTime||x.test_date||"";
+      }catch(e){return x.test_date||"";}
+    }
+    show("publicT0Time",rowTime(t0),false); show("publicT0Sal",t0?t0.result:"",true);
+    show("publicT1Time",rowTime(t24),false); show("publicT1Sal",t24?t24.result:"",true);
+    show("publicT2Time",rowTime(t48),false); show("publicT2Sal",t48?t48.result:"",true);
+
+    var status=String(statusRow&&statusRow.result||"IN PROGRESS").toUpperCase();
+    var completed=status==="COMPLETED AND SUBMITTED TO NRE";
+    var started=!!(t0||t24||t48||statusRow);
+    var ready=isFinite(previous7Total)&&(bayName()==="Duck Bay"?isFinite(previous3Total):true)&&(state.salinity!==""&&isFinite(Number(state.salinity)))&&(!bayUsesRiver()||isFinite(Number(window.riverCurrentFlow)));
+    if(status==="RESET AFTER CLOSURE"){
+      badge.textContent="WAITING";badge.style.background="#f4f7f8";badge.style.color="#52636d";
+      statusEl.textContent="The previous 48-hour salinity check was reset after closure. Waiting for a new check to be started.";
+    }else if(completed){
+      badge.textContent="COMPLETED";badge.style.background="#bff3cc";badge.style.color="#176b3b";
+      statusEl.textContent="48-hour salinity check completed and submitted to NRE. T0, T24 and T48 readings are shown above.";
+    }else if(started){
+      badge.textContent="IN PROGRESS";badge.style.background="#fff0df";badge.style.color="#a35a00";
+      statusEl.textContent="48-hour salinity check is in progress. T0, T24 and T48 readings are shown above.";
     }else{
-      var d=new Date(value);
-      target.textContent=isFinite(d.getTime())?d.toLocaleString("en-AU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):String(value);
+      badge.textContent=ready?"READY TO START":"WAITING";
+      badge.style.background=ready?"#bff3cc":"#f4f7f8";badge.style.color=ready?"#176b3b":"#52636d";
+      statusEl.textContent=ready?"All available environmental readings are within the required range. The 48-hour salinity check can be commenced and recorded at T0, T24 and T48.":"Waiting for all required environmental readings before the 48-hour check starts.";
     }
-  }
-
-  show("publicT0Time",x.reopenT0Time,false);
-  show("publicT0Sal",x.reopenT0Sal,true);
-  show("publicT1Time",x.reopenT1Time,false);
-  show("publicT1Sal",x.reopenT1Sal,true);
-  show("publicT2Time",x.reopenT2Time,false);
-  show("publicT2Sal",x.reopenT2Sal,true);
-
-  var ready=isFinite(previous7Total)&&(bayName()==="Duck Bay"?isFinite(previous3Total):true)&&(state.salinity!==""&&isFinite(Number(state.salinity)))&&(!bayUsesRiver()||isFinite(Number(window.riverCurrentFlow)));
-  var started=!!x.startedAt;
-  badge.textContent=started?"IN PROGRESS":(ready?"READY TO START":"WAITING");
-  badge.style.background=started?"#fff0df":(ready?"#bff3cc":"#f4f7f8");
-  badge.style.color=started?"#a35a00":(ready?"#176b3b":"#52636d");
-
-  if(started){
-    var startedDate=new Date(x.startedAt);
-    var startedText=isFinite(startedDate.getTime())?startedDate.toLocaleString("en-AU"):"";
-    statusEl.textContent="48-hour salinity check started"+(startedText?" "+startedText:"")+". T0, T24 and T48 readings are shown above.";
-  }else if(ready){
-    statusEl.textContent="All available environmental readings are within the required range. The 48-hour salinity check can be commenced and recorded at T0, T24 and T48.";
-  }else{
-    statusEl.textContent="Waiting for all required environmental readings before the 48-hour check starts.";
+    publicReopenCacheAt=Date.now();
+  }catch(e){
+    console.warn("Central salinity reopening record unavailable",e);
+    badge.textContent="UNAVAILABLE";badge.style.background="#fff0df";badge.style.color="#a35a00";
+    statusEl.textContent="Central 48-hour salinity record could not be loaded. Refresh to try again.";
+  }finally{
+    publicReopenLoading=false;
   }
 }
 function load(){try{var raw=localStorage.getItem(KEY);if(raw){Object.assign(state,JSON.parse(raw));} state.alertEnabled=localStorage.getItem("toc-smithton-alert-enabled")==="true";}catch(e){state.alertEnabled=false;}}
