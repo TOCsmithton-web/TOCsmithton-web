@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b4f6c">
+<title>TOC Smithton Control</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="styles.css">
+<style>
+.smithton-banner{display:grid;grid-template-columns:1fr;gap:8px;padding:10px;background:#eef4f7}
+.smithton-status{border-radius:12px;padding:14px 10px;text-align:center;color:#fff;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.smithton-status.open{background:#16823b}.smithton-status.closed{background:#c62828}.smithton-status.waiting{background:#6b7280}
+.env-control-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}
+.env-control{padding:12px;border-radius:10px;border:2px solid #cbd6db;font-weight:700}
+.env-control.good{background:#bff3cc;border-color:#31a354;color:#176b3b}
+.env-control.bad{background:#ffd0d0;border-color:#c62828;color:#9d2727}
+.env-control.neutral{background:#f4f7f8;border-color:#cbd6db;color:#49616c}
+.river-box{padding:14px;border-radius:12px;border:2px solid #cbd6db;background:#f4f7f8}
+.river-box.good{background:#bff3cc;border-color:#31a354}.river-box.bad{background:#ffd0d0;border-color:#c62828}
+@media(max-width:850px){.env-control-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.env-control-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="bayBanner" class="bay-banner waiting" style="padding:0;overflow:hidden">
+  <div class="smithton-banner">
+    <div id="bannerDuck" class="smithton-status waiting">
+      <span style="font-size:.82rem;display:block;margin-bottom:4px">DUCK BAY</span>
+      <span id="bannerState" style="font-size:1.2rem;display:block">CHECKING</span>
+      <span id="bannerDetail" style="font-size:.75rem;font-weight:600;display:block;margin-top:5px">Duck Bay Management Plan controls • CHECK NRE CLASSIFICATION BEFORE HARVESTING</span>
+    </div>
+  </div>
+</div>
+
+<header class="topbar" style="background:#000">
+  <div style="display:flex;align-items:center;gap:12px">
+    <img src="./assets/toc-logo.svg" alt="Tasmanian Oyster Company" style="width:76px;height:76px;display:block;flex:0 0 auto">
+    <div><div class="eyebrow">TASMANIAN OYSTER COMPANY</div><h1>Smithton Control</h1></div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+    <select aria-label="Control location" onchange="if(this.value)location.href=this.value" style="padding:10px 12px;border-radius:10px;border:1px solid #c8d3d8;background:#fff;font-weight:700;color:#17384a">
+      <option value="smithton-control-rebuild.html" selected>Smithton Control</option>
+      <option value="boomer-control.html">Boomer Bay Control</option>
+    </select>
+    <button id="refreshAll" class="button secondary" type="button">Refresh</button>
+  </div>
+</header>
+
+<main class="container">
+<section class="card">
+  <div class="card-head"><div><h2>Harvest area</h2><p class="muted">Duck Bay environmental control dashboard. Enter the current representative salinity; rainfall and river flow are checked automatically.</p></div></div>
+  <p id="criteria" class="hint"></p>
+</section>
+
+<section class="status-grid">
+<article id="statusCard" class="card hero">
+  <div class="card-head">
+    <div><span class="label">Environmental status — Duck Bay</span><h2 id="statusText">Awaiting readings</h2></div>
+    <span id="statusDot" class="status-dot neutral"></span>
+  </div>
+  <div class="metric-row">
+    <div><span>Salinity</span><strong id="salinityValue">—</strong><small>ppt</small></div>
+    <div><span>Previous 24-hour rainfall</span><strong id="rain24Value">—</strong><small>mm</small></div>
+    <div><span>Previous 7-day rainfall</span><strong id="rain7Value">—</strong><small>mm</small></div>
+  </div>
+  <div class="env-control-grid">
+    <div id="envSalinity" class="env-control neutral">Salinity: CHECKING</div>
+    <div id="envRain24" class="env-control neutral">Previous 24-hour rainfall: CHECKING</div>
+    <div id="envRain7" class="env-control neutral">Previous 7-day rainfall: CHECKING</div>
+    <div id="envRiver" class="env-control neutral">Duck River flow: CHECKING</div>
+  </div>
+  <p id="lastUpdated" class="muted">No readings yet.</p>
+</article>
+</section>
+
+<section class="grid two">
+<article class="card">
+  <div class="card-head"><h2>Manual salinity</h2><span class="badge">Duck Bay</span></div>
+  <label>Salinity (ppt)<input id="salinityInput" type="number" step="0.1" inputmode="decimal"></label>
+  <p class="hint">Enter the current representative salinity reading for Duck Bay.</p>
+</article>
+
+<article class="card">
+  <div class="card-head"><h2>Duck Bay Management Plan</h2><span class="badge">Environmental controls</span></div>
+  <label>Minimum salinity<input id="salMin" type="number" value="32.5" disabled></label>
+  <label>24-hour rainfall limit<input id="rain24Limit" type="number" value="25" disabled></label>
+  <label>7-day rainfall limit<input id="rain7Limit" type="number" value="40" disabled></label>
+  <label>Duck River flow limit<input id="riverLimit" type="number" value="5" disabled></label>
+  <p class="hint">Harvest remains closed if any applicable environmental control is outside the Duck Bay Management Plan limits.</p>
+</article>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <div><h2>Duck River — Scotchtown Road Bridge</h2><p class="muted">NRE Tasmania Water Information Portal • Station 14214. Latest available discharge reading is used.</p></div>
+  </div>
+  <div id="riverBox" class="river-box neutral">
+    <strong id="riverStatus">Checking river flow…</strong>
+    <div style="font-size:28px;font-weight:800;margin-top:5px"><span id="riverValue">—</span> m³/s</div>
+    <div id="riverUpdated" class="muted">Waiting for reading</div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <div><h2>Smithton rainfall — previous 7 days + next 7 days</h2>
+    <p class="muted">Historical totals are calculated to 9am Tasmania time. Forecast is from Open-Meteo for Smithton.</p></div>
+  </div>
+  <div id="forecast" class="forecast"><div class="loading">Loading rainfall…</div></div>
+</section>
+
+<section class="card">
+  <div class="card-head"><div><h2>NRE classification</h2><p class="muted">Classification must be checked before harvesting. The link opens the current NRE ShellMAP growing and harvest areas.</p></div><span id="nreBadge" class="badge">CHECK REQUIRED</span></div>
+  <div id="nreNotice" class="notice">CHECK NRE CLASSIFICATION BEFORE HARVESTING.</div>
+  <p style="margin-top:10px"><a href="https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas" target="_blank" rel="noopener">Open NRE ShellMAP classification page</a></p>
+</section>
+
+<section class="card">
+  <div class="card-head"><div><h2>Re-opening requirements</h2><p class="muted">Environmental controls are only one part of the decision to reopen Duck Bay.</p></div></div>
+  <ul class="hint" style="margin-top:0">
+    <li>All applicable environmental controls must be within the Duck Bay Management Plan limits.</li>
+    <li>NRE classification must be checked before harvesting.</li>
+    <li>Any required post-rainfall or salinity recovery period must also be satisfied.</li>
+  </ul>
+</section>
+</main>
+
+<footer>TOC Smithton Control • Duck Bay Management Plan • NRE Tasmania Water Information Portal</footer>
+
+<script>
+"use strict";
+var LIMITS={sal:32.5,rain24:25,rain7:40,river:5};
+var salinity=localStorage.getItem("toc-smithton-duckbay-salinity")||"";
+var rain24=0,rain7=0,riverFlow=null,riverUpdated="",weatherData=null;
+
+function el(id){return document.getElementById(id);}
+function num(v){var n=Number(v);return isFinite(n)?n:null;}
+
+function setControl(id,good,text){
+  var n=el(id);n.className="env-control "+(good?"good":"bad");n.textContent=text;
+}
+
+function updateStatus(){
+  var s=num(salinity);
+  var okSal=s!==null&&s>=LIMITS.sal;
+  var ok24=rain24<=LIMITS.rain24;
+  var ok7=rain7<=LIMITS.rain7;
+  var okRiver=riverFlow!==null&&riverFlow<=LIMITS.river;
+  var ready=s!==null&&riverFlow!==null;
+  var open=ready&&okSal&&ok24&&ok7&&okRiver;
+
+  el("criteria").textContent="Duck Bay Management Plan • Salinity ≥ "+LIMITS.sal+" ppt • Previous 24h rainfall ≤ "+LIMITS.rain24+" mm • Previous 7d rainfall ≤ "+LIMITS.rain7+" mm • Duck River flow ≤ "+LIMITS.river+" m³/s";
+  el("salinityInput").value=salinity;
+  el("salinityValue").textContent=s===null?"—":s.toFixed(1);
+  el("rain24Value").textContent=rain24.toFixed(1);
+  el("rain7Value").textContent=rain7.toFixed(1);
+
+  setControl("envSalinity",okSal,"Salinity: "+(s===null?"NOT ENTERED":s.toFixed(1)+" ppt")+" • Limit ≥ "+LIMITS.sal+" ppt");
+  setControl("envRain24",ok24,"Previous 24-hour rainfall: "+rain24.toFixed(1)+" mm • Limit ≤ "+LIMITS.rain24+" mm");
+  setControl("envRain7",ok7,"Previous 7-day rainfall: "+rain7.toFixed(1)+" mm • Limit ≤ "+LIMITS.rain7+" mm");
+  setControl("envRiver",okRiver,"Duck River flow: "+(riverFlow===null?"UNAVAILABLE":riverFlow.toFixed(3)+" m³/s")+" • Limit ≤ "+LIMITS.river+" m³/s");
+
+  var card=el("statusCard");
+  card.className="card hero "+(open?"environment-ok":"environment-alert");
+  el("statusText").textContent=open?"ENVIRONMENTAL CONDITIONS OK":"ENVIRONMENTAL CONTROL ALERT";
+  el("statusDot").className="status-dot "+(open?"ok":"alert");
+
+  var banner=el("bannerDuck");
+  banner.className="smithton-status "+(open?"open":"closed");
+  el("bannerState").textContent=open?"OPEN":"CLOSED";
+  el("bannerDetail").innerHTML=(open?"All environmental controls within limits.":"One or more environmental controls are outside limits.")+"<br><a href=\"https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas\" target=\"_blank\" rel=\"noopener\" style=\"color:#fff;text-decoration:underline\">CHECK NRE CLASSIFICATION BEFORE HARVESTING</a>";
+  el("lastUpdated").textContent="Status updated "+new Date().toLocaleString("en-AU");
+}
+
+function useRiverData(d){
+  if(!d)return;
+  var f=num(d.flow);
+  if(f!==null){riverFlow=f;riverUpdated=d.updated||d.timestamp||"";}
+  var good=riverFlow!==null&&riverFlow<=LIMITS.river;
+  el("riverBox").className="river-box "+(good?"good":"bad");
+  el("riverStatus").textContent=good?"RIVER FLOW WITHIN LIMIT":"RIVER FLOW OVER LIMIT";
+  el("riverValue").textContent=riverFlow===null?"—":riverFlow.toFixed(3);
+  el("riverUpdated").textContent=riverUpdated?"Last available reading: "+new Date(riverUpdated).toLocaleString("en-AU")+" • Station 14214":"Reading unavailable";
+  updateStatus();
+}
+
+async function river(){
+  try{
+    var r=await fetch("./river-data.js?ts="+Date.now(),{cache:"no-store"});
+    if(!r.ok)throw Error("river");
+    var t=await r.text();
+    var m=t.match(/window\.TOC_RIVER_DATA\s*=\s*(\{[\s\S]*\});?\s*$/);
+    if(m)useRiverData(JSON.parse(m[1]));
+    else throw Error("river-data");
+  }catch(e){
+    if(window.TOC_RIVER_DATA)useRiverData(window.TOC_RIVER_DATA);
+    else {riverFlow=null;el("riverBox").className="river-box bad";el("riverStatus").textContent="RIVER FLOW UNAVAILABLE";updateStatus();}
+  }
+}
+
+function calculateRain(d){
+  var h=d&&d.hourly;
+  if(!h||!h.time)return;
+  var now=new Date();
+  var localParts=Object.fromEntries(new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Hobart",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(now).filter(function(p){return p.type!=="literal";}).map(function(p){return [p.type,p.value];}));
+  var today=localParts.year+"-"+localParts.month+"-"+localParts.day;
+  var base=new Date(Date.UTC(+localParts.year,+localParts.month-1,+localParts.day));
+  function iso(x){return x.toISOString().slice(0,10);}
+  var end9=today+"T09:00";
+  var start24=new Date(base);start24.setUTCDate(start24.getUTCDate()-1);
+  var start7=new Date(base);start7.setUTCDate(start7.getUTCDate()-7);
+  var s24=iso(start24)+"T09:00",s7=iso(start7)+"T09:00";
+  rain24=0;rain7=0;
+  for(var i=0;i<h.time.length;i++){
+    var k=h.time[i].replace(" ","T").slice(0,16),v=Number(h.precipitation[i]||0);
+    if(k>s24&&k<=end9)rain24+=v;
+    if(k>s7&&k<=end9)rain7+=v;
+  }
+}
+
+async function weather(){
+  el("forecast").innerHTML="<div class='loading'>Loading Smithton rainfall…</div>";
+  try{
+    var parts=Object.fromEntries(new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Hobart",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).filter(function(p){return p.type!=="literal";}).map(function(p){return [p.type,p.value];}));
+    var today=parts.year+"-"+parts.month+"-"+parts.day;
+    var base=new Date(Date.UTC(+parts.year,+parts.month-1,+parts.day));
+    function iso(x){return x.toISOString().slice(0,10);}
+    var end=new Date(base);end.setUTCDate(end.getUTCDate()+1);
+    var start=new Date(base);start.setUTCDate(start.getUTCDate()-8);
+    var hist="https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&start_date="+iso(start)+"&end_date="+iso(end)+"&hourly=precipitation&timezone=Australia%2FHobart";
+    var fc="https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Australia%2FHobart&forecast_days=7";
+    var rs=await Promise.all([fetch(hist,{cache:"no-store"}),fetch(fc,{cache:"no-store"})]);
+    if(!rs[0].ok||!rs[1].ok)throw Error("weather");
+    var h=await rs[0].json(),f=await rs[1].json();
+    weatherData=f;calculateRain(h);
+    var byDate={};h.hourly.time.forEach(function(t,i){var d=t.slice(0,10);byDate[d]=(byDate[d]||0)+Number(h.hourly.precipitation[i]||0);});
+    var future=f.daily.time.map(function(d,i){
+      var total=Number(f.daily.precipitation_sum[i]||0);
+      for(var k=1;k<=6;k++){if(i-k>=0)total+=Number(f.daily.precipitation_sum[i-k]||0);else{var dd=new Date(d+"T00:00:00");dd.setDate(dd.getDate()-k);total+=Number(byDate[iso(dd)]||0);}}
+      return {date:d,rain:Number(f.daily.precipitation_sum[i]||0),total:total,min:f.daily.temperature_2m_min[i],max:f.daily.temperature_2m_max[i]};
+    });
+    el("forecast").innerHTML=
+      "<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+rain7.toFixed(1)+" mm</div><div class='range'>Previous 24 hours: "+rain24.toFixed(1)+" mm</div></div>"+
+      future.map(function(x){var level=x.total>LIMITS.rain7?"over":"under";return "<div class='day forecast-day "+level+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+x.total.toFixed(1)+" mm</strong></div></div>";}).join("");
+    updateStatus();
+  }catch(e){
+    try{
+      var s=document.createElement("script");s.src="./weather-data.js?ts="+Date.now();document.head.appendChild(s);
+      s.onload=function(){if(window.TOC_WEATHER_DATA){calculateRain(window.TOC_WEATHER_DATA);updateStatus();}};
+    }catch(x){}
+    el("forecast").innerHTML="<div class='loading'>Live rainfall unavailable — using latest saved data if available.</div>";
+    updateStatus();
+  }
+}
+
+function loadSavedSalinity(){salinity=localStorage.getItem("toc-smithton-duckbay-salinity")||"";}
+el("salinityInput").oninput=function(){salinity=this.value;localStorage.setItem("toc-smithton-duckbay-salinity",this.value);updateStatus();};
+el("refreshAll").onclick=function(){weather();river();};
+loadSavedSalinity();updateStatus();weather();river();
+setInterval(weather,3600000);
+setInterval(river,3600000);
+</script>
+</body>
+</html>
