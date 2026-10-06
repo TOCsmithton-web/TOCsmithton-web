@@ -484,7 +484,7 @@ function renderPublicReopen(){
 function load(){try{var raw=localStorage.getItem(KEY);if(raw){Object.assign(state,JSON.parse(raw));} state.alertEnabled=localStorage.getItem("toc-smithton-alert-enabled")==="true";}catch(e){state.alertEnabled=false;}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));return true;}catch(e){return false;}}
 function status(msg,ok){var e=el("saveStatus");if(!e)return;e.textContent=msg;e.style.display="block";e.style.padding="10px";e.style.marginTop="10px";e.style.fontWeight="700";e.style.background=ok?"#dff5e8":"#fde2e2";e.style.color=ok?"#176b3b":"#9d2727";}
-function updateNotifyButton(){var b=el("notifyBtn");if(b)b.textContent=state.alertEnabled?"Alerts ON ✓":"Alerts OFF";} function alertNow(title,body,tag){if(!state.alertEnabled||!("Notification" in window)||Notification.permission!=="granted")return;if("serviceWorker" in navigator){navigator.serviceWorker.ready.then(function(reg){reg.showNotification(title,{body:body,tag:tag});}).catch(function(){});}}
+function updateNotifyButton(){var b=el("notifyBtn");if(b)b.textContent=state.alertEnabled?"Alerts ON ✓":"Alerts OFF";} function alertNow(title,body,tag){if(!state.alertEnabled||!("Notification" in window)||Notification.permission!=="granted")return;try{new Notification(title,{body:body,tag:tag});}catch(e){console.warn("Notification failed:",e);}}
 function checkAlerts(){
   var sal=Number(state.salinity);
   var low=state.salinity!==""&&sal<Number(state.salinityMin||32.5);
