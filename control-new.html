@@ -3,12 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<!-- TOC_CACHE_BUST_20261006 -->
 <meta name="theme-color" content="#0b4f6c">
-<title>TOC Smithton Control</title>
+<link rel="icon" href="./icons/toc-logo-shortcut.jpg?v=6" type="image/jpeg">
+<link rel="apple-touch-icon" href="./icons/toc-logo-shortcut.jpg?v=6">
+<title>TOC Smithton Control — Live V2</title>
 <link rel="manifest" href="manifest.json?v=3">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=20261006-1519">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./supabase-config.js"></script>
+<script src="./supabase-config.js?v=20261006-1519"></script>
 </head>
 <body>
 <div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite">CHECKING ENVIRONMENTAL CONTROLS</div>
@@ -30,10 +36,10 @@
   <div class="card-head"><div><h2>Harvest area</h2><p class="muted">Select the bay you want to monitor.</p></div></div>
   <label>Bay
     <select id="baySelect" style="width:100%;padding:12px;border:1px solid #c8d3d8;border-radius:9px;font-size:16px;background:#fff">
-      <option value="">Loading bays…</option>
+      <option value="Duck Bay">Duck Bay</option>
     </select>
   </label>
-  <p id="bayCriteria" class="hint"></p>
+  <p id="bayCriteria" class="hint">Duck Bay • Salinity ≥ 32.5 ppt • River flow &lt;5.0 m³/s • 7-day rainfall closure threshold: 40.0 mm • 3-day rainfall closure threshold: 25.0 mm</p>
 </section>
 <section class="status-grid"><article class="card hero">
   <div class="card-head"><div><span class="label">Environmental status</span><h2 id="statusText">Awaiting readings</h2></div><span id="statusDot" class="status-dot neutral"></span></div>
@@ -104,14 +110,14 @@
     <table style="width:100%;border-collapse:collapse">
       <thead><tr>
         <th style="text-align:left;padding:10px;border-bottom:2px solid #c8d3d8">Check</th>
-        <th style="text-align:left;padding:10px;border-bottom:2px solid #c8d3d8">Date / time</th>
+        <th style="text-align:left;padding:10px;border-bottom:2px solid #c8d3d8">Salinity date / time</th><th style="text-align:left;padding:10px;border-bottom:2px solid #c8d3d8">Low tide time</th>
         <th style="text-align:left;padding:10px;border-bottom:2px solid #c8d3d8">Salinity (ppt)</th>
-        <th style="text-align:left;padding:10px;border-bottom:2px solid #c8d3d8">Requirement</th>
+        
       </tr></thead>
       <tbody>
-        <tr><td style="padding:10px;border-bottom:1px solid #dce6eb"><strong>T0</strong></td><td id="publicT0Time" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td id="publicT0Sal" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td style="padding:10px;border-bottom:1px solid #dce6eb">Above 32.5 ppt</td></tr>
-        <tr><td style="padding:10px;border-bottom:1px solid #dce6eb"><strong>T24</strong></td><td id="publicT1Time" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td id="publicT1Sal" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td style="padding:10px;border-bottom:1px solid #dce6eb">Above 32.5 ppt</td></tr>
-        <tr><td style="padding:10px"><strong>T48</strong></td><td id="publicT2Time" style="padding:10px">—</td><td id="publicT2Sal" style="padding:10px">—</td><td style="padding:10px">Above 32.5 ppt</td></tr>
+        <tr><td style="padding:10px;border-bottom:1px solid #dce6eb"><strong>T0</strong></td><td id="publicT0Time" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td id="publicT0LowTide" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td id="publicT0Sal" style="padding:10px;border-bottom:1px solid #dce6eb">—</td></tr>
+        <tr><td style="padding:10px;border-bottom:1px solid #dce6eb"><strong>T24</strong></td><td id="publicT1Time" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td id="publicT1LowTide" style="padding:10px;border-bottom:1px solid #dce6eb">—</td><td id="publicT1Sal" style="padding:10px;border-bottom:1px solid #dce6eb">—</td></tr>
+        <tr><td style="padding:10px"><strong>T48</strong></td><td id="publicT2Time" style="padding:10px">—</td><td id="publicT2LowTide" style="padding:10px">—</td><td id="publicT2Sal" style="padding:10px">—</td></tr>
       </tbody>
     </table>
   </div>
@@ -172,12 +178,43 @@ var DUCK_RAIN3_LIMIT=25;
 var bays=[];
 var currentBay=null;
 var meatTests=[];
-var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
+var nreClassification=null;
+var nreClassificationError=false;
+var supabase=null;
+try{if(window.supabase&&window.TOC_SUPABASE_URL&&window.TOC_SUPABASE_PUBLISHABLE_KEY){supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY,{global:{fetch:function(url,options){options=options||{};return fetch(url,Object.assign({},options,{cache:"no-store"}));}}});}}catch(e){console.error("Supabase startup failed:",e);}
+var SUPABASE_AVAILABLE=!!supabase;
 async function loadBays(){
+ var publicFallback={id:1,bay_name:"Duck Bay",active:true,salinity_min:32.5,salinity_max:null,rainfall_7d_limit:40,river_flow_limit:5};
+ // Set the public default immediately. Live Supabase data can replace it below.
+ bays=[publicFallback];
+ currentBay=publicFallback;
+ var immediateSelect=el("baySelect");
+ if(immediateSelect){
+   immediateSelect.innerHTML='<option value="Duck Bay">Duck Bay</option>';
+   immediateSelect.value="Duck Bay";
+ }
+ render();
+ updateBayBanner();
  try{
-  var r=await supabase.from("bay_settings").select("*").eq("active",true).order("id");
+  if(!supabase){
+    return;
+  }
+  var r=await Promise.race([
+    supabase.from("bay_settings").select("*").eq("active",true).order("id"),
+    new Promise(function(_,reject){setTimeout(function(){reject(new Error("Bay settings timeout"));},8000);})
+  ]);
   if(r.error)throw r.error;
-  bays=r.data||[];
+  var liveBays=r.data||[];
+  // Public controls are authoritative for the two harvest areas used by this page.
+  // Do not allow missing/null database fields to hide required environmental controls.
+  var byName={};
+  liveBays.forEach(function(b){if(b&&b.bay_name)byName[String(b.bay_name).trim().toLowerCase()]=b;});
+  var duck=byName["duck bay"]||{};
+  var kemps=byName["kemps bay"]||{};
+  bays=[
+    Object.assign({},duck,{id:duck.id||1,bay_name:"Duck Bay",active:true,salinity_min:32.5,salinity_max:null,rainfall_7d_limit:40,river_flow_limit:5}),
+    Object.assign({},kemps,{id:kemps.id||2,bay_name:"Kemps Bay",active:true,salinity_min:null,salinity_max:null,rainfall_7d_limit:25,river_flow_limit:null})
+  ];
   var select=el("baySelect");
   var saved=localStorage.getItem("toc-smithton-bay")||"Duck Bay";
   select.innerHTML=bays.map(function(b){return "<option value=\""+b.bay_name.replace(/"/g,"&quot;")+"\">"+b.bay_name+"</option>";}).join("");
@@ -188,15 +225,34 @@ async function loadBays(){
   await loadMeatTests();
   weather();
   riverFlow();
- }catch(e){el("baySelect").innerHTML="<option>Bay data unavailable</option>";}
+ }catch(e){
+  console.warn("Bay settings unavailable; using public fallback.",e);
+  bays=[{id:1,bay_name:"Duck Bay",active:true,salinity_min:32.5,salinity_max:null,rainfall_7d_limit:40,river_flow_limit:5}];
+  var fallbackSelect=el("baySelect");
+  fallbackSelect.innerHTML='<option value="Duck Bay">Duck Bay</option>';
+  fallbackSelect.value="Duck Bay";
+  currentBay=bays[0];
+  render();
+  weather();
+  riverFlow();
+ }
 }
 function bayUsesRiver(){return !!(currentBay&&currentBay.river_flow_limit!=null);}
 function bayUsesSalinity(){return !!(currentBay&&(currentBay.salinity_min!=null||currentBay.salinity_max!=null));}
 function bayRainLimit(){return currentBay&&currentBay.rainfall_7d_limit!=null?Number(currentBay.rainfall_7d_limit):40;}
 function bayName(){return currentBay?currentBay.bay_name:"Duck Bay";}
 async function loadMeatTests(){
+ if(!supabase){
+   meatTests=[];
+   renderMeatTests();
+   updateMeatCompliance();
+   return;
+ }
  try{
-  var r=await supabase.from("meat_test_results").select("id,bay_name,test_date,result,notes,created_at,updated_at").order("test_date",{ascending:false}).order("created_at",{ascending:false}).limit(200);
+  var r=await Promise.race([
+    supabase.from("meat_test_results").select("id,bay_name,test_date,result,notes,created_at,updated_at").order("test_date",{ascending:false}).order("created_at",{ascending:false}).limit(200),
+    new Promise(function(_,reject){setTimeout(function(){reject(new Error("Meat tests timeout"));},8000);})
+  ]);
   if(r.error)throw r.error;
   var wanted=bayName().trim().toLowerCase();
   meatTests=(r.data||[]).filter(function(x){return String(x.bay_name||"").trim().toLowerCase()===wanted;}).slice(0,5);
@@ -262,7 +318,11 @@ function renderMeatTests(errorText){
 }
 async function loadCentral(){
  try{
-  var r=await supabase.from("control_settings").select("salinity,salinity_min,salinity_max,rain_24h_limit,rain_7d_limit,updated_at").eq("id",1).maybeSingle();
+  if(!supabase){status("LIVE DATABASE UNAVAILABLE — local control defaults active",false);return;}
+  var r=await Promise.race([
+    supabase.from("control_settings").select("salinity,salinity_min,salinity_max,rain_24h_limit,rain_7d_limit,updated_at").eq("id",1).maybeSingle(),
+    new Promise(function(_,reject){setTimeout(function(){reject(new Error("Control settings timeout"));},8000);})
+  ]);
   if(r.error)throw r.error;
   if(r.data){
    state.salinity=r.data.salinity==null?"":String(r.data.salinity);
@@ -277,9 +337,19 @@ async function loadCentral(){
  }catch(e){status("CENTRAL CONTROL UNAVAILABLE",false);}
 }
 function el(id){return document.getElementById(id);}
-var nreClassification=null,nreClassificationError=false;
 async function loadNreClassification(){
- try{var r=await fetch("./nre-classification.json?ts="+Date.now(),{cache:"no-store"});if(!r.ok)throw new Error("NRE unavailable");var d=await r.json();if(!d||d.area!=="Duck Bay Harvest Area"||!d.classificationNotice||!d.status)throw new Error("Invalid NRE data");nreClassification=d;nreClassificationError=false;}catch(e){nreClassification=null;nreClassificationError=true;}updateBayBanner();
+  try{
+    var r=await fetch("./nre-classification.json?ts="+Date.now(),{cache:"no-store"});
+    if(!r.ok)throw new Error("NRE classification unavailable");
+    var d=await r.json();
+    if(!d||d.area!=="Duck Bay Harvest Area"||!d.classificationNotice||!d.status)throw new Error("Invalid NRE classification data");
+    nreClassification=d;
+    nreClassificationError=false;
+  }catch(e){
+    nreClassification=null;
+    nreClassificationError=true;
+  }
+  updateBayBanner();
 }
 function updateBayBanner(){
   var sal=Number(state.salinity), min=currentBay&&currentBay.salinity_min!=null?Number(currentBay.salinity_min):null, max=currentBay&&currentBay.salinity_max!=null?Number(currentBay.salinity_max):null;
@@ -302,19 +372,22 @@ function updateBayBanner(){
   var environmentalOpen=salOk&&rain3Ok&&rain7Ok&&riverOk&&meatOk&&meatDueOk;
   var isDuck=bayName().trim().toLowerCase()==="duck bay";
   var nreOpen=!!(nreClassification&&String(nreClassification.status).toUpperCase()==="OPEN");
-  var open=environmentalOpen;
+  var open=isDuck ? (environmentalOpen&&nreOpen&&!nreClassificationError) : environmentalOpen;
   var b=el("bayBanner"); if(!b)return;
   b.className="bay-banner "+(open?"open":"closed");
   if(isDuck){
     if(nreClassificationError){
-      b.innerHTML="<strong>"+bayName().toUpperCase()+" "+(open?"OPEN":"CLOSED")+"</strong><span style="display:block;font-size:.76em;margin-top:4px;font-weight:700">NRE STATUS NOT CONFIRMED — CHECK NRE BEFORE HARVESTING</span>";
+      b.innerHTML="<strong>DUCK BAY STATUS UNVERIFIED</strong><span style=\"display:block;font-size:.76em;margin-top:4px;font-weight:700\">NRE CLASSIFICATION COULD NOT BE CONFIRMED — CHECK NRE BEFORE HARVESTING</span><a href=\"https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas\" target=\"_blank\" rel=\"noopener\" style=\"display:block;color:#fff;text-decoration:underline;font-size:.70em;margin-top:4px;font-weight:700\">OPEN NRE CLASSIFICATION NOTICE</a>";
     }else if(nreOpen){
-      b.innerHTML="<strong>"+bayName().toUpperCase()+" "+(open?"OPEN":"CLOSED")+"</strong><span style="display:block;font-size:.76em;margin-top:4px;font-weight:700">NRE CONFIRMED OPEN • CLASSIFICATION NOTICE NO. "+String(nreClassification.classificationNotice)+"</span>";
+      var notice=String(nreClassification.classificationNotice||"");
+      var conditional=nreClassification.conditional?" (CONDITIONAL)":"";
+      b.innerHTML="<strong>DUCK BAY OPEN</strong><span style=\"display:block;font-size:.76em;margin-top:4px;font-weight:700\">NRE CONFIRMED OPEN"+conditional+" • CLASSIFICATION NOTICE NO. "+notice+"</span><a href=\"https://nre.tas.gov.au/SiteAssets/ShellMAP%20Current%20Harvest%20Status.pdf\" target=\"_blank\" rel=\"noopener\" style=\"display:block;color:#fff;text-decoration:underline;font-size:.70em;margin-top:4px;font-weight:700\">OPEN NRE CLASSIFICATION NOTICE</a>";
     }else{
-      b.innerHTML="<strong>"+bayName().toUpperCase()+" CLOSED</strong><span style="display:block;font-size:.76em;margin-top:4px;font-weight:700">NRE CONFIRMED CLOSED • CLASSIFICATION NOTICE NO. "+String(nreClassification.classificationNotice||"")+"</span>";
+      var closedNotice=String(nreClassification.classificationNotice||"");
+      b.innerHTML="<strong>DUCK BAY CLOSED</strong><span style=\"display:block;font-size:.76em;margin-top:4px;font-weight:700\">NRE CONFIRMED CLOSED • CLASSIFICATION NOTICE NO. "+closedNotice+"</span><a href=\"https://nre.tas.gov.au/SiteAssets/ShellMAP%20Current%20Harvest%20Status.pdf\" target=\"_blank\" rel=\"noopener\" style=\"display:block;color:#fff;text-decoration:underline;font-size:.70em;margin-top:4px;font-weight:700\">OPEN NRE CLASSIFICATION NOTICE</a>";
     }
   }else{
-    b.innerHTML=bayName().toUpperCase()+" "+(open?"OPEN":"CLOSED")+"<a href="https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas" target="_blank" rel="noopener" style="display:block;color:#fff;text-decoration:underline;font-size:.72em;margin-top:4px;font-weight:700">CHECK NRE CLASSIFICATION BEFORE HARVESTING</a>";
+    b.innerHTML=bayName().toUpperCase()+" "+(open?"OPEN":"CLOSED")+"<a href=\"https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas\" target=\"_blank\" rel=\"noopener\" style=\"display:block;color:#fff;text-decoration:underline;font-size:.72em;margin-top:4px;font-weight:700\">CHECK NRE CLASSIFICATION BEFORE HARVESTING</a>";
   }
   if(window.bayFlashTimer){clearInterval(window.bayFlashTimer);window.bayFlashTimer=null;}
   b.style.backgroundColor=open?"#16823b":"#c62828";
@@ -323,55 +396,85 @@ function updateBayBanner(){
   b.style.boxShadow="none";
 }
 
+var publicReopen={T0:null,T24:null,T48:null,error:null};
+
+async function loadPublicReopen(){
+  try{
+    var names=["Duck Bay Salinity T0","Duck Bay Salinity T24","Duck Bay Salinity T48"];
+    var r=await supabase.from("meat_test_results")
+      .select("id,bay_name,test_date,result,notes,created_at")
+      .in("bay_name",names)
+      .order("created_at",{ascending:false})
+      .limit(30);
+    if(r.error)throw r.error;
+    var sr=await supabase.from("meat_test_results")
+      .select("result,notes,created_at")
+      .eq("bay_name","Duck Bay Salinity Reopening Status")
+      .order("created_at",{ascending:false})
+      .limit(1);
+    if(sr.error)throw sr.error;
+    var status=sr.data&&sr.data[0]?sr.data[0]:null;
+    var resetAt=0;
+    if(status&&String(status.result||"").toUpperCase()==="RESET AFTER CLOSURE"){
+      try{resetAt=new Date(JSON.parse(status.notes||"{}").resetAt||status.created_at).getTime()||0;}catch(e){resetAt=new Date(status.created_at).getTime()||0;}
+    }
+    var latest={};
+    (r.data||[]).forEach(function(row){
+      if(resetAt&&new Date(row.created_at).getTime()<=resetAt)return;
+      var name=String(row.bay_name||"");
+      var key=name==="Duck Bay Salinity T0"?"T0":name==="Duck Bay Salinity T24"?"T24":name==="Duck Bay Salinity T48"?"T48":null;
+      if(key&&!latest[key])latest[key]=row;
+    });
+    publicReopen={T0:latest.T0||null,T24:latest.T24||null,T48:latest.T48||null,error:null};
+    renderPublicReopen();
+  }catch(e){
+    publicReopen={T0:null,T24:null,T48:null,error:e};
+    renderPublicReopen();
+  }
+}
+
 function renderPublicReopen(){
   var badge=el("publicReopenBadge"),statusEl=el("publicReopenStatus");
   if(!badge||!statusEl)return;
 
-  // The administrator records the 48-hour reopening checks in localStorage.
-  // Use the same key here so the public/read-only page shows the same T0/T24/T48
-  // date/time and salinity values on the same device.
-  var x={};
-  try{
-    x=JSON.parse(localStorage.getItem("toc-duckbay-reopen-admin-v1")||"{}");
-  }catch(e){x={};}
-
-  function show(id,value,isSalinity){
-    var target=el(id);
-    if(!target)return;
-    if(value===undefined||value===null||value===""){
-      target.textContent="—";
-      return;
-    }
-    if(isSalinity){
-      var n=Number(value);
-      target.textContent=isFinite(n)?n.toFixed(1):String(value);
-    }else{
-      var d=new Date(value);
-      target.textContent=isFinite(d.getTime())?d.toLocaleString("en-AU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):String(value);
-    }
+  function reading(row){
+    if(!row)return {time:"—",lowTide:"—",sal:"—"};
+    var rawTime="";var lowTide="";try{var meta=JSON.parse(row.notes||"{}");rawTime=meta.salinityTime||"";lowTide=meta.lowTideTime||"";}catch(e){rawTime=row.notes||"";}
+    var d=rawTime?new Date(rawTime):null;
+    if(!d||!isFinite(d.getTime())) d=new Date(String(row.test_date||"")+"T00:00:00");
+    var time=isFinite(d.getTime())?d.toLocaleString("en-AU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):String(rawTime||row.test_date||"—");
+    var n=Number(row.result);
+    return {time:time,lowTide:lowTide||"—",sal:isFinite(n)?n.toFixed(1):String(row.result||"—")};
   }
+  var a=reading(publicReopen.T0),b=reading(publicReopen.T24),c=reading(publicReopen.T48);
+  el("publicT0Time").textContent=a.time;el("publicT0LowTide").textContent=a.lowTide;el("publicT0Sal").textContent=a.sal;
+  el("publicT1Time").textContent=b.time;el("publicT1LowTide").textContent=b.lowTide;el("publicT1Sal").textContent=b.sal;
+  el("publicT2Time").textContent=c.time;el("publicT2LowTide").textContent=c.lowTide;el("publicT2Sal").textContent=c.sal;
 
-  show("publicT0Time",x.reopenT0Time,false);
-  show("publicT0Sal",x.reopenT0Sal,true);
-  show("publicT1Time",x.reopenT1Time,false);
-  show("publicT1Sal",x.reopenT1Sal,true);
-  show("publicT2Time",x.reopenT2Time,false);
-  show("publicT2Sal",x.reopenT2Sal,true);
+  var threshold=Number((currentBay&&currentBay.salinity_min!=null)?currentBay.salinity_min:32.5);
+  var vals=[publicReopen.T0,publicReopen.T24,publicReopen.T48];
+  var complete=vals.every(function(x){return x&&isFinite(Number(x.result));});
+  var failed=vals.some(function(x){return x&&isFinite(Number(x.result))&&Number(x.result)<threshold;});
+  var started=!!publicReopen.T0;
+  var satisfied=complete&&!failed&&vals.every(function(x){return Number(x.result)>=threshold;});
 
-  var ready=isFinite(previous7Total)&&(bayName()==="Duck Bay"?isFinite(previous3Total):true)&&(state.salinity!==""&&isFinite(Number(state.salinity)))&&(!bayUsesRiver()||isFinite(Number(window.riverCurrentFlow)));
-  var started=!!x.startedAt;
-  badge.textContent=started?"IN PROGRESS":(ready?"READY TO START":"WAITING");
-  badge.style.background=started?"#fff0df":(ready?"#bff3cc":"#f4f7f8");
-  badge.style.color=started?"#a35a00":(ready?"#176b3b":"#52636d");
-
-  if(started){
-    var startedDate=new Date(x.startedAt);
-    var startedText=isFinite(startedDate.getTime())?startedDate.toLocaleString("en-AU"):"";
-    statusEl.textContent="48-hour salinity check started"+(startedText?" "+startedText:"")+". T0, T24 and T48 readings are shown above.";
-  }else if(ready){
-    statusEl.textContent="All available environmental readings are within the required range. The 48-hour salinity check can be commenced and recorded at T0, T24 and T48.";
+  if(publicReopen.error){
+    badge.textContent="LIVE DATA UNAVAILABLE";badge.style.background="#ffd0d0";badge.style.color="#9d2727";
+    statusEl.textContent="Unable to load the central 48-hour salinity records. The page will retry automatically.";
+    return;
+  }
+  if(satisfied){
+    badge.textContent="48 HOURS SATISFIED";badge.style.background="#bff3cc";badge.style.color="#176b3b";
+    statusEl.textContent="All three salinity checks are at or above "+threshold.toFixed(1)+" ppt. Confirm the current NRE classification before harvesting.";
+  }else if(failed){
+    badge.textContent="FAILED";badge.style.background="#ffd0d0";badge.style.color="#9d2727";
+    statusEl.textContent="At least one recorded salinity check is below "+threshold.toFixed(1)+" ppt. The 48-hour reopening requirement has not been satisfied.";
+  }else if(started){
+    badge.textContent="IN PROGRESS";badge.style.background="#fff0df";badge.style.color="#a35a00";
+    statusEl.textContent="Central live record: 48-hour salinity check in progress. T0, T24 and T48 readings update automatically on every device.";
   }else{
-    statusEl.textContent="Waiting for all required environmental readings before the 48-hour check starts.";
+    badge.textContent="NOT STARTED";badge.style.background="#f4f7f8";badge.style.color="#52636d";
+    statusEl.textContent="No central 48-hour salinity check has been recorded yet. When started, T0, T24 and T48 will appear here live.";
   }
 }
 function load(){try{var raw=localStorage.getItem(KEY);if(raw){Object.assign(state,JSON.parse(raw));} state.alertEnabled=localStorage.getItem("toc-smithton-alert-enabled")==="true";}catch(e){state.alertEnabled=false;}}
@@ -471,67 +574,70 @@ function render(){
 
 function isoDate(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 async function weather(){
-  var box=el("forecast");box.innerHTML="<div class='loading'>Loading Smithton rainfall…</div>";
+  var box=el("forecast");
+  box.innerHTML="<div class='loading'>Loading Smithton rainfall forecast…</div>";
+  var data=null;
   try{
     var url="https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&hourly=precipitation&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&past_days=8&forecast_days=7&timezone=Australia%2FHobart";
-    var response=await fetch(url,{cache:"no-store"});
+    var controller=new AbortController();
+    var timeout=setTimeout(function(){controller.abort();},12000);
+    var response=await fetch(url,{cache:"no-store",signal:controller.signal});
+    clearTimeout(timeout);
     if(!response.ok)throw new Error("weather service "+response.status);
-    var data=await response.json();
-    if(!data.hourly||!data.daily)throw new Error("incomplete weather data");
-
+    data=await response.json();
+  }catch(e){
+    console.warn("Primary Smithton weather request failed; trying forecast-only request.",e);
+    try{
+      var fallbackResponse=await fetch("https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=Australia%2FHobart",{cache:"no-store"});
+      if(!fallbackResponse.ok)throw new Error("forecast fallback "+fallbackResponse.status);
+      var fd=await fallbackResponse.json();
+      data={hourly:{time:[],precipitation:[]},daily:fd.daily};
+    }catch(e2){
+      previous7Total=NaN;previous3Total=NaN;previous24Total=NaN;
+      render();
+      box.innerHTML="<div class='loading'>Rainfall/weather unavailable — tap Refresh. The control will retry automatically.</div>";
+      return;
+    }
+  }
+  try{
+    if(!data.daily)throw new Error("incomplete weather data");
     var nowParts=Object.fromEntries(new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Hobart",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).filter(function(p){return p.type!=="literal";}).map(function(p){return [p.type,p.value];}));
     var todayKey=nowParts.year+"-"+nowParts.month+"-"+nowParts.day;
-    var end9=new Date(todayKey+"T09:00:00+10:00");
-    var start7=new Date(end9);start7.setDate(start7.getDate()-7);
-    var start3=new Date(end9);start3.setDate(start3.getDate()-3);
-    var start24=new Date(end9);start24.setDate(start24.getDate()-1);
-
-    previous7Total=0;previous3Total=0;previous24Total=0;
-    for(var i=0;i<data.hourly.time.length;i++){
-      var t=new Date(String(data.hourly.time[i]).replace(" ","T")+":00+10:00");
-      var rain=Number(data.hourly.precipitation[i]||0);
-      if(!isFinite(t.getTime()))continue;
-      if(t>start7&&t<=end9)previous7Total+=rain;
-      if(t>start3&&t<=end9)previous3Total+=rain;
-      if(t>start24&&t<=end9)previous24Total+=rain;
+    function shiftDateKey(key,days){
+      var a=key.split("-").map(Number),d=new Date(Date.UTC(a[0],a[1]-1,a[2]));
+      d.setUTCDate(d.getUTCDate()+days);
+      return d.toISOString().slice(0,10);
     }
-
+    var endKey=todayKey+"T09:00";
+    var start7Key=shiftDateKey(todayKey,-7)+"T09:00";
+    var start3Key=shiftDateKey(todayKey,-3)+"T09:00";
+    var start24Key=shiftDateKey(todayKey,-1)+"T09:00";
+    previous7Total=0;previous3Total=0;previous24Total=0;
+    var haveHourly=!!(data.hourly&&data.hourly.time&&data.hourly.precipitation);
+    if(haveHourly){
+      for(var i=0;i<data.hourly.time.length;i++){
+        var key=String(data.hourly.time[i]).slice(0,13)+":00";
+        var rain=Number(data.hourly.precipitation[i]||0);
+        if(key>start7Key&&key<=endKey)previous7Total+=rain;
+        if(key>start3Key&&key<=endKey)previous3Total+=rain;
+        if(key>start24Key&&key<=endKey)previous24Total+=rain;
+      }
+    }else{
+      previous7Total=0;previous3Total=0;previous24Total=0;
+      box.setAttribute("data-history-status","Historical hourly rainfall temporarily unavailable; forecast is live.");
+    }
     var future=data.daily.time.map(function(date,i){
       return {date:date,rain:Number(data.daily.precipitation_sum[i]||0),max:data.daily.temperature_2m_max[i],min:data.daily.temperature_2m_min[i]};
     }).filter(function(x){return x.date>=todayKey;}).slice(0,7);
-
-    var observedByDate={};
-    for(var j=0;j<data.hourly.time.length;j++){
-      var hd=String(data.hourly.time[j]).slice(0,10);
-      observedByDate[hd]=(observedByDate[hd]||0)+Number(data.hourly.precipitation[j]||0);
-    }
-    future.forEach(function(x,i){
-      var total=Number(x.rain||0);
-      for(var k=1;k<=6;k++){
-        if(i-k>=0) total+=Number(future[i-k].rain||0);
-        else{
-          var d=new Date(x.date+"T00:00:00");
-          d.setDate(d.getDate()-k);
-          total+=Number(observedByDate[isoDate(d)]||0);
-        }
-      }
-      x.sevenDayTotal=total;
-    });
-
     save();render();checkAlerts();
-
-    box.innerHTML="<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+previous7Total.toFixed(1)+" mm</div><div class='range'>Previous 3 days: "+previous3Total.toFixed(1)+" mm • Observed rainfall total</div></div>"+
+    box.innerHTML="<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+(isFinite(previous7Total)?previous7Total.toFixed(1):"—")+" mm</div><div class='range'>Previous 3 days: "+(isFinite(previous3Total)?previous3Total.toFixed(1):"—")+" mm • Observed rainfall total</div></div>"+
       future.map(function(x){
-        var threshold=bayRainLimit();var level=x.sevenDayTotal>=threshold?"over":"under";
-        var greenIntensity=Math.max(0,Math.min(1,(threshold-x.sevenDayTotal)/threshold));
-        var greenBg="rgb("+(232-Math.round(greenIntensity*130))+","+(247-Math.round(greenIntensity*35))+","+(237-Math.round(greenIntensity*70))+")";
-        return "<div class='day forecast-day "+level+"' style='"+(level==="under"?"background:"+greenBg+";":"")+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+x.sevenDayTotal.toFixed(1)+" mm</strong></div></div>";
+        var threshold=bayRainLimit(),level=x.rain>=threshold?"over":"under";
+        return "<div class='day forecast-day "+level+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div></div>";
       }).join("");
   }catch(e){
-    previous7Total=NaN;previous3Total=NaN;previous24Total=NaN;
-    render();
-    box.innerHTML="<div class='loading'>Rainfall/weather unavailable — tap Refresh.</div>";
-    console.error("Smithton weather:",e);
+    console.error("Smithton weather render:",e);
+    box.innerHTML="<div class='loading'>Forecast data could not be displayed — tap Refresh.</div>";
   }
 }
 function renderRiverHistory(history){
@@ -638,7 +744,10 @@ async function riverFlow(){
   if(section)section.style.display="";
   var fallback=null;
   try{
-    var response=await fetch("./river.json?ts="+Date.now(),{cache:"no-store",headers:{"Cache-Control":"no-cache"}});
+    var controller=new AbortController();
+    var timeout=setTimeout(function(){controller.abort();},10000);
+    var response=await fetch("./river.json?ts="+Date.now(),{cache:"no-store",headers:{"Cache-Control":"no-cache"},signal:controller.signal});
+    clearTimeout(timeout);
     if(response.ok){var d=await response.json();if(isFinite(Number(d.flow)))fallback=d;}
   }catch(e){}
   if(!fallback){el("riverFlow").textContent="—";el("riverStatus").textContent="River flow unavailable";window.riverCurrentFlow=NaN;updateBayBanner();return;}
@@ -665,12 +774,9 @@ function init(){
   el("baySelect").addEventListener("change",function(){setTimeout(function(){riverFlow();weather();loadMeatTests();},50);});
   el("notifyBtn").addEventListener("click",async function(){if(state.alertEnabled){state.alertEnabled=false;try{localStorage.setItem("toc-smithton-alert-enabled","false");}catch(e){}updateNotifyButton();status("ALERTS OFF — this device will not receive environmental notifications.",true);return;}if(!("Notification" in window)){status("ALERTS NOT SUPPORTED",false);return;}try{var p=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(p!=="granted"){status("ALERTS BLOCKED — allow notifications in Chrome settings",false);return;}state.alertEnabled=true;try{localStorage.setItem("toc-smithton-alert-enabled","true");}catch(e){}updateNotifyButton();var reg=await navigator.serviceWorker.ready;await reg.showNotification("TOC Smithton Control",{body:"Environmental alerts are enabled on this device. This setting stays on until you turn it off.",tag:"toc-test"});status("ALERTS ON ✓ — this setting stays on until you turn it off.",true);}catch(e){status("ALERT SETUP FAILED",false);}});
 }
-load();render();init();updateNotifyButton();status("APP READY ✓",true);updateMeatCompliance();loadNreClassification();loadBays();loadCentral();weather();riverFlow();loadMeatTests();loadPublicReopen();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,60000);setInterval(loadMeatTests,10000);setInterval(loadNreClassification,300000);setInterval(loadPublicReopen,10000);
+load();render();init();updateNotifyButton();status("APP READY ✓",true);updateMeatCompliance();loadNreClassification();
+loadBays();loadCentral();weather();riverFlow();loadMeatTests();loadPublicReopen();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,60000);setInterval(loadMeatTests,10000);setInterval(loadPublicReopen,10000);
 })();
 </script>
-<script>
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});
-}
-</script>
+<script>/* Public dashboard deliberately does not register a service worker. */</script>
 </body></html>
