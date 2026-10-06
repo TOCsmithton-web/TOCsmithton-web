@@ -229,8 +229,6 @@ async function loadBays(){
   select.onchange=async function(){currentBay=bays.find(function(b){return b.bay_name===select.value;})||null;localStorage.setItem("toc-smithton-bay",select.value);render();await loadMeatTests();updateBayBanner();};
   render();
   await loadMeatTests();
-  weather();
-  riverFlow();
  }catch(e){
   console.warn("Bay settings unavailable; using public fallback.",e);
   bays=[{id:1,bay_name:"Duck Bay",active:true,salinity_min:32.5,salinity_max:null,rainfall_7d_limit:40,river_flow_limit:5}];
@@ -239,8 +237,6 @@ async function loadBays(){
   fallbackSelect.value="Duck Bay";
   currentBay=bays[0];
   render();
-  weather();
-  riverFlow();
  }
 }
 function bayUsesRiver(){return !!(currentBay&&currentBay.river_flow_limit!=null);}
@@ -334,6 +330,11 @@ async function loadCentral(){
    state.salinity=r.data.salinity==null?"":String(r.data.salinity);
    state.salinityMin=r.data.salinity_min==null?"":String(r.data.salinity_min);
    state.salinityMax=r.data.salinity_max==null?"":String(r.data.salinity_max);
+   // Central Smithton settings are authoritative for the public salinity limits.
+   if(currentBay){
+     currentBay.salinity_min=state.salinityMin!==""?Number(state.salinityMin):null;
+     currentBay.salinity_max=state.salinityMax!==""?Number(state.salinityMax):null;
+   }
    state.rainThreshold=r.data.rain_24h_limit==null?"":String(r.data.rain_24h_limit);
    state.rain7Threshold=r.data.rain_7d_limit==null?"":String(r.data.rain_7d_limit);
    render();
@@ -358,7 +359,7 @@ async function loadNreClassification(){
   updateBayBanner();
 }
 function updateBayBanner(){
-  var sal=Number(state.salinity), min=currentBay&&currentBay.salinity_min!=null?Number(currentBay.salinity_min):null, max=currentBay&&currentBay.salinity_max!=null?Number(currentBay.salinity_max):null;
+  var sal=Number(state.salinity), min=state.salinityMin!==""?Number(state.salinityMin):(currentBay&&currentBay.salinity_min!=null?Number(currentBay.salinity_min):null), max=state.salinityMax!==""?Number(state.salinityMax):(currentBay&&currentBay.salinity_max!=null?Number(currentBay.salinity_max):null);
   var salOk=!bayUsesSalinity()||(state.salinity!==""&&isFinite(sal)&&(min==null||sal>=min)&&(max==null||sal<=max));
   var rain24Ok=isFinite(previous24Total)&&previous24Total<Number(state.rainThreshold||25);
   var rain3Ok=bayName()==="Duck Bay" ? (isFinite(previous3Total)&&previous3Total<DUCK_RAIN3_LIMIT) : true;
@@ -501,13 +502,15 @@ function checkAlerts(){
 }
 function render(){
   var salRequired=bayUsesSalinity(), riverRequired=bayUsesRiver(), limit=bayRainLimit();
-  var salOk=!salRequired||(state.salinity!==""&&isFinite(Number(state.salinity))&&(currentBay.salinity_min==null||Number(state.salinity)>=Number(currentBay.salinity_min))&&(currentBay.salinity_max==null||Number(state.salinity)<=Number(currentBay.salinity_max)));
+  var salMin=state.salinityMin!==""?Number(state.salinityMin):(currentBay&&currentBay.salinity_min!=null?Number(currentBay.salinity_min):null);
+  var salMax=state.salinityMax!==""?Number(state.salinityMax):(currentBay&&currentBay.salinity_max!=null?Number(currentBay.salinity_max):null);
+  var salOk=!salRequired||(state.salinity!==""&&isFinite(Number(state.salinity))&&(salMin==null||Number(state.salinity)>=salMin)&&(salMax==null||Number(state.salinity)<=salMax));
   var rain24Ok=isFinite(previous24Total)&&previous24Total<Number(state.rainThreshold||25);
   var rain3Ok=bayName()==="Duck Bay" ? (isFinite(previous3Total)&&previous3Total<DUCK_RAIN3_LIMIT) : true;
   var rain7Ok=isFinite(previous7Total)&&previous7Total<limit;
   el("salinityInput").value=state.salinity||"";
-  el("salinityMin").value=currentBay&&currentBay.salinity_min!=null?currentBay.salinity_min:"";
-  el("salinityMax").value=currentBay&&currentBay.salinity_max!=null?currentBay.salinity_max:"";
+  el("salinityMin").value=state.salinityMin!==""?state.salinityMin:(currentBay&&currentBay.salinity_min!=null?currentBay.salinity_min:"");
+  el("salinityMax").value=state.salinityMax!==""?state.salinityMax:(currentBay&&currentBay.salinity_max!=null?currentBay.salinity_max:"");
   el("rainThreshold").value=currentBay&&currentBay.rainfall_7d_limit!=null?currentBay.rainfall_7d_limit:"";
   el("rain7Threshold").value=limit;
   el("salinityValue").textContent=salRequired?(state.salinity===""?"—":Number(state.salinity).toFixed(1)):"N/A";
@@ -594,7 +597,10 @@ async function weather(){
   }catch(e){
     console.warn("Primary Smithton weather request failed; trying forecast-only request.",e);
     try{
-      var fallbackResponse=await fetch("https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=Australia%2FHobart",{cache:"no-store"});
+      var fallbackController=new AbortController();
+      var fallbackTimeout=setTimeout(function(){fallbackController.abort();},10000);
+      var fallbackResponse=await fetch("https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=Australia%2FHobart",{cache:"no-store",signal:fallbackController.signal});
+      clearTimeout(fallbackTimeout);
       if(!fallbackResponse.ok)throw new Error("forecast fallback "+fallbackResponse.status);
       var fd=await fallbackResponse.json();
       data={hourly:{time:[],precipitation:[]},daily:fd.daily};
@@ -786,8 +792,10 @@ load();render();init();updateNotifyButton();status("APP READY ✓",true);updateM
 (async function bootPublicControl(){
   await loadBays();
   await loadCentral();
-  await weather();
-  await riverFlow();
+  // Weather and river are independent. Do not let a slow external weather service
+  // prevent the river control from loading or leave the dashboard stuck on "Loading".
+  weather();
+  riverFlow();
   await loadMeatTests();
   await loadPublicReopen();
   status("CENTRAL CONTROL CONNECTED ✓",true);
