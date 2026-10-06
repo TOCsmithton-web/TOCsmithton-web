@@ -1,0 +1,17 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TOC Supabase Diagnostic</title><style>body{font-family:Arial;background:#111;color:#fff;padding:20px}h1{font-size:26px}.box{padding:16px;margin:12px 0;border-radius:10px;background:#222}pre{white-space:pre-wrap;word-break:break-word}</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="./supabase-config.js?v=202610061800"></script></head><body><h1>TOC SUPABASE DIAGNOSTIC</h1><div id="out" class="box">Testing…</div><script>
+(async function(){
+const o=document.getElementById("out");
+const lines=[];
+lines.push("Supabase library: "+(window.supabase?"LOADED":"NOT LOADED"));
+lines.push("Supabase URL: "+(window.TOC_SUPABASE_URL?"LOADED":"MISSING"));
+lines.push("Publishable key: "+(window.TOC_SUPABASE_PUBLISHABLE_KEY?"LOADED":"MISSING"));
+if(!window.supabase||!window.TOC_SUPABASE_URL||!window.TOC_SUPABASE_PUBLISHABLE_KEY){o.innerHTML="<pre>"+lines.join("\n")+"</pre>";return;}
+try{
+ const sb=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY,{global:{fetch:(url,opts)=>fetch(url,Object.assign({},opts||{},{cache:"no-store"}))}});
+ const r=await sb.from("control_settings").select("id,salinity,salinity_min,salinity_max,rain_24h_limit,rain_7d_limit,updated_at").eq("id",1).maybeSingle();
+ lines.push("control_settings read: "+(r.error?"FAILED":"SUCCESS"));
+ if(r.error) lines.push("ERROR: "+r.error.message+" | code="+(r.error.code||"")+" | details="+(r.error.details||""));
+ else lines.push("DATA: "+JSON.stringify(r.data));
+}catch(e){lines.push("EXCEPTION: "+e.message);}
+o.innerHTML="<pre>"+lines.join("\n")+"</pre>";
+})();</script></body></html>
