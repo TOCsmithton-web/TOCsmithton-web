@@ -27,6 +27,8 @@
 <link rel="stylesheet" href="styles.css?v=20261006-1519">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./supabase-config.js?v=20261006-1715"></script>
+<script src="./river-data.js?v=20261006-2100"></script>
+<script src="./weather-data.js?v=20261006-2100"></script>
 <script>
 
 </script>
@@ -594,7 +596,7 @@ function isoDate(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2
 async function weather(){
  var box=el("forecast");
  box.innerHTML="<div class='loading'>Loading Smithton rainfall forecast…</div>";
- var data=null;
+ var data=(window.TOC_WEATHER_DATA&&typeof window.TOC_WEATHER_DATA==="object")?window.TOC_WEATHER_DATA:null;
  try{
    var localController=new AbortController();
    var localTimeout=setTimeout(function(){localController.abort();},6000);
@@ -748,7 +750,7 @@ async function riverFlow(){
   var section=document.querySelector("#riverFlow")?.closest("section");
   if(!bayUsesRiver()){if(section)section.style.display="none";window.riverCurrentFlow=0;updateBayBanner();return;}
   if(section)section.style.display="";
-  var fallback=null;
+  var fallback=(window.TOC_RIVER_DATA&&typeof window.TOC_RIVER_DATA==="object")?window.TOC_RIVER_DATA:null;
   try{
     var controller=new AbortController();
     var timeout=setTimeout(function(){controller.abort();},10000);
