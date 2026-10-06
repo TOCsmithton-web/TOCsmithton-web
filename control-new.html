@@ -299,7 +299,10 @@ function updateBayBanner(){
   } else if(isKemps) {
     meatDueOk=false;
   }
-  var environmentalOpen=salOk&&rain3Ok&&rain7Ok&&riverOk&&meatOk&&meatDueOk;\n  var isDuck=bayName().trim().toLowerCase()==="duck bay";\n  var nreOpen=!!(nreClassification&&String(nreClassification.status).toUpperCase()==="OPEN");\n  var open=environmentalOpen;
+  var environmentalOpen=salOk&&rain3Ok&&rain7Ok&&riverOk&&meatOk&&meatDueOk;
+  var isDuck=bayName().trim().toLowerCase()==="duck bay";
+  var nreOpen=!!(nreClassification&&String(nreClassification.status).toUpperCase()==="OPEN");
+  var open=environmentalOpen;
   var b=el("bayBanner"); if(!b)return;
   b.className="bay-banner "+(open?"open":"closed");
   if(isDuck){
