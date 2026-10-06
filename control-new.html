@@ -16,13 +16,10 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./supabase-config.js?v=20261006-1715"></script>
 <script>
-// Refresh any previously installed TOC service worker and keep the public control current.
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js?v=20261006-1730",{updateViaCache:"none"}).then(function(reg){ return reg.update(); }).catch(function(){});
-}
+
 </script>
 </head>
-<body>
+<body><div style="position:fixed;right:8px;top:8px;z-index:99999;background:#111;color:#fff;padding:4px 7px;border-radius:4px;font:12px Arial">LIVE BUILD ALERT-FIX</div>
 <div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite">CHECKING ENVIRONMENTAL CONTROLS</div>
 <header class="topbar" style="background:#000">
   <div style="display:flex;align-items:center;gap:12px">
@@ -760,7 +757,7 @@ async function riverFlow(){
 function init(){
   el("refreshWeather").addEventListener("click",weather);
   el("baySelect").addEventListener("change",function(){setTimeout(function(){riverFlow();weather();loadMeatTests();},50);});
-  el("notifyBtn").addEventListener("click",async function(){if(state.alertEnabled){state.alertEnabled=false;try{localStorage.setItem("toc-smithton-alert-enabled","false");}catch(e){}updateNotifyButton();status("ALERTS OFF — this device will not receive environmental notifications.",true);return;}if(!("Notification" in window)){status("ALERTS NOT SUPPORTED",false);return;}try{var p=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(p!=="granted"){status("ALERTS BLOCKED — allow notifications in Chrome settings",false);return;}state.alertEnabled=true;try{localStorage.setItem("toc-smithton-alert-enabled","true");}catch(e){}updateNotifyButton();var reg=await navigator.serviceWorker.ready;await reg.showNotification("TOC Smithton Control",{body:"Environmental alerts are enabled on this device. This setting stays on until you turn it off.",tag:"toc-test"});status("ALERTS ON ✓ — this setting stays on until you turn it off.",true);}catch(e){status("ALERT SETUP FAILED",false);}});
+  el("notifyBtn").addEventListener("click",async function(){if(state.alertEnabled){state.alertEnabled=false;try{localStorage.setItem("toc-smithton-alert-enabled","false");}catch(e){}updateNotifyButton();status("ALERTS OFF — this device will not receive environmental notifications.",true);return;}if(!("Notification" in window)){status("ALERTS NOT SUPPORTED",false);return;}try{var p=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(p!=="granted"){status("ALERTS BLOCKED — allow notifications in Chrome settings",false);return;}state.alertEnabled=true;try{localStorage.setItem("toc-smithton-alert-enabled","true");}catch(e){}updateNotifyButton();new Notification("TOC Smithton Control",{body:"Environmental alerts are enabled on this device while this page is open.",tag:"toc-test"});status("ALERTS ON ✓ — this setting stays on until you turn it off.",true);}catch(e){status("ALERT SETUP FAILED",false);}});
 }
 load();render();init();updateNotifyButton();status("APP READY ✓",true);updateMeatCompliance();loadNreClassification();
 // Load harvest-area settings first, then load the authoritative central Supabase settings.
