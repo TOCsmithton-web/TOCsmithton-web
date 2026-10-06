@@ -1,0 +1,63 @@
+name: Update Smithton Weather
+
+on:
+  push:
+    branches: ["main"]
+    paths-ignore:
+      - "weather.json"
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: smithton-weather-update
+  cancel-in-progress: true
+
+jobs:
+  update-weather:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch Smithton weather from Open-Meteo
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, requests, datetime
+          from zoneinfo import ZoneInfo
+
+          url = (
+              "https://api.open-meteo.com/v1/forecast"
+              "?latitude=-40.84&longitude=145.12"
+              "&hourly=precipitation"
+              "&daily=precipitation_sum,temperature_2m_max,temperature_2m_min"
+              "&past_days=8&forecast_days=7"
+              "&timezone=Australia%2FHobart"
+          )
+          r = requests.get(url, timeout=60)
+          r.raise_for_status()
+          data = r.json()
+          if not data.get("hourly") or not data.get("daily"):
+              raise RuntimeError("Open-Meteo returned incomplete weather data")
+          data["_source"] = "Open-Meteo"
+          data["_updated"] = datetime.datetime.now(datetime.timezone.utc).astimezone(
+              ZoneInfo("Australia/Hobart")
+          ).isoformat()
+          with open("weather.json", "w", encoding="utf-8") as f:
+              json.dump(data, f, separators=(",", ":"))
+          print("Updated Smithton weather snapshot:", data["_updated"])
+          PY
+
+      - name: Commit weather data
+        shell: bash
+        run: |
+          git config user.name "TOC Smithton Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add weather.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Update Smithton weather data"
+          git push
