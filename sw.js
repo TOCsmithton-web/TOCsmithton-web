@@ -1,4 +1,4 @@
-const SW_VERSION="20261006-2";
+const SW_VERSION="20261006-3";
 self.addEventListener("install",function(e){self.skipWaiting();});
 self.addEventListener("activate",function(e){
   e.waitUntil((async function(){
