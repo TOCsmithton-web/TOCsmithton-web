@@ -50,6 +50,8 @@ jobs:
           with open("weather.json", "w", encoding="utf-8") as f:
               json.dump(data, f, separators=(",", ":"))
           print("Updated Smithton weather snapshot:", data["_updated"])
+          with open("weather-data.js", "w", encoding="utf-8") as f:
+              f.write("window.TOC_WEATHER_DATA=" + json.dumps(data, separators=(",", ":")) + ";\n")
           PY
 
       - name: Commit weather data
@@ -57,7 +59,7 @@ jobs:
         run: |
           git config user.name "TOC Smithton Bot"
           git config user.email "actions@users.noreply.github.com"
-          git add weather.json
+          git add weather.json weather-data.js
           git diff --cached --quiet && exit 0
           git commit -m "Update Smithton weather data"
           git pull --rebase origin main
