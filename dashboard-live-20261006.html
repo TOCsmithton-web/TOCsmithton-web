@@ -575,26 +575,39 @@ async function weather(){
   var box=el("forecast");
   box.innerHTML="<div class='loading'>Loading Smithton rainfall forecast…</div>";
   var data=null;
+  // Prefer the hourly GitHub-updated weather snapshot. This avoids relying on
+  // a slow/blocked third-party request from the user's phone.
   try{
-    var url="https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&hourly=precipitation&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&past_days=8&forecast_days=7&timezone=Australia%2FHobart";
-    var controller=new AbortController();
-    var timeout=setTimeout(function(){controller.abort();},12000);
-    var response=await fetch(url,{cache:"no-store",signal:controller.signal});
-    clearTimeout(timeout);
-    if(!response.ok)throw new Error("weather service "+response.status);
-    data=await response.json();
-  }catch(e){
-    console.warn("Primary Smithton weather request failed; trying forecast-only request.",e);
+    var localResponse=await fetch("./weather.json?ts="+Date.now(),{cache:"no-store"});
+    if(localResponse.ok){
+      data=await localResponse.json();
+    }else{
+      throw new Error("weather snapshot "+localResponse.status);
+    }
+  }catch(localError){
+    console.warn("Local weather snapshot unavailable; trying Open-Meteo.",localError);
     try{
-      var fallbackResponse=await fetch("https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=Australia%2FHobart",{cache:"no-store"});
-      if(!fallbackResponse.ok)throw new Error("forecast fallback "+fallbackResponse.status);
-      var fd=await fallbackResponse.json();
-      data={hourly:{time:[],precipitation:[]},daily:fd.daily};
-    }catch(e2){
-      previous7Total=NaN;previous3Total=NaN;previous24Total=NaN;
-      render();
-      box.innerHTML="<div class='loading'>Rainfall/weather unavailable — tap Refresh. The control will retry automatically.</div>";
-      return;
+      var url="https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&hourly=precipitation&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&past_days=8&forecast_days=7&timezone=Australia%2FHobart";
+      var controller=new AbortController();
+      var timeout=setTimeout(function(){controller.abort();},7000);
+      var response=await fetch(url,{cache:"no-store",signal:controller.signal});
+      clearTimeout(timeout);
+      if(!response.ok)throw new Error("weather service "+response.status);
+      data=await response.json();
+    }catch(e){
+      console.warn("Open-Meteo weather request failed; trying forecast-only request.",e);
+      try{
+        var fallbackResponse=await fetch("https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=Australia%2FHobart",{cache:"no-store"});
+        if(!fallbackResponse.ok)throw new Error("forecast fallback "+fallbackResponse.status);
+        var fd=await fallbackResponse.json();
+        data={hourly:{time:[],precipitation:[]},daily:fd.daily};
+      }catch(e2){
+        previous7Total=NaN;previous3Total=NaN;previous24Total=NaN;
+        render();
+        box.innerHTML="<div class='loading'>Rainfall/weather unavailable — retrying automatically.</div>";
+        updateBayBanner();
+        return;
+      }
     }
   }
   try{
