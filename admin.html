@@ -226,6 +226,20 @@ async function isAdmin(user){
 }
 
 async function loadNreVerification(){
+  try{
+    var ar=await fetch("./nre.json?ts="+Date.now(),{cache:"no-store"});
+    if(ar.ok){
+      var ad=await ar.json();
+      if(ad&&ad.duck_bay_open===true){
+        $("nreVerified").checked=true;
+        $("nreNoticeNumber").value=ad.notice_number||"";
+        $("nreVerifiedAt").value=ad.checked_at?new Date(ad.checked_at).toLocaleString("en-AU"):"";
+        msg("nreVerificationMsg","AUTO-VERIFIED FROM CURRENT NRE CLASSIFICATION NOTICE ✓",true);
+        return;
+      }
+    }
+  }catch(e){}
+
   var r=await supabase.from("meat_test_results").select("bay_name,test_date,result,notes,created_at").eq("bay_name","Duck Bay NRE Classification").order("created_at",{ascending:false}).limit(1);
   if(r.error){msg("nreVerificationMsg","Could not load NRE verification: "+r.error.message,false);return;}
   var x=r.data&&r.data[0];
