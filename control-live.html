@@ -3,16 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<!-- TOC_CACHE_BUST_20261006 -->
 <meta name="theme-color" content="#0b4f6c">
 <link rel="icon" href="./icons/toc-logo-shortcut.jpg?v=6" type="image/jpeg">
 <link rel="apple-touch-icon" href="./icons/toc-logo-shortcut.jpg?v=6">
 <title>TOC Smithton Control — Live V2</title>
 <link rel="manifest" href="manifest.json?v=3">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=20261006-1519">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./supabase-config.js"></script>
+<script src="./supabase-config.js?v=20261006-1715"></script>
+<script>
+try{if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(reg){reg.unregister();});});}}catch(e){}
+</script>
 </head>
-<body>
+<body><div style="position:fixed;right:8px;top:8px;z-index:99999;background:#111;color:#fff;padding:4px 7px;border-radius:4px;font:12px Arial">LIVE BUILD bda9c09</div>
 <div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite">CHECKING ENVIRONMENTAL CONTROLS</div>
 <header class="topbar" style="background:#000">
   <div style="display:flex;align-items:center;gap:12px">
@@ -172,7 +179,7 @@ var previous3Total=0;
 var previous7Total=0;
 var DUCK_RAIN3_LIMIT=25;
 var bays=[];
-var currentBay=null;
+var currentBay={id:1,bay_name:"Duck Bay",active:true,salinity_min:32.5,salinity_max:null,rainfall_7d_limit:40,river_flow_limit:5};
 var meatTests=[];
 var nreClassification=null;
 var nreClassificationError=false;
@@ -212,15 +219,13 @@ async function loadBays(){
     Object.assign({},kemps,{id:kemps.id||2,bay_name:"Kemps Bay",active:true,salinity_min:null,salinity_max:null,rainfall_7d_limit:25,river_flow_limit:null})
   ];
   var select=el("baySelect");
-  var saved=localStorage.getItem("toc-smithton-bay")||"Duck Bay";
+  var saved="Duck Bay"; try{saved=localStorage.getItem("toc-smithton-bay")||"Duck Bay";}catch(e){}
   select.innerHTML=bays.map(function(b){return "<option value=\""+b.bay_name.replace(/"/g,"&quot;")+"\">"+b.bay_name+"</option>";}).join("");
   if(bays.some(function(b){return b.bay_name===saved;}))select.value=saved;
   currentBay=bays.find(function(b){return b.bay_name===select.value;})||bays[0]||null;
-  select.onchange=async function(){currentBay=bays.find(function(b){return b.bay_name===select.value;})||null;localStorage.setItem("toc-smithton-bay",select.value);render();await loadMeatTests();updateBayBanner();};
+  select.onchange=async function(){currentBay=bays.find(function(b){return b.bay_name===select.value;})||null;try{localStorage.setItem("toc-smithton-bay",select.value);}catch(e){}render();await loadMeatTests();updateBayBanner();};
   render();
   await loadMeatTests();
-  weather();
-  riverFlow();
  }catch(e){
   console.warn("Bay settings unavailable; using public fallback.",e);
   bays=[{id:1,bay_name:"Duck Bay",active:true,salinity_min:32.5,salinity_max:null,rainfall_7d_limit:40,river_flow_limit:5}];
@@ -229,8 +234,6 @@ async function loadBays(){
   fallbackSelect.value="Duck Bay";
   currentBay=bays[0];
   render();
-  weather();
-  riverFlow();
  }
 }
 function bayUsesRiver(){return !!(currentBay&&currentBay.river_flow_limit!=null);}
@@ -324,6 +327,11 @@ async function loadCentral(){
    state.salinity=r.data.salinity==null?"":String(r.data.salinity);
    state.salinityMin=r.data.salinity_min==null?"":String(r.data.salinity_min);
    state.salinityMax=r.data.salinity_max==null?"":String(r.data.salinity_max);
+   // Central Smithton settings are authoritative for the public salinity limits.
+   if(currentBay){
+     currentBay.salinity_min=state.salinityMin!==""?Number(state.salinityMin):null;
+     currentBay.salinity_max=state.salinityMax!==""?Number(state.salinityMax):null;
+   }
    state.rainThreshold=r.data.rain_24h_limit==null?"":String(r.data.rain_24h_limit);
    state.rain7Threshold=r.data.rain_7d_limit==null?"":String(r.data.rain_7d_limit);
    render();
@@ -348,7 +356,7 @@ async function loadNreClassification(){
   updateBayBanner();
 }
 function updateBayBanner(){
-  var sal=Number(state.salinity), min=currentBay&&currentBay.salinity_min!=null?Number(currentBay.salinity_min):null, max=currentBay&&currentBay.salinity_max!=null?Number(currentBay.salinity_max):null;
+  var sal=Number(state.salinity), min=state.salinityMin!==""?Number(state.salinityMin):(currentBay&&currentBay.salinity_min!=null?Number(currentBay.salinity_min):null), max=state.salinityMax!==""?Number(state.salinityMax):(currentBay&&currentBay.salinity_max!=null?Number(currentBay.salinity_max):null);
   var salOk=!bayUsesSalinity()||(state.salinity!==""&&isFinite(sal)&&(min==null||sal>=min)&&(max==null||sal<=max));
   var rain24Ok=isFinite(previous24Total)&&previous24Total<Number(state.rainThreshold||25);
   var rain3Ok=bayName()==="Duck Bay" ? (isFinite(previous3Total)&&previous3Total<DUCK_RAIN3_LIMIT) : true;
@@ -491,13 +499,15 @@ function checkAlerts(){
 }
 function render(){
   var salRequired=bayUsesSalinity(), riverRequired=bayUsesRiver(), limit=bayRainLimit();
-  var salOk=!salRequired||(state.salinity!==""&&isFinite(Number(state.salinity))&&(currentBay.salinity_min==null||Number(state.salinity)>=Number(currentBay.salinity_min))&&(currentBay.salinity_max==null||Number(state.salinity)<=Number(currentBay.salinity_max)));
+  var salMin=state.salinityMin!==""?Number(state.salinityMin):(currentBay&&currentBay.salinity_min!=null?Number(currentBay.salinity_min):null);
+  var salMax=state.salinityMax!==""?Number(state.salinityMax):(currentBay&&currentBay.salinity_max!=null?Number(currentBay.salinity_max):null);
+  var salOk=!salRequired||(state.salinity!==""&&isFinite(Number(state.salinity))&&(salMin==null||Number(state.salinity)>=salMin)&&(salMax==null||Number(state.salinity)<=salMax));
   var rain24Ok=isFinite(previous24Total)&&previous24Total<Number(state.rainThreshold||25);
   var rain3Ok=bayName()==="Duck Bay" ? (isFinite(previous3Total)&&previous3Total<DUCK_RAIN3_LIMIT) : true;
   var rain7Ok=isFinite(previous7Total)&&previous7Total<limit;
   el("salinityInput").value=state.salinity||"";
-  el("salinityMin").value=currentBay&&currentBay.salinity_min!=null?currentBay.salinity_min:"";
-  el("salinityMax").value=currentBay&&currentBay.salinity_max!=null?currentBay.salinity_max:"";
+  el("salinityMin").value=state.salinityMin!==""?state.salinityMin:(currentBay&&currentBay.salinity_min!=null?currentBay.salinity_min:"");
+  el("salinityMax").value=state.salinityMax!==""?state.salinityMax:(currentBay&&currentBay.salinity_max!=null?currentBay.salinity_max:"");
   el("rainThreshold").value=currentBay&&currentBay.rainfall_7d_limit!=null?currentBay.rainfall_7d_limit:"";
   el("rain7Threshold").value=limit;
   el("salinityValue").textContent=salRequired?(state.salinity===""?"—":Number(state.salinity).toFixed(1)):"N/A";
@@ -584,7 +594,10 @@ async function weather(){
   }catch(e){
     console.warn("Primary Smithton weather request failed; trying forecast-only request.",e);
     try{
-      var fallbackResponse=await fetch("https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=Australia%2FHobart",{cache:"no-store"});
+      var fallbackController=new AbortController();
+      var fallbackTimeout=setTimeout(function(){fallbackController.abort();},10000);
+      var fallbackResponse=await fetch("https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=Australia%2FHobart",{cache:"no-store",signal:fallbackController.signal});
+      clearTimeout(fallbackTimeout);
       if(!fallbackResponse.ok)throw new Error("forecast fallback "+fallbackResponse.status);
       var fd=await fallbackResponse.json();
       data={hourly:{time:[],precipitation:[]},daily:fd.daily};
@@ -771,7 +784,24 @@ function init(){
   el("notifyBtn").addEventListener("click",async function(){if(state.alertEnabled){state.alertEnabled=false;try{localStorage.setItem("toc-smithton-alert-enabled","false");}catch(e){}updateNotifyButton();status("ALERTS OFF — this device will not receive environmental notifications.",true);return;}if(!("Notification" in window)){status("ALERTS NOT SUPPORTED",false);return;}try{var p=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(p!=="granted"){status("ALERTS BLOCKED — allow notifications in Chrome settings",false);return;}state.alertEnabled=true;try{localStorage.setItem("toc-smithton-alert-enabled","true");}catch(e){}updateNotifyButton();var reg=await navigator.serviceWorker.ready;await reg.showNotification("TOC Smithton Control",{body:"Environmental alerts are enabled on this device. This setting stays on until you turn it off.",tag:"toc-test"});status("ALERTS ON ✓ — this setting stays on until you turn it off.",true);}catch(e){status("ALERT SETUP FAILED",false);}});
 }
 load();render();init();updateNotifyButton();status("APP READY ✓",true);updateMeatCompliance();loadNreClassification();
-loadBays();loadCentral();weather();riverFlow();loadMeatTests();loadPublicReopen();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,60000);setInterval(loadMeatTests,10000);setInterval(loadPublicReopen,10000);
+// Load harvest-area settings first, then load the authoritative central Supabase settings.
+// This prevents the public page from rendering the central salinity values against a null bay during startup.
+(async function bootPublicControl(){
+  await loadBays();
+  await loadCentral();
+  // Weather and river are independent. Do not let a slow external weather service
+  // prevent the river control from loading or leave the dashboard stuck on "Loading".
+  weather();
+  riverFlow();
+  await loadMeatTests();
+  await loadPublicReopen();
+  status("CENTRAL CONTROL CONNECTED ✓",true);
+  setInterval(loadCentral,30000);
+  setInterval(weather,3600000);
+  setInterval(riverFlow,60000);
+  setInterval(loadMeatTests,10000);
+  setInterval(loadPublicReopen,10000);
+})();
 })();
 </script>
 <script>/* Public dashboard deliberately does not register a service worker. */</script>
