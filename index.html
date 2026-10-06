@@ -12,9 +12,9 @@
 <link rel="apple-touch-icon" href="./icons/toc-logo-shortcut.jpg?v=6">
 <title>TOC Smithton Control — Live V2</title>
 <link rel="manifest" href="manifest.json?v=3">
-<link rel="stylesheet" href="styles.css?v=20261006-1519">
+<link rel="stylesheet" href="styles.css?v=20261006-1715">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./supabase-config.js?v=20261006-1519"></script>
+<script src="./supabase-config.js?v=20261006-1715"></script>
 </head>
 <body>
 <div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite">CHECKING ENVIRONMENTAL CONTROLS</div>
@@ -318,7 +318,7 @@ function renderMeatTests(errorText){
 }
 async function loadCentral(){
  try{
-  if(!supabase){status("LIVE DATABASE UNAVAILABLE — local control defaults active",false);return;}
+  if(!supabase){status("CENTRAL DATABASE UNAVAILABLE — weather, river and NRE checks can still run",false);render();updateBayBanner();return;}
   var r=await Promise.race([
     supabase.from("control_settings").select("salinity,salinity_min,salinity_max,rain_24h_limit,rain_7d_limit,updated_at").eq("id",1).maybeSingle(),
     new Promise(function(_,reject){setTimeout(function(){reject(new Error("Control settings timeout"));},8000);})
@@ -399,6 +399,11 @@ function updateBayBanner(){
 var publicReopen={T0:null,T24:null,T48:null,error:null};
 
 async function loadPublicReopen(){
+  if(!supabase){
+    publicReopen.error=true;
+    renderPublicReopen();
+    return;
+  }
   try{
     var names=["Duck Bay Salinity T0","Duck Bay Salinity T24","Duck Bay Salinity T48"];
     var r=await supabase.from("meat_test_results")
