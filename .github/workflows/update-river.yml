@@ -204,4 +204,5 @@ jobs:
           git add river.json
           git diff --cached --quiet && exit 0
           git commit -m "Update Duck River flow data"
+          git pull --rebase origin main
           git push
