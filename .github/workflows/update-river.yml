@@ -194,6 +194,8 @@ jobs:
           with open("river.json","w",encoding="utf-8") as f:
               json.dump(out,f,separators=(",",":"))
           print("VERIFIED NRE SCOTCHTOWN READING:",json.dumps(out))
+          with open("river-data.js","w",encoding="utf-8") as f:
+              f.write("window.TOC_RIVER_DATA=" + json.dumps(out,separators=(",",":")) + ";\n")
           PY
 
       - name: Commit river data
@@ -201,7 +203,7 @@ jobs:
         run: |
           git config user.name "TOC Smithton Bot"
           git config user.email "actions@users.noreply.github.com"
-          git add river.json
+          git add river.json river-data.js
           git diff --cached --quiet && exit 0
           git commit -m "Update Duck River flow data"
           git pull --rebase origin main
