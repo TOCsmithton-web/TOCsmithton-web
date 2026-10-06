@@ -55,6 +55,24 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 <p id="saveMsg" class="small"></p>
 </div>
 
+<div id="nreVerificationEditor" class="admin-card" style="display:none">
+<h2>Duck Bay — NRE classification verification</h2>
+<p class="small">Check the current NRE ShellMAP classification notice before harvesting. Open the NRE website/notice, confirm that <b>Duck Bay Harvest Area</b> is OPEN, then tick the verification box and record the classification notice number.</p>
+<div class="notice" style="background:#eef7fb">
+<label style="display:flex;align-items:center;gap:10px;font-weight:800">
+<input id="nreVerified" type="checkbox" style="width:22px;height:22px">
+NRE VERIFIED — Duck Bay is OPEN
+</label>
+</div>
+<div class="grid2">
+<label>Classification notice number<input id="nreNoticeNumber" type="text" placeholder="e.g. 2026/055"></label>
+<label>Verified date/time<input id="nreVerifiedAt" type="text" disabled></label>
+</div>
+<button id="saveNreVerificationBtn" class="button" type="button">Save NRE verification</button>
+<p id="nreVerificationMsg" class="small"></p>
+<a class="button secondary" href="https://nre.tas.gov.au/SiteAssets/ShellMAP%20Current%20Harvest%20Status.pdf" target="_blank" rel="noopener">Open current NRE Classification Notice</a>
+</div>
+
 <div id="reopenEditor" class="admin-card" style="display:none">
 <h2>Duck Bay — 48-hour salinity reopening check</h2>
 <p id="reopenStatus" class="small">Waiting for all environmental controls to be within limits.</p>
@@ -207,6 +225,34 @@ async function isAdmin(user){
   return !r.error && !!r.data;
 }
 
+async function loadNreVerification(){
+  var r=await supabase.from("meat_test_results").select("bay_name,test_date,result,notes,created_at").eq("bay_name","Duck Bay NRE Classification").order("created_at",{ascending:false}).limit(1);
+  if(r.error){msg("nreVerificationMsg","Could not load NRE verification: "+r.error.message,false);return;}
+  var x=r.data&&r.data[0];
+  var meta={};try{meta=x&&x.notes?JSON.parse(x.notes):{};}catch(e){}
+  $("nreVerified").checked=!!(x&&String(x.result||"").toUpperCase()==="VERIFIED");
+  $("nreNoticeNumber").value=meta.noticeNumber||"";
+  $("nreVerifiedAt").value=meta.verifiedAt?new Date(meta.verifiedAt).toLocaleString("en-AU"):"";
+}
+async function saveNreVerification(){
+  var session=(await supabase.auth.getSession()).data.session;
+  if(!session){msg("nreVerificationMsg","You must be signed in.",false);return;}
+  var verified=$("nreVerified").checked;
+  var notice=$("nreNoticeNumber").value.trim();
+  if(verified&&!notice){msg("nreVerificationMsg","Enter the NRE classification notice number before verifying.",false);return;}
+  var now=new Date().toISOString();
+  var r=await supabase.from("meat_test_results").insert({
+    bay_name:"Duck Bay NRE Classification",
+    test_date:now.slice(0,10),
+    result:verified?"VERIFIED":"NOT VERIFIED",
+    notes:JSON.stringify({noticeNumber:notice,verifiedAt:now,source:"NRE current ShellMAP Classification Notice",checkedBy:session.user.email||session.user.id}),
+    entered_by:session.user.id
+  });
+  if(r.error){msg("nreVerificationMsg","SAVE BLOCKED: "+r.error.message,false);return;}
+  $("nreVerifiedAt").value=new Date(now).toLocaleString("en-AU");
+  msg("nreVerificationMsg",verified?"NRE VERIFIED & PUBLISHED ✓ — Duck Bay marked OPEN subject to all other environmental controls.":"NRE verification removed ✓ — public page will require a new NRE verification.",true);
+}
+
 async function loadSettings(){
   var r=await supabase.from("control_settings").select("*").eq("id",1).maybeSingle();
   if(r.error){msg("saveMsg","Could not load central settings: "+r.error.message,false);return;}
@@ -319,17 +365,20 @@ async function showSession(session){
   var admin=await isAdmin(u);
   if(admin){
     $("editor").style.display="block";
+    $("nreVerificationEditor").style.display="block";
     $("meatEditor").style.display="block";
     $("biotoxinEditor").style.display="block";
     $("reopenEditor").style.display="block";
     msg("accessMsg","ADMIN ACCESS CONFIRMED ✓",true);
     await loadSettings();
+    await loadNreVerification();
     await loadReopenAdmin();
     reopenWatch();
     clearInterval(window.reopenWatchTimer);
     window.reopenWatchTimer=setInterval(reopenWatch,60000);
   }else{
     $("editor").style.display="none";
+    $("nreVerificationEditor").style.display="none";
     msg("accessMsg","READ-ONLY ACCOUNT — this account is not authorised to edit Smithton Control.",false);
   }
 }
@@ -359,6 +408,7 @@ $("copyId").onclick=async function(){
   }catch(e){}
 };
 
+$("saveNreVerificationBtn").onclick=saveNreVerification;
 $("saveBtn").onclick=async function(){
   var payload={
     salinity:$("salinity").value===""?null:Number($("salinity").value),
