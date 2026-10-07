@@ -627,10 +627,19 @@ async function weather(){
 
     box.innerHTML="<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+previous7Total.toFixed(1)+" mm</div><div class='range'>Previous 3 days: "+previous3Total.toFixed(1)+" mm • Observed rainfall total</div></div>"+
       future.map(function(x){
-        var threshold=bayRainLimit();var level=x.sevenDayTotal>=threshold?"over":"under";
-        var greenIntensity=Math.max(0,Math.min(1,(threshold-x.sevenDayTotal)/threshold));
-        var greenBg="rgb("+(232-Math.round(greenIntensity*130))+","+(247-Math.round(greenIntensity*35))+","+(237-Math.round(greenIntensity*70))+")";
-        return "<div class='day forecast-day "+level+"' style='"+(level==="under"?"background:"+greenBg+";":"")+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+x.sevenDayTotal.toFixed(1)+" mm</strong></div></div>";
+        var sevenDay=x.sevenDayTotal;
+        // Traffic-light colour is based on the rolling 7-day total:
+        // 0-10 mm bright green, 11-20 light green, 21-30 orange,
+        // 31-39 light red, and 40+ mm dark red.
+        var rainfallColour;
+        var rainfallText;
+        if(sevenDay>=40){rainfallColour="#c62828";rainfallText="#fff";}
+        else if(sevenDay>=31){rainfallColour="#ffb3b3";rainfallText="#6b0000";}
+        else if(sevenDay>=21){rainfallColour="#ff9800";rainfallText="#4a2500";}
+        else if(sevenDay>=11){rainfallColour="#90ee90";rainfallText="#123d18";}
+        else {rainfallColour="#39ff14";rainfallText="#073b00";}
+        var level=sevenDay>=bayRainLimit()?"over":"under";
+        return "<div class='day forecast-day "+level+"' style='background:"+rainfallColour+";color:"+rainfallText+";border:2px solid "+rainfallColour+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+sevenDay.toFixed(1)+" mm</strong></div></div>";
       }).join("");
   }catch(e){
     previous7Total=NaN;previous3Total=NaN;previous24Total=NaN;
