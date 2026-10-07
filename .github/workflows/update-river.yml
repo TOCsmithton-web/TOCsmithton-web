@@ -92,26 +92,35 @@ jobs:
           if value_col is None:
               raise RuntimeError("NRE CSV has no value column")
 
-          latest=None
+          # Normalize every valid portal point in the export.  We use the
+          # complete seven-day export to detect threshold crossings, rather
+          # than comparing only the latest value with the previous hourly run.
+          # This means a brief excursion over 5.0 m³/s is still recorded even
+          # if the river has fallen back under 5.0 before the next workflow run.
+          portal_points=[]
           for row in data_rows:
               if len(row)<=value_col:
                   continue
               try:
-                  ts=row[0].strip()
+                  raw_ts=row[0].strip()
                   value=float(row[value_col])
+                  source_dt=datetime.datetime.fromisoformat(raw_ts.replace("Z","+00:00"))
+                  if source_dt.tzinfo is None:
+                      source_dt=source_dt.replace(tzinfo=HOBART)
+                  source_dt=source_dt.astimezone(HOBART)
               except Exception:
                   continue
               if value != value or not (0 <= value < 100000):
                   continue
-              latest=(ts,value)
+              portal_points.append((source_dt,source_dt.isoformat(),round(value,3)))
 
-          if latest is None:
+          portal_points.sort(key=lambda x:x[0])
+          if not portal_points:
               raise RuntimeError("No valid discharge value in NRE CSV")
 
-          ts,value=latest
+          source_dt,source_timestamp,flow=portal_points[-1]
           # Discharge.1 is m³/s. Store both units for the app.
-          flow=round(value,3)
-          ml_day=round(value*86.4,3)
+          ml_day=round(flow*86.4,3)
 
           previous_flow=None
           history=[]
@@ -130,23 +139,34 @@ jobs:
           if previous_flow is not None and previous_flow != 0:
               change_pct=round((flow-previous_flow)/previous_flow*100,1)
 
-          # Record every observed crossing of the 5.0 m³/s environmental limit.
-          # The event timestamp is the NRE portal reading timestamp that first
-          # reports the river on the new side of the limit.
-          if previous_flow is not None:
-              if previous_flow <= 5 and flow > 5:
-                  threshold_events.append({"type":"over","timestamp":None,"flow":flow,"limit":5})
-              elif previous_flow > 5 and flow <= 5:
-                  threshold_events.append({"type":"under","timestamp":None,"flow":flow,"limit":5})
+          # Record every crossing found in the seven-day NRE export.
+          # Keep the event permanently in river.json until a later crossing
+          # of the same direction replaces it as the "last" event displayed.
+          existing_event_keys=set(
+              (str(x.get("type")),str(x.get("timestamp")))
+              for x in threshold_events
+              if isinstance(x,dict) and x.get("type") and x.get("timestamp")
+          )
+          for i in range(1,len(portal_points)):
+              prev_dt,prev_ts,prev_flow=portal_points[i-1]
+              cur_dt,cur_ts,cur_flow=portal_points[i]
+              event_type=None
+              if prev_flow <= 5 and cur_flow > 5:
+                  event_type="over"
+              elif prev_flow > 5 and cur_flow <= 5:
+                  event_type="under"
+              if event_type:
+                  key=(event_type,cur_ts)
+                  if key not in existing_event_keys:
+                      threshold_events.append({
+                          "type":event_type,
+                          "timestamp":cur_ts,
+                          "flow":cur_flow,
+                          "limit":5
+                      })
+                      existing_event_keys.add(key)
 
           now=datetime.datetime.now(datetime.timezone.utc).astimezone(HOBART)
-          try:
-              source_dt=datetime.datetime.fromisoformat(ts.replace("Z","+00:00"))
-              if source_dt.tzinfo is None:
-                  source_dt=source_dt.replace(tzinfo=HOBART)
-              source_timestamp=source_dt.astimezone(HOBART).isoformat()
-          except Exception as e:
-              raise RuntimeError(f"Invalid NRE source timestamp: {ts!r}") from e
 
           # Avoid adding duplicate telemetry points.
           if not history or history[-1].get("timestamp") != source_timestamp or float(history[-1].get("flow",0)) != flow:
@@ -167,13 +187,10 @@ jobs:
                   pass
           history=trimmed[-1000:]
 
-          # Fill the timestamp for a newly-created crossing event now that the
-          # NRE source timestamp has been validated.
-          if threshold_events and threshold_events[-1].get("timestamp") is None:
-              threshold_events[-1]["timestamp"]=source_timestamp
-
           # Keep a useful event history without allowing the JSON file to grow
-          # indefinitely.
+          # indefinitely.  The most recent event of each direction remains
+          # available to the public page until another crossing of that
+          # direction occurs.
           threshold_events=threshold_events[-100:]
 
           out={
