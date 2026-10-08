@@ -9,9 +9,21 @@
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./supabase-config.js"></script>
-</head>
+<style>
+.pitt-zone-banner{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:10px;background:#eef4f7}
+.pitt-zone-status{border-radius:12px;padding:12px 8px;text-align:center;color:#fff;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.pitt-zone-status.open{background:#16823b}.pitt-zone-status.closed{background:#c62828}.pitt-zone-status.waiting{background:#6b7280}
+.pitt-zone-status .zone-name{font-size:.82rem;display:block;margin-bottom:4px}.pitt-zone-status .zone-state{font-size:1.15rem;display:block}.pitt-zone-status .zone-detail{font-size:.72rem;font-weight:600;display:block;margin-top:4px;opacity:.95}
+@media(max-width:560px){.pitt-zone-banner{grid-template-columns:1fr}.pitt-zone-status{padding:14px 8px}}
+</style></head>
 <body>
-<div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite">CHECKING ENVIRONMENTAL CONTROLS</div>
+<div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite" style="padding:0;overflow:hidden">
+  <div class="pitt-zone-banner">
+    <div id="bannerZone1" class="pitt-zone-status waiting"><span class="zone-name">ZONE 1</span><span class="zone-state">CHECKING</span><span class="zone-detail">Environmental controls</span></div>
+    <div id="bannerZone2" class="pitt-zone-status waiting"><span class="zone-name">ZONE 2</span><span class="zone-state">CHECKING</span><span class="zone-detail">Environmental controls<br>FORTNIGHTLY MEAT TEST</span></div>
+    <div id="bannerZone3" class="pitt-zone-status waiting"><span class="zone-name">ZONE 3</span><span class="zone-state">CHECKING</span><span class="zone-detail">Environmental controls</span></div>
+  </div>
+</div>
 <header class="topbar" style="background:#000">
   <div style="display:flex;align-items:center;gap:12px">
     <img src="./assets/toc-logo.svg" alt="Tasmanian Oyster Company" style="width:76px;height:76px;display:block;flex:0 0 auto">
@@ -158,11 +170,22 @@ function environmentalOpen(){
   var s=Number(salinity[zoneKey]);
   return salinity[zoneKey]!==""&&isFinite(s)&&s>=zone.salMin&&isFinite(rain7)&&rain7<zone.rain7&&isFinite(riverFlowValue)&&riverFlowValue<6&&biotoxinCurrent;
 }
+function zoneIsOpen(k){
+  var z=zones[k],v=Number(salinity[k]);
+  return salinity[k]!==""&&isFinite(v)&&v>=z.salMin&&isFinite(rain7)&&rain7<z.rain7&&isFinite(riverFlowValue)&&riverFlowValue<6&&biotoxinCurrent;
+}
+function setBannerCard(id,k){
+  var node=el(id),z=zones[k],hasSal=salinity[k]!==""&&isFinite(Number(salinity[k])),open=zoneIsOpen(k);
+  node.className="pitt-zone-status "+(open?"open":"closed");
+  node.querySelector(".zone-state").textContent=open?"OPEN":"CLOSED";
+  node.querySelector(".zone-detail").innerHTML=(hasSal
+    ?"Salinity "+Number(salinity[k]).toFixed(1)+" • 7d "+(isFinite(rain7)?rain7.toFixed(1):"—")+" mm • River "+(isFinite(riverFlowValue)?riverFlowValue.toFixed(2):"—")+" m³/s"
+    :"Salinity not entered")+"<br><a href=\"https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas\" target=\"_blank\" rel=\"noopener\" style=\"color:#fff;text-decoration:underline\">CHECK NRE CLASSIFICATION BEFORE HARVESTING</a>";
+}
 function updateBanner(){
-  var b=el("bayBanner"),open=environmentalOpen();
-  b.className="bay-banner "+(open?"open":"closed");
-  b.innerHTML="PITTWATER "+zone.name.toUpperCase()+" "+(open?"OPEN":"CLOSED")+"<a href="https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas" target="_blank" rel="noopener" style="display:block;color:#fff;text-decoration:underline;font-size:.72em;margin-top:4px;font-weight:700">CHECK NRE CLASSIFICATION BEFORE HARVESTING</a>";
-  b.style.backgroundColor=open?"#16823b":"#c62828";b.style.color="#fff";b.style.opacity="1";b.style.boxShadow="none";
+  setBannerCard("bannerZone1","zone1");
+  setBannerCard("bannerZone2","zone2");
+  setBannerCard("bannerZone3","zone3");
 }
 function updateStatus(){
   zone=selected();
@@ -194,6 +217,7 @@ function updateStatus(){
     boxes[3].style.background=r7Ok?"#bff3cc":"#ffd0d0";boxes[3].style.border="2px solid "+(r7Ok?"#31a354":"#c62828");
   }
   el("statusText").textContent=!envReady?"Awaiting readings":(open?"ENVIRONMENTAL CONTROLS OK":"ENVIRONMENTAL CONTROL ALERT");
+  el("statusText").style.color=open?"#176b3b":"#9d2727";
   el("statusDot").className="status-dot "+(!envReady?"neutral":(open?"ok":"alert"));
   el("lastUpdated").textContent="Updated "+new Date().toLocaleString("en-AU");
   var riverBox=el("riverFlow").parentElement;
