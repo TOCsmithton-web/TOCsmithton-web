@@ -506,6 +506,8 @@ function render(){
   var rain24Ok=isFinite(previous24Total)&&previous24Total<Number(state.rainThreshold||25);
   var rain3Ok=bayName()==="Duck Bay" ? (isFinite(previous3Total)&&previous3Total<DUCK_RAIN3_LIMIT) : true;
   var rain7Ok=isFinite(previous7Total)&&previous7Total<limit;
+  // Duck Bay: if either rainfall closure threshold is reached, both indicators turn RED.
+  var rainfallCombinedAlert=bayName()==="Duck Bay" && (!rain3Ok || !rain7Ok);
   el("salinityInput").value=state.salinity||"";
   el("salinityMin").value=currentBay&&currentBay.salinity_min!=null?currentBay.salinity_min:"";
   el("salinityMax").value=currentBay&&currentBay.salinity_max!=null?currentBay.salinity_max:"";
@@ -550,16 +552,16 @@ function render(){
   if(boxes.length>=3){
     boxes[0].className=salRequired?(salOk?"env-box good":"env-box bad"):"env-box neutral";
     boxes[1].className=rain24Ok?"env-box good":"env-box bad";
-    boxes[2].className=bayName()==="Duck Bay"?(rain3Ok?"env-box good":"env-box bad"):"env-box neutral";
-    boxes[3].className=rain7Ok?"env-box good":"env-box bad";
+    boxes[2].className=bayName()==="Duck Bay"?(rainfallCombinedAlert?"env-box bad":"env-box good"):"env-box neutral";
+    boxes[3].className=rainfallCombinedAlert?"env-box bad":"env-box good";
     boxes[0].style.background=salRequired?(salOk?"#bff3cc":"#ffd0d0"):"#f4f7f8";
     boxes[1].style.background=rain24Ok?"#bff3cc":"#ffd0d0";
-    boxes[2].style.background=bayName()==="Duck Bay"?(rain3Ok?"#bff3cc":"#ffd0d0"):"#f4f7f8";
-    boxes[3].style.background=rain7Ok?"#bff3cc":"#ffd0d0";
+    boxes[2].style.background=bayName()==="Duck Bay"?(rainfallCombinedAlert?"#ffd0d0":"#bff3cc"):"#f4f7f8";
+    boxes[3].style.background=rainfallCombinedAlert?"#ffd0d0":"#bff3cc";
     boxes[0].style.border="2px solid "+(salRequired?(salOk?"#31a354":"#c62828"):"#cbd6db");
     boxes[1].style.border="2px solid "+(rain24Ok?"#31a354":"#c62828");
-    boxes[2].style.border="2px solid "+(bayName()==="Duck Bay"?(rain3Ok?"#31a354":"#c62828"):"#cbd6db");
-    boxes[3].style.border="2px solid "+(rain7Ok?"#31a354":"#c62828");
+    boxes[2].style.border="2px solid "+(bayName()==="Duck Bay"?(rainfallCombinedAlert?"#c62828":"#31a354"):"#cbd6db");
+    boxes[3].style.border="2px solid "+(rainfallCombinedAlert?"#c62828":"#31a354");
   }
   var dot=el("statusDot");if(dot)dot.className="status-dot "+(envReady?(envOk?"ok":"alert"):"neutral");
   el("statusText").textContent=!envReady?"Awaiting readings":(envOk?"ENVIRONMENTAL CONTROLS OK":"ENVIRONMENTAL CONTROL ALERT");
@@ -668,8 +670,9 @@ async function weather(){
         else if(threeDay>=11){threeColour="#90ee90";threeText="#123d18";}
         else {threeColour="#39ff14";threeText="#073b00";}
 
-        var level=sevenDay>=bayRainLimit()?"over":"under";
-        return "<div class='day forecast-day "+level+"' style='background:"+rainfallColour+";color:"+rainfallText+";border:2px solid "+rainfallColour+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+sevenDay.toFixed(1)+" mm</strong></div><div style='margin-top:7px;padding:5px 6px;border-radius:6px;background:"+threeColour+";color:"+threeText+";font-weight:700;font-size:11px;border:1px solid rgba(0,0,0,.12)'>3-day total: <strong>"+threeDay.toFixed(1)+" mm</strong> / 25 mm limit</div></div>";
+        var combinedRainfallAlert=bayName().trim().toLowerCase()==="duck bay" && (sevenDay>=bayRainLimit() || threeDay>=DUCK_RAIN3_LIMIT);
+        var level=combinedRainfallAlert?"over":"under";
+        return "<div class='day forecast-day "+level+"' style='background:"+(combinedRainfallAlert?"#c62828":rainfallColour)+";color:"+(combinedRainfallAlert?"#fff":rainfallText)+";border:2px solid "+(combinedRainfallAlert?"#c62828":rainfallColour)+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+sevenDay.toFixed(1)+" mm</strong></div><div style='margin-top:7px;padding:5px 6px;border-radius:6px;background:"+(combinedRainfallAlert?"#c62828":threeColour)+";color:"+(combinedRainfallAlert?"#fff":threeText)+";font-weight:700;font-size:11px;border:1px solid rgba(0,0,0,.12)'>3-day total: <strong>"+threeDay.toFixed(1)+" mm</strong> / 25 mm limit</div></div>";
       }).join("");
   }catch(e){
     previous7Total=NaN;previous3Total=NaN;previous24Total=NaN;
