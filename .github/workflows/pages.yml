@@ -2,7 +2,7 @@ name: Deploy TOC Smithton Control
 
 on:
   workflow_run:
-    workflows: ["Update Smithton Weather", "Update Duck River Flow", "Update NRE Duck Bay Classification"]
+    workflows: ["Update Smithton Weather", "Update Duck River Flow", "Update Pittwater Coal River Flow", "Update NRE Duck Bay Classification"]
     types: [completed]
   schedule:
     - cron: "*/15 * * * *"
