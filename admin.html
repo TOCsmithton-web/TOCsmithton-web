@@ -510,11 +510,15 @@ async function setAdminLocation(){
     await loadReopenAdmin();
     await loadManualReading("Smithton",$("smithtonBay").value,"smithtonSalinity","smithtonSalinityTime");
   }else if(loc==="boomer"){
+    $("meatBay").value="Boomer Bay";
     await loadManualReading("Boomer Bay",$("boomerZone").value,"boomerSalinity","boomerSalinityTime");
     await loadBiotoxinList();
+    await loadMeatList();
   }else{
+    $("meatBay").value="Pittwater Zone 2";
     await loadManualReading("Pittwater",$("pittwaterZone").value,"pittwaterSalinity","pittwaterSalinityTime");
     await loadPittBiotoxinList();
+    await loadMeatList();
   }
 }
 async function showSession(session){
@@ -547,9 +551,17 @@ async function showSession(session){
     clearInterval(window.reopenWatchTimer);
     window.reopenWatchTimer=setInterval(reopenWatch,60000);
   }else{
+    $("locationSelectorCard").style.display="none";
     $("editor").style.display="none";
     $("nreVerificationEditor").style.display="none";
-    msg("accessMsg","READ-ONLY ACCOUNT — this account is not authorised to edit Smithton Control.",false);
+    $("reopenEditor").style.display="none";
+    $("biotoxinEditor").style.display="none";
+    $("meatEditor").style.display="none";
+    $("smithtonManualEditor").style.display="none";
+    $("boomerManualEditor").style.display="none";
+    $("pittwaterManualEditor").style.display="none";
+    $("pittwaterBiotoxinEditor").style.display="none";
+    msg("accessMsg","READ-ONLY ACCOUNT — this account is not authorised to edit control data.",false);
   }
 }
 
