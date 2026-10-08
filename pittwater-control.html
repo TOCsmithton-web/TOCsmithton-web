@@ -100,7 +100,11 @@
 <label>Salinity minimum<input id="salinityMin" type="number" disabled></label>
 <label>7-day rainfall closure threshold<input id="rain7Limit" type="number" disabled></label>
 <label>River flow closure threshold<input id="riverLimit" type="number" disabled></label>
-<p class="hint">Combined environmental management criteria from the current Pitt Water Management Plan.</p></article>
+<p class="hint">Combined environmental management criteria from the current Pitt Water Management Plan.</p></article><div class="env-control-grid">
+  <div id="envSalinity" class="env-control bad">Salinity: NOT ENTERED</div>
+  <div id="envRain7" class="env-control bad">7-day rainfall: UNAVAILABLE</div>
+  <div id="envRiver" class="env-control bad">River flow: UNAVAILABLE</div>
+</div>
 </section>
 
 <section class="card">
@@ -226,7 +230,7 @@ function updateStatus(){
   el("statusText").style.color=open?"#176b3b":"#9d2727";
   el("statusDot").className="status-dot "+(!envReady?"neutral":(open?"ok":"alert"));
   el("lastUpdated").textContent="Updated "+new Date().toLocaleString("en-AU");
-  var ec1=el("envSalinity"),ec2=el("envRain7"),ec3=el("envRiver");
+  var ec1=el("envSalinity"),ec2=el("envRain7"),ec3=el("envRiver");\n  if(!ec1||!ec2||!ec3)return;
   ec1.className="env-control "+(salOk?"good":"bad"); ec1.textContent="Salinity: "+(salinity[zoneKey]?Number(salinity[zoneKey]).toFixed(1)+" ppt":"NOT ENTERED")+" • Limit ≥ "+zone.salMin+" ppt";
   ec2.className="env-control "+(r7Ok?"good":"bad"); ec2.textContent="7-day rainfall: "+(isFinite(rain7)?rain7.toFixed(1)+" mm":"UNAVAILABLE")+" • Limit < "+zone.rain7+" mm";
   ec3.className="env-control "+(rfOk?"good":"bad"); ec3.textContent="River flow: "+(isFinite(riverFlowValue)?riverFlowValue.toFixed(3)+" m³/s":"UNAVAILABLE")+" • Limit < 6.0 m³/s";
