@@ -1,0 +1,94 @@
+name: Update Pittwater Coal River Flow
+
+on:
+  push:
+    branches: ["main"]
+    paths-ignore:
+      - "pittwater-river.json"
+  schedule:
+    - cron: "12 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pittwater-river-update
+  cancel-in-progress: true
+
+jobs:
+  update-pittwater-river:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Fetch Coal River at Richmond from NRE data export
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import csv, datetime, json, requests
+          from zoneinfo import ZoneInfo
+          PORTAL="https://portal.wrt.tas.gov.au"
+          MAP_URL=PORTAL+"/Data/Map"
+          EXPORT_URL=PORTAL+"/Export/BulkExport"
+          HOBART=ZoneInfo("Australia/Hobart")
+          DATASET="Discharge.1@3208-1"
+          s=requests.Session()
+          s.headers.update({"User-Agent":"TOC Pittwater River Monitor/1.0","Accept":"text/csv,text/plain,*/*"})
+          r=s.get(MAP_URL,timeout=30,allow_redirects=True)
+          print("Portal session:",r.status_code,r.url)
+          query={"Calendar":"CALENDARYEAR","Interval":"PointsAsRecorded","Step":"1","ExportFormat":"csv","TimeAligned":"True","RoundData":"False","DateRange":"Days7","Datasets[0].DatasetName":DATASET,"IncludeGradeCodes":"True","IncludeApprovalLevels":"True","IncludeQualifiers":"True","IncludeInterpolationTypes":"True"}
+          r=s.get(EXPORT_URL,params=query,timeout=60)
+          print("NRE export:",r.status_code,r.url)
+          if r.status_code!=200: raise RuntimeError(f"NRE export HTTP {r.status_code}")
+          lines=r.text.splitlines()
+          header_i=next((i for i,line in enumerate(lines) if line.startswith("Timestamp (")),None)
+          if header_i is None: raise RuntimeError("Could not locate Timestamp header")
+          rows=list(csv.reader(lines[header_i:]))
+          if len(rows)<2: raise RuntimeError("NRE CSV contained no data")
+          data_rows=[row for row in rows[1:] if row and row[0].strip()]
+          points=[]
+          for row in data_rows:
+            if len(row)<2: continue
+            try:
+              dt=datetime.datetime.fromisoformat(row[0].strip().replace("Z","+00:00"))
+              if dt.tzinfo is None: dt=dt.replace(tzinfo=HOBART)
+              dt=dt.astimezone(HOBART)
+              value=float(row[1])
+              if not (0<=value<100000): continue
+              points.append((dt,dt.isoformat(),round(value,3)))
+            except Exception: pass
+          points.sort(key=lambda x:x[0])
+          if not points: raise RuntimeError("No valid Coal River discharge values")
+          source_dt,source_ts,flow=points[-1]
+          now=datetime.datetime.now(datetime.timezone.utc).astimezone(HOBART)
+          old={}
+          try:
+            with open("pittwater-river.json","r",encoding="utf-8") as f: old=json.load(f)
+          except Exception: pass
+          history=list(old.get("history") or [])
+          if not history or history[-1].get("timestamp")!=source_ts:
+            history.append({"timestamp":source_ts,"flow":flow})
+          cutoff=source_dt-datetime.timedelta(days=3)
+          trimmed=[]
+          for item in history:
+            try:
+              dt=datetime.datetime.fromisoformat(str(item.get("timestamp")).replace("Z","+00:00"))
+              if dt.tzinfo is None: dt=dt.replace(tzinfo=HOBART)
+              if dt.astimezone(HOBART)>=cutoff: trimmed.append(item)
+            except Exception: pass
+          history=trimmed[-1000:]
+          out={"station":"Coal River at Richmond","station_no":"3208","flow":flow,"timestamp":source_ts,"updated":now.isoformat(),"limit":6,"history":history,"source":"NRE Tasmania Water Information Portal — station 3208 Discharge.1 export","source_url":EXPORT_URL}
+          with open("pittwater-river.json","w",encoding="utf-8") as f: json.dump(out,f,separators=(",",":"))
+          print("VERIFIED NRE COAL RIVER READING:",json.dumps(out))
+          PY
+      - name: Commit Pittwater river data
+        shell: bash
+        run: |
+          git config user.name "TOC Pittwater Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add pittwater-river.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Update Pittwater Coal River flow data"
+          git pull --rebase origin main
+          git push
