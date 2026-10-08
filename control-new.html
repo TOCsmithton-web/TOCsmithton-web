@@ -287,7 +287,12 @@ function updateMeatCompliance(){
  var today=new Date();today.setHours(0,0,0,0);
  var days=Math.ceil((dueDate-today)/86400000);
  var dateText=dueDate.toLocaleDateString("en-AU",{day:"2-digit",month:"2-digit",year:"numeric"});
- if(days<0){
+ if(!isFinite(Number(String(meatTests[0].result).replace(",", ".").trim())) || Number(String(meatTests[0].result).replace(",", ".").trim())>2.3){
+   var failedResult=String(meatTests[0].result).replace(/</g,"&lt;");
+   badge.textContent="FAILED — NEW SAMPLE REQUIRED";badge.style.background="#ffd0d0";badge.style.color="#9d2727";
+   due.innerHTML="<strong>FAILED RESULT — new meat sample required.</strong> Latest result: "+failedResult+" CFU/g (limit 2.3 CFU/g). Next sample due "+dateText+".";
+   notice.style.background="#fff0f0";notice.style.border="2px solid #c62828";
+ }else if(days<0){
    badge.textContent="OVERDUE";badge.style.background="#ffd0d0";badge.style.color="#9d2727";
    due.innerHTML="<strong>Overdue by "+Math.abs(days)+" day"+(Math.abs(days)===1?"":"s")+".</strong> Due date was "+dateText+".";
    notice.style.background="#fff0f0";notice.style.border="2px solid #c62828";
