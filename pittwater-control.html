@@ -95,8 +95,8 @@
 
 <section class="grid two">
 <article class="card"><div class="card-head"><h2>Manual salinity</h2><span class="badge">Selected zone</span></div>
-<label>Salinity (ppt)<input id="salinityInput" type="number" step="0.1" inputmode="decimal"></label>
-<p class="hint">Enter the current representative salinity for the selected Pittwater zone.</p></article>
+<label>Salinity (ppt)<input id="salinityInput" type="number" step="0.1" inputmode="decimal" disabled></label>
+<p class="hint">Read-only. Current salinity is entered by an authorised administrator.</p></article>
 
 <article class="card"><div class="card-head"><h2>Environmental controls</h2><span class="badge">NRE Pitt Water • Oct 2025</span></div>
 <label>Salinity minimum<input id="salinityMin" type="number" disabled></label>
@@ -173,8 +173,18 @@ var alertEnabled=localStorage.getItem("toc-pittwater-alert-enabled")==="true";
 var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
 
 function el(id){return document.getElementById(id);}
-function loadSalinity(){
-  Object.keys(zones).forEach(function(k){salinity[k]=localStorage.getItem("toc-pittwater-salinity-"+k)||"";});
+async function loadSalinity(){
+  try{
+    var r=await supabase.from("manual_control_readings").select("zone,salinity,reading_time").eq("location","Pittwater");
+    if(r.error)throw r.error;
+    Object.keys(zones).forEach(function(k){salinity[k]="";});
+    (r.data||[]).forEach(function(x){
+      var k=Object.keys(zones).find(function(z){return zones[z].name===x.zone;});
+      if(k)salinity[k]=x.salinity==null?"":String(x.salinity);
+    });
+  }catch(e){
+    Object.keys(zones).forEach(function(k){salinity[k]="";});
+  }
 }
 function selected(){return zones[zoneKey];}
 function rainfallCombinedAlert(){return isFinite(rain7)&&rain7>=zone.rain7;}
@@ -378,9 +388,9 @@ function checkAlerts(){
 }
 el("zoneSelect").value=localStorage.getItem("toc-pittwater-zone")||"zone1";
 el("zoneSelect").onchange=setZone;
-el("salinityInput").oninput=function(){salinity[zoneKey]=this.value;localStorage.setItem("toc-pittwater-salinity-"+zoneKey,this.value);updateStatus();};
+el("salinityInput").oninput=null;
 el("refreshWeather").onclick=weather;el("notifyBtn").onclick=enableAlerts;
-loadSalinity();updateNotify();setZone();weather();river();loadMeatTests();loadBiotoxin();
+loadSalinity().then(function(){setZone();});updateNotify();weather();river();loadMeatTests();loadBiotoxin();
 setInterval(weather,3600000);setInterval(river,60000);setInterval(loadMeatTests,10000);setInterval(loadBiotoxin,3600000);
 })();
 </script>
