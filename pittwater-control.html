@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b4f6c">
+<title>TOC Pittwater Control</title>
+<link rel="manifest" href="manifest.json?v=3">
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase-config.js"></script>
+</head>
+<body>
+<div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite">CHECKING ENVIRONMENTAL CONTROLS</div>
+<header class="topbar" style="background:#000">
+  <div style="display:flex;align-items:center;gap:12px">
+    <img src="./assets/toc-logo.svg" alt="Tasmanian Oyster Company" style="width:76px;height:76px;display:block;flex:0 0 auto">
+    <div><div class="eyebrow">TASMANIAN OYSTER COMPANY</div><h1>Pittwater Control</h1></div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+    <select aria-label="Control location" onchange="if(this.value)location.href=this.value" style="padding:10px 12px;border-radius:10px;border:1px solid #c8d3d8;background:#fff;font-weight:700;color:#17384a">
+      <option value="control-new.html">Smithton Control</option>
+      <option value="boomer-control.html">Boomer Bay Control</option>
+      <option value="pittwater-control.html" selected>Pittwater Control</option>
+    </select>
+    <button id="notifyBtn" class="button secondary" type="button">Enable alerts</button>
+  </div>
+</header>
+
+<main class="container">
+<section class="card">
+  <div class="card-head"><div><h2>Harvest area</h2><p class="muted">Select the Pittwater harvest zone you want to monitor.</p></div></div>
+  <label>Zone
+    <select id="zoneSelect" style="width:100%;padding:12px;border:1px solid #c8d3d8;border-radius:9px;font-size:16px;background:#fff">
+      <option value="zone1">Zone 1</option>
+      <option value="zone2">Zone 2</option>
+      <option value="zone3">Zone 3</option>
+    </select>
+  </label>
+  <p id="zoneCriteria" class="hint"></p>
+</section>
+
+<section class="status-grid"><article class="card hero">
+  <div class="card-head"><div><span class="label">Environmental status</span><h2 id="statusText">Awaiting readings</h2></div><span id="statusDot" class="status-dot neutral"></span></div>
+  <div class="metric-row">
+    <div><span>Salinity</span><strong id="salinityValue">—</strong><small>ppt</small></div>
+    <div><span>Previous 24h rainfall</span><strong id="rain24Value">—</strong><small>mm</small></div>
+    <div><span>Previous 3-day rainfall</span><strong id="rain3Value">—</strong><small>mm</small></div>
+    <div><span>Previous 7-day rainfall</span><strong id="rain7Value">—</strong><small>mm</small></div>
+  </div>
+  <p id="lastUpdated" class="muted">No readings entered yet.</p>
+  <div id="saveStatus" aria-live="polite"></div>
+</article></section>
+
+<section class="card">
+  <div class="card-head"><div><h2>Coal River — Richmond</h2><p class="muted">NRE Tasmania station 3208 • Environmental control: 6 m³/s</p></div></div>
+  <div class="river-history-wrap">
+    <div class="river-history-head"><strong>River flow — last 3 days</strong><span id="riverTrendLabel">Portal graph</span></div>
+    <div id="riverHistory" class="river-history"><div class="loading">Loading trend…</div></div>
+  </div>
+  <div class="metric-row" style="margin-top:14px">
+    <div><span>Current flow</span><strong id="riverFlow">—</strong><small>m³/s</small></div>
+    <div><span>Control limit</span><strong>6.0</strong><small>m³/s</small></div>
+  </div>
+  <div id="riverStatus" class="hint">Loading river flow…</div>
+</section>
+
+<section class="card">
+  <div class="card-head"><div><h2>Hobart Airport rainfall — previous 7 days + next 7 days</h2><p class="muted">Rainfall station 94008 (Hobart Airport). Previous totals are calculated to 9am Hobart time; forecast is from Open-Meteo near the station.</p></div><button id="refreshWeather" class="button secondary" type="button">Refresh</button></div>
+  <div id="forecast" class="forecast"><div class="loading">Loading forecast…</div></div>
+</section>
+
+<section class="grid two">
+<article class="card"><div class="card-head"><h2>Manual salinity</h2><span class="badge">Selected zone</span></div>
+<label>Salinity (ppt)<input id="salinityInput" type="number" step="0.1" inputmode="decimal"></label>
+<p class="hint">Enter the current representative salinity for the selected Pittwater zone.</p></article>
+
+<article class="card"><div class="card-head"><h2>Environmental controls</h2><span class="badge">NRE Pitt Water • Oct 2025</span></div>
+<label>Salinity minimum<input id="salinityMin" type="number" disabled></label>
+<label>7-day rainfall closure threshold<input id="rain7Limit" type="number" disabled></label>
+<label>River flow closure threshold<input id="riverLimit" type="number" disabled></label>
+<p class="hint">Combined environmental management criteria from the current Pitt Water Management Plan.</p></article>
+</section>
+
+<section class="card">
+  <div class="card-head"><div><h2 id="meatTitle">Meat test results</h2><p class="muted" id="meatDescription">Results entered by authorised administrators. Public view is read-only.</p></div><span id="meatBadge" class="badge">CHECKING</span></div>
+  <div id="meatTests" class="forecast"><div class="loading">Loading meat test results…</div></div>
+</section>
+
+<section class="card" id="biotoxinCard">
+  <div class="card-head"><div><h2>Weekly biotoxin testing</h2><p class="muted">Pitt Water Management Plan: representative shellfish biotoxin testing is required weekly. Phytoplankton monitoring is monthly.</p></div><span id="biotoxinBadge" class="badge">CHECKING</span></div>
+  <div id="biotoxinStatus" class="notice">Checking the latest Pittwater biotoxin test…</div>
+</section>
+
+<section class="card" id="reopenCard">
+  <div class="card-head"><div><h2>48-hour salinity reopening check</h2><p class="muted">Following an environmental closure, the Management Plan requires 48 hours of satisfactory salinity at low tide. T0, T24 and T48 must all be above the selected zone's salinity criterion.</p></div><span id="reopenBadge" class="badge">WAITING</span></div>
+  <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>Check</th><th>Date / time</th><th>Salinity</th><th>Requirement</th></tr></thead>
+      <tbody>
+        <tr><td><strong>T0</strong></td><td id="t0Time">—</td><td id="t0Sal">—</td><td id="t0Req">Above limit</td></tr>
+        <tr><td><strong>T24</strong></td><td id="t24Time">—</td><td id="t24Sal">—</td><td id="t24Req">Above limit</td></tr>
+        <tr><td><strong>T48</strong></td><td id="t48Time">—</td><td id="t48Sal">—</td><td id="t48Req">Above limit</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p id="reopenStatus" class="hint">Waiting for the required environmental conditions before the 48-hour check starts.</p>
+</section>
+
+<section class="card">
+  <div class="card-head"><div><h2>Pitt Water Management Plan</h2><p class="muted">Current NRE Tasmania Pitt Water Management Plan — published October 2025.</p></div></div>
+  <div class="grid two">
+    <div class="notice"><strong>Combined environmental temporary closure criteria</strong><ul class="hint">
+      <li>Zone 1: salinity &lt;30‰ • 7-day rainfall ≥45 mm • Coal River flow ≥6 m³/s</li>
+      <li>Zone 2: salinity &lt;27‰ • 7-day rainfall ≥40 mm • Coal River flow ≥6 m³/s</li>
+      <li>Zone 3: salinity &lt;29‰ • 7-day rainfall ≥40 mm • Coal River flow ≥6 m³/s</li>
+    </ul></div>
+    <div class="notice"><strong>Re-opening after environmental closure</strong><ul class="hint">
+      <li>All environmental conditions in the Management Plan must be satisfied.</li>
+      <li>48 hours of satisfactory salinity at low tide must be demonstrated.</li>
+      <li>For rainfall closures, rainfall must have ceased or daily rainfall must be less than 10% of the applicable 7-day rainfall criterion.</li>
+      <li>Riverflow and rainfall criteria must remain satisfied through the 48-hour period.</li>
+    </ul></div>
+  </div>
+  <p class="hint"><strong>Zone 2 additional requirement:</strong> shellfish microbial meat testing is fortnightly. Biotoxin testing is weekly for representative stock; water phytoplankton monitoring is monthly.</p>
+  <p class="hint"><strong>Important:</strong> Formal ShellMAP opening/closure decisions, including biotoxin, phytoplankton, sewage, microbial and other regulatory events, can override these environmental indicators. Check the current NRE Classification Notice before harvesting.</p>
+  <p><a href="https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas" target="_blank" rel="noopener">Open current NRE ShellMAP harvest status</a> • <a href="https://nre.tas.gov.au/Documents/Management%20Plan%20-%20Pittwater.pdf" target="_blank" rel="noopener">Open Pitt Water Management Plan</a></p>
+</section>
+</main>
+
+<footer>TOC Pittwater Control • Hobart Airport rainfall • Coal River at Richmond • NRE Pitt Water criteria</footer>
+
+<script>
+(function(){
+"use strict";
+var zones={
+ zone1:{name:"Zone 1",salMin:30,rain7:45},
+ zone2:{name:"Zone 2",salMin:27,rain7:40},
+ zone3:{name:"Zone 3",salMin:29,rain7:40}
+};
+var zoneKey="zone1",zone=zones.zone1;
+var salinity={zone1:"",zone2:"",zone3:""};
+var rain24=NaN,rain3=NaN,rain7=NaN,riverFlowValue=NaN;
+var meatTests=[],biotoxinCurrent=false;
+var alertEnabled=localStorage.getItem("toc-pittwater-alert-enabled")==="true";
+var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
+
+function el(id){return document.getElementById(id);}
+function loadSalinity(){
+  Object.keys(zones).forEach(function(k){salinity[k]=localStorage.getItem("toc-pittwater-salinity-"+k)||"";});
+}
+function selected(){return zones[zoneKey];}
+function rainfallCombinedAlert(){return isFinite(rain7)&&rain7>=zone.rain7;}
+function environmentalOpen(){
+  var s=Number(salinity[zoneKey]);
+  return salinity[zoneKey]!==""&&isFinite(s)&&s>=zone.salMin&&isFinite(rain7)&&rain7<zone.rain7&&isFinite(riverFlowValue)&&riverFlowValue<6&&biotoxinCurrent;
+}
+function updateBanner(){
+  var b=el("bayBanner"),open=environmentalOpen();
+  b.className="bay-banner "+(open?"open":"closed");
+  b.innerHTML="PITTWATER "+zone.name.toUpperCase()+" "+(open?"OPEN":"CLOSED")+"<a href="https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas" target="_blank" rel="noopener" style="display:block;color:#fff;text-decoration:underline;font-size:.72em;margin-top:4px;font-weight:700">CHECK NRE CLASSIFICATION BEFORE HARVESTING</a>";
+  b.style.backgroundColor=open?"#16823b":"#c62828";b.style.color="#fff";b.style.opacity="1";b.style.boxShadow="none";
+}
+function updateStatus(){
+  zone=selected();
+  var s=Number(salinity[zoneKey]);
+  var salOk=salinity[zoneKey]!==""&&isFinite(s)&&s>=zone.salMin;
+  var r7Ok=isFinite(rain7)&&rain7<zone.rain7;
+  var rfOk=isFinite(riverFlowValue)&&riverFlowValue<6;
+  var envReady=salinity[zoneKey]!==""&&isFinite(rain7)&&isFinite(riverFlowValue);
+  var open=envReady&&salOk&&r7Ok&&rfOk&&biotoxinCurrent;
+  el("zoneCriteria").textContent=zone.name+" • Salinity ≥ "+zone.salMin+" ppt • 7-day rainfall < "+zone.rain7+" mm • River flow < 6.0 m³/s"+(zoneKey==="zone2"?" • Fortnightly meat test required":"");
+  el("salinityInput").value=salinity[zoneKey];
+  el("salinityMin").value=zone.salMin;
+  el("rain7Limit").value=zone.rain7;
+  el("riverLimit").value=6;
+  el("salinityValue").textContent=salinity[zoneKey]||"—";
+  el("rain24Value").textContent=isFinite(rain24)?rain24.toFixed(1):"—";
+  el("rain3Value").textContent=isFinite(rain3)?rain3.toFixed(1):"—";
+  el("rain7Value").textContent=isFinite(rain7)?rain7.toFixed(1):"—";
+  var boxes=document.querySelectorAll(".status-grid .metric-row > div");
+  if(boxes.length>=4){
+    var values=[salOk,isFinite(rain24),isFinite(rain3),r7Ok];
+    boxes[0].className="env-box "+(salOk?"good":"bad");
+    boxes[1].className="env-box "+(isFinite(rain24)?"good":"neutral");
+    boxes[2].className="env-box "+(isFinite(rain3)?"good":"neutral");
+    boxes[3].className="env-box "+(r7Ok?"good":"bad");
+    boxes[0].style.background=salOk?"#bff3cc":"#ffd0d0";boxes[0].style.border="2px solid "+(salOk?"#31a354":"#c62828");
+    boxes[1].style.background=isFinite(rain24)?"#bff3cc":"#f4f7f8";boxes[1].style.border="2px solid "+(isFinite(rain24)?"#31a354":"#cbd6db");
+    boxes[2].style.background=isFinite(rain3)?"#bff3cc":"#f4f7f8";boxes[2].style.border="2px solid "+(isFinite(rain3)?"#31a354":"#cbd6db");
+    boxes[3].style.background=r7Ok?"#bff3cc":"#ffd0d0";boxes[3].style.border="2px solid "+(r7Ok?"#31a354":"#c62828");
+  }
+  el("statusText").textContent=!envReady?"Awaiting readings":(open?"ENVIRONMENTAL CONTROLS OK":"ENVIRONMENTAL CONTROL ALERT");
+  el("statusDot").className="status-dot "+(!envReady?"neutral":(open?"ok":"alert"));
+  el("lastUpdated").textContent="Updated "+new Date().toLocaleString("en-AU");
+  var riverBox=el("riverFlow").parentElement;
+  if(isFinite(riverFlowValue)){riverBox.className="river-box "+(rfOk?"good":"bad");riverBox.style.background=rfOk?"#bff3cc":"#ffd0d0";riverBox.style.border="2px solid "+(rfOk?"#31a354":"#c62828");}
+  updateBanner();loadReopen();
+}
+function setZone(){
+  zoneKey=el("zoneSelect").value;localStorage.setItem("toc-pittwater-zone",zoneKey);updateStatus();loadMeatTests();loadReopen();
+}
+function isoDate(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+
+async function weather(){
+  var box=el("forecast");box.innerHTML="<div class='loading'>Loading Hobart Airport rainfall…</div>";
+  try{
+    var url="https://api.open-meteo.com/v1/forecast?latitude=-42.8367&longitude=147.5048&hourly=precipitation&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&past_days=8&forecast_days=7&timezone=Australia%2FHobart";
+    var r=await fetch(url,{cache:"no-store"});if(!r.ok)throw Error("weather "+r.status);
+    var d=await r.json();
+    var parts=Object.fromEntries(new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Hobart",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date()).filter(function(p){return p.type!=="literal";}).map(function(p){return [p.type,p.value];}));
+    var today=parts.year+"-"+parts.month+"-"+parts.day,end9=new Date(today+"T09:00:00+10:00");
+    var start7=new Date(end9);start7.setDate(start7.getDate()-7),start3=new Date(end9);start3.setDate(start3.getDate()-3),start24=new Date(end9);start24.setDate(start24.getDate()-1);
+    rain7=rain3=rain24=0;
+    var observedByDate={};
+    for(var i=0;i<d.hourly.time.length;i++){
+      var t=new Date(String(d.hourly.time[i]).replace(" ","T")+":00+10:00"),x=Number(d.hourly.precipitation[i]||0);
+      if(t>start7&&t<=end9)rain7+=x;if(t>start3&&t<=end9)rain3+=x;if(t>start24&&t<=end9)rain24+=x;
+      var day=String(d.hourly.time[i]).slice(0,10);observedByDate[day]=(observedByDate[day]||0)+x;
+    }
+    var future=d.daily.time.map(function(date,i){return {date:date,rain:Number(d.daily.precipitation_sum[i]||0),min:d.daily.temperature_2m_min[i],max:d.daily.temperature_2m_max[i]};}).filter(function(x){return x.date>=today;}).slice(0,7);
+    future.forEach(function(x,i){
+      var total=x.rain;for(var k=1;k<=6;k++){if(i-k>=0)total+=future[i-k].rain;else{var dd=new Date(x.date+"T00:00:00");dd.setDate(dd.getDate()-k);total+=Number(observedByDate[isoDate(dd)]||0);}}x.seven=total;
+    });
+    updateStatus();
+    box.innerHTML="<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+rain7.toFixed(1)+" mm</div><div class='range'>Previous 3 days: "+rain3.toFixed(1)+" mm</div></div>"+
+      future.map(function(x){
+        var total=x.seven,over=total>=zone.rain7;
+        var c=over?"#c62828":(total>=31?"#ffb3b3":(total>=21?"#ff9800":(total>=11?"#90ee90":"#39ff14")));
+        var tc=over?"#fff":(total>=21?"#4a2500":"#073b00");
+        return "<div class='day forecast-day' style='background:"+c+";color:"+tc+";border:2px solid "+c+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+total.toFixed(1)+" mm</strong></div></div>";
+      }).join("");
+    checkAlerts();
+  }catch(e){rain7=rain3=rain24=NaN;updateStatus();box.innerHTML="<div class='loading'>Rainfall unavailable — tap Refresh.</div>";}
+}
+
+function renderRiverHistory(history){
+  var box=el("riverHistory"),rows=(history||[]).filter(function(x){return x&&isFinite(Number(x.flow))&&x.timestamp&&new Date(x.timestamp).getTime()>=Date.now()-3*86400000;});
+  if(!rows.length){box.innerHTML="<div class='loading'>Waiting for NRE portal readings from the last 3 days.</div>";return;}
+  var w=720,h=300,left=58,right=18,top=24,bottom=42,vals=rows.map(function(x){return Number(x.flow);}),minVal=Math.min.apply(null,vals),maxVal=Math.max.apply(null,vals),raw=Math.max(.01,maxVal-minVal),pad=Math.max(.25,raw*.25),min=Math.max(0,minVal-pad),max=maxVal+pad,limit=6;
+  var initial=Math.max(.1,(max-min)/4),mag=Math.pow(10,Math.floor(Math.log10(initial))),step=Math.ceil(initial/mag)*mag;
+  min=Math.max(0,Math.floor(min/step)*step);max=Math.ceil(max/step)*step;if(limit<min)min=Math.max(0,limit-step);if(limit>max)max=limit+step;if(max<=min)max=min+step*4;
+  rows.forEach(function(x){x._ms=new Date(x.timestamp).getTime();});var first=rows[0]._ms,last=rows[rows.length-1]._ms;
+  function sx(t){return left+(t-first)*(w-left-right)/Math.max(1,last-first);}function sy(v){return top+(max-v)*(h-top-bottom)/(max-min);}
+  var pts=rows.map(function(x){return sx(x._ms).toFixed(1)+","+sy(Number(x.flow)).toFixed(1);}).join(" "),grid="";
+  for(var g=0;g<=4;g++){var v=min+(max-min)*g/4,y=sy(v);grid+="<line x1='"+left+"' y1='"+y+"' x2='"+(w-right)+"' y2='"+y+"' stroke='#a7a7a7'/><text x='"+(left-8)+"' y='"+(y+5)+"' text-anchor='end' font-size='13' fill='#e0e0e0'>"+v.toFixed(step<1?2:1)+"</text>";}
+  var ty=sy(limit),line="<line x1='"+left+"' y1='"+ty+"' x2='"+(w-right)+"' y2='"+ty+"' stroke='#e53935' stroke-width='3'/><text x='"+(left+8)+"' y='"+Math.max(top+14,ty-7)+"' font-size='13' font-weight='700' fill='#ff5252'>6.0 m³/s limit</text>";
+  var x1=new Date(first),x2=new Date(first+(last-first)/2),x3=new Date(last);
+  var labels=[x1,x2,x3].map(function(d,i){return "<text x='"+(i===0?left:i===2?w-right:left+(w-left-right)/2)+"' y='"+(h-14)+"' text-anchor='"+(i===0?"start":i===2?"end":"middle")+"' font-size='11' fill='#e0e0e0'>"+d.toLocaleDateString("en-AU",{day:"2-digit",month:"2-digit"})+" "+d.toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"})+"</text>";}).join("");
+  var latest=Number(rows[rows.length-1].flow),lx=sx(rows[rows.length-1]._ms);
+  box.innerHTML="<svg viewBox='0 0 "+w+" "+h+"' style='width:100%;height:auto;display:block;background:#4b4b4b;border-radius:8px' aria-label='Coal River flow last 3 days'><text x='"+left+"' y='16' font-size='14' fill='#eee'>Flow (m³/s)</text>"+grid+line+"<polyline fill='none' stroke='#7cb5ec' stroke-width='4' stroke-linejoin='round' stroke-linecap='round' points='"+pts+"'/><line x1='"+lx+"' y1='"+top+"' x2='"+lx+"' y2='"+(h-bottom)+"' stroke='#63c963' stroke-width='3' stroke-dasharray='8 7'/><text x='"+(lx+8)+"' y='"+(top+18)+"' font-size='13' fill='#f0f0f0'>Now</text><text x='"+(w-right)+"' y='16' text-anchor='end' font-size='14' fill='#eee'>m³/s: "+latest.toFixed(2)+"</text>"+labels+"</svg>";
+  el("riverTrendLabel").textContent="Last 3 days • "+rows.length+" portal readings • dynamic scale";
+}
+async function river(){
+  try{
+    var r=await fetch("./pittwater-river.json?ts="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("river");var d=await r.json();
+    riverFlowValue=Number(d.flow);el("riverFlow").textContent=riverFlowValue.toFixed(3);
+    el("riverStatus").textContent=riverFlowValue>=6?"RIVER FLOW ALERT — above/equal 6.0 m³/s":"Within environmental control limit";
+    el("riverStatus").style.color=riverFlowValue>=6?"#9d2727":"#176b3b";
+    if(d.timestamp)el("riverStatus").textContent+=" • Portal reading "+new Date(d.timestamp).toLocaleString("en-AU");
+    renderRiverHistory(d.history||[]);updateStatus();
+    if(riverFlowValue>=6)alertNow("RIVER FLOW ALERT","Pittwater Coal River flow is "+riverFlowValue.toFixed(3)+" m³/s — management limit is 6.0 m³/s.","pittwater-river");
+  }catch(e){riverFlowValue=NaN;el("riverFlow").textContent="—";el("riverStatus").textContent="River flow unavailable — environmental status remains CLOSED";updateStatus();}
+}
+async function loadMeatTests(){
+  try{
+    var r=await supabase.from("meat_test_results").select("test_date,result,notes,created_at").eq("bay_name","Pittwater Zone 2").order("test_date",{ascending:false}).order("created_at",{ascending:false}).limit(5);
+    if(r.error)throw r.error;meatTests=r.data||[];
+  }catch(e){meatTests=[];}
+  renderMeat();updateStatus();
+}
+function renderMeat(){
+  var required=zoneKey==="zone2",badge=el("meatBadge");
+  if(!required){badge.textContent="NOT REQUIRED";badge.style.background="#e8f2f5";badge.style.color="#0b4f6c";el("meatDescription").textContent="The Pitt Water Management Plan lists fortnightly shellfish microbial meat testing for Zone 2 only. Zone 1 and Zone 3 have no routine fortnightly meat-test trigger in Table 2.";el("meatTests").innerHTML="<div class='loading'>Zone 1/3 — no routine fortnightly meat test requirement.</div>";return;}
+  el("meatDescription").textContent="Zone 2 requires fortnightly shellfish microbial meat testing. Latest five recorded results are shown.";
+  if(!meatTests.length){badge.textContent="NO TEST RECORDED";badge.style.background="#ffd0d0";badge.style.color="#9d2727";el("meatTests").innerHTML="<div class='loading'>No Pittwater Zone 2 meat test recorded — harvest remains CLOSED.</div>";return;}
+  var latest=meatTests[0],n=Number(String(latest.result).replace(",",".")),passed=isFinite(n)&&n<=2.3,due=new Date(latest.test_date+"T00:00:00");due.setDate(due.getDate()+14);var today=new Date();today.setHours(0,0,0,0),days=Math.ceil((due-today)/86400000),overdue=days<0;
+  var ok=passed&&!overdue;
+  badge.textContent=!passed?"FAILED — NEW SAMPLE REQUIRED":overdue?"OVERDUE":"UP TO DATE";badge.style.background=ok?"#bff3cc":"#ffd0d0";badge.style.color=ok?"#176b3b":"#9d2727";
+  el("meatTests").innerHTML=meatTests.map(function(x){var v=Number(String(x.result).replace(",",".")),good=isFinite(v)&&v<=2.3;return "<div class='day observed-summary' style='background:"+(good?"#bff3cc":"#ffd0d0")+";border:2px solid "+(good?"#31a354":"#c62828")+"'><div class='date'>"+new Date(x.test_date+"T00:00:00").toLocaleDateString("en-AU")+"</div><div class='rain'>"+String(x.result).replace(/</g,"&lt;")+"</div><div class='range'>"+(good?"PASS / UNDER REFERENCE":"FAIL / OVER REFERENCE")+(x.notes?" • "+String(x.notes).replace(/</g,"&lt;"):"")+"</div></div>";}).join("")+"<p class='hint'>Latest test due date: "+due.toLocaleDateString("en-AU")+" (14-day interval).</p>";
+}
+async function loadBiotoxin(){
+  try{
+    var r=await supabase.from("meat_test_results").select("test_date,result,notes,created_at").eq("bay_name","Pittwater Biotoxin").order("test_date",{ascending:false}).order("created_at",{ascending:false}).limit(1);
+    if(r.error)throw r.error;var x=(r.data||[])[0];
+    if(!x){biotoxinCurrent=false;el("biotoxinBadge").textContent="OVERDUE";el("biotoxinBadge").style.background="#ffd0d0";el("biotoxinBadge").style.color="#9d2727";el("biotoxinStatus").innerHTML="<b>BIOTOXIN TEST OVERDUE</b><br>No weekly Pittwater biotoxin test is recorded. Environmental status remains CLOSED.";updateStatus();return;}
+    var d=new Date(x.test_date+"T00:00:00"),due=new Date(d);due.setDate(due.getDate()+7),today=new Date();var result=String(x.result||"").toUpperCase(),pass=result==="PASS"||result==="PASSED",overdue=today>new Date(due.getTime()+86399999);
+    biotoxinCurrent=pass&&!overdue;var ok=biotoxinCurrent;el("biotoxinBadge").textContent=ok?"CURRENT":"CLOSED / ACTION REQUIRED";el("biotoxinBadge").style.background=ok?"#bff3cc":"#ffd0d0";el("biotoxinBadge").style.color=ok?"#176b3b":"#9d2727";el("biotoxinStatus").style.background=ok?"#d8f3df":"#ffd0d0";el("biotoxinStatus").style.border="2px solid "+(ok?"#31a354":"#c62828");el("biotoxinStatus").innerHTML="<b>Last test:</b> "+d.toLocaleDateString("en-AU")+"<br><b>Result:</b> "+result+"<br><b>Next test due:</b> "+due.toLocaleDateString("en-AU")+(overdue?"<br><b>WEEKLY TEST IS OVERDUE — HARVEST CLOSED</b>":"");
+  }catch(e){biotoxinCurrent=false;el("biotoxinBadge").textContent="UNAVAILABLE";el("biotoxinStatus").textContent="Biotoxin status unavailable — harvest remains CLOSED.";updateStatus();}
+}
+async function loadReopen(){
+  try{
+    var names=["Pittwater "+zone.name+" Salinity T0","Pittwater "+zone.name+" Salinity T24","Pittwater "+zone.name+" Salinity T48"];
+    var r=await supabase.from("meat_test_results").select("bay_name,test_date,result,notes,created_at").in("bay_name",names).order("created_at",{ascending:false}).limit(20);if(r.error)throw r.error;
+    var latest={};(r.data||[]).forEach(function(x){if(!latest[x.bay_name])latest[x.bay_name]=x;});
+    function show(id,x,time){if(!x){el(id).textContent="—";return;}if(time){try{var m=x.notes?JSON.parse(x.notes):{};el(id).textContent=m.salinityTime||new Date(x.created_at).toLocaleString("en-AU");}catch(e){el(id).textContent=new Date(x.created_at).toLocaleString("en-AU");}}else{el(id).textContent=Number(x.result).toFixed(1)+" ppt";}}
+    var t0=latest[names[0]],t24=latest[names[1]],t48=latest[names[2]];
+    show("t0Time",t0,true);show("t0Sal",t0,false);show("t24Time",t24,true);show("t24Sal",t24,false);show("t48Time",t48,true);show("t48Sal",t48,false);
+    ["t0Req","t24Req","t48Req"].forEach(function(id){el(id).textContent="Above "+zone.salMin+" ppt";});
+    var ready=environmentalOpen(),complete=t0&&t24&&t48;
+    el("reopenBadge").textContent=complete?"COMPLETED":ready?"READY TO START":"WAITING";el("reopenBadge").style.background=complete?"#bff3cc":ready?"#bff3cc":"#f4f7f8";el("reopenBadge").style.color=complete||ready?"#176b3b":"#52636d";
+    el("reopenStatus").textContent=complete?"T0, T24 and T48 readings are recorded. Verify all readings are above the zone criterion and submit to NRE as required.":ready?"Environmental readings are within limits. A 48-hour salinity check can be commenced.":"Waiting for all environmental controls to be within limits before the 48-hour check starts.";
+  }catch(e){el("reopenBadge").textContent="UNAVAILABLE";el("reopenStatus").textContent="48-hour salinity records unavailable.";}
+}
+function updateNotify(){el("notifyBtn").textContent=alertEnabled?"Alerts ON ✓":"Enable alerts";}
+async function enableAlerts(){
+  if(alertEnabled){alertEnabled=false;localStorage.setItem("toc-pittwater-alert-enabled","false");updateNotify();return;}
+  if(!("Notification" in window)){el("saveStatus").textContent="Alerts not supported on this device.";return;}
+  var p=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(p!=="granted"){el("saveStatus").textContent="Notifications are blocked in Chrome settings.";return;}
+  alertEnabled=true;localStorage.setItem("toc-pittwater-alert-enabled","true");updateNotify();try{var reg=await navigator.serviceWorker.ready;await reg.showNotification("TOC Pittwater Control",{body:"Environmental alerts are enabled.",tag:"pittwater-test"});}catch(e){}
+}
+function alertNow(title,body,tag){if(!alertEnabled||!("Notification"in window)||Notification.permission!=="granted")return;if("serviceWorker"in navigator)navigator.serviceWorker.ready.then(function(r){r.showNotification(title,{body:body,tag:tag});}).catch(function(){});}
+function checkAlerts(){
+  if(isFinite(rain7)&&rain7>=zone.rain7)alertNow("7-DAY RAINFALL ALERT","Pittwater "+zone.name+" rainfall is "+rain7.toFixed(1)+" mm — closure criterion is "+zone.rain7+" mm.","pittwater-rain7");
+  if(isFinite(riverFlowValue)&&riverFlowValue>=6)alertNow("RIVER FLOW ALERT","Coal River flow is "+riverFlowValue.toFixed(3)+" m³/s — closure criterion is 6.0 m³/s.","pittwater-river");
+}
+el("zoneSelect").value=localStorage.getItem("toc-pittwater-zone")||"zone1";
+el("zoneSelect").onchange=setZone;
+el("salinityInput").oninput=function(){salinity[zoneKey]=this.value;localStorage.setItem("toc-pittwater-salinity-"+zoneKey,this.value);updateStatus();};
+el("refreshWeather").onclick=weather;el("notifyBtn").onclick=enableAlerts;
+loadSalinity();updateNotify();setZone();weather();river();loadMeatTests();loadBiotoxin();
+setInterval(weather,3600000);setInterval(river,60000);setInterval(loadMeatTests,10000);setInterval(loadBiotoxin,3600000);
+})();
+</script>
+<script>
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});
+</script>
+</body>
+</html>
