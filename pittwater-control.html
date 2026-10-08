@@ -15,6 +15,12 @@
 .pitt-zone-status.open{background:#16823b}.pitt-zone-status.closed{background:#c62828}.pitt-zone-status.waiting{background:#6b7280}
 .pitt-zone-status .zone-name{font-size:.82rem;display:block;margin-bottom:4px}.pitt-zone-status .zone-state{font-size:1.15rem;display:block}.pitt-zone-status .zone-detail{font-size:.72rem;font-weight:600;display:block;margin-top:4px;opacity:.95}
 @media(max-width:560px){.pitt-zone-banner{grid-template-columns:1fr}.pitt-zone-status{padding:14px 8px}}
+</style><style>
+.env-control-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.env-control{padding:12px;border-radius:10px;border:2px solid #cbd6db;font-weight:700}
+.env-control.good{background:#bff3cc;border-color:#31a354;color:#176b3b}
+.env-control.bad{background:#ffd0d0;border-color:#c62828;color:#9d2727}
+@media(max-width:700px){.env-control-grid{grid-template-columns:1fr}}
 </style></head>
 <body>
 <div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite" style="padding:0;overflow:hidden">
@@ -220,6 +226,10 @@ function updateStatus(){
   el("statusText").style.color=open?"#176b3b":"#9d2727";
   el("statusDot").className="status-dot "+(!envReady?"neutral":(open?"ok":"alert"));
   el("lastUpdated").textContent="Updated "+new Date().toLocaleString("en-AU");
+  var ec1=el("envSalinity"),ec2=el("envRain7"),ec3=el("envRiver");
+  ec1.className="env-control "+(salOk?"good":"bad"); ec1.textContent="Salinity: "+(salinity[zoneKey]?Number(salinity[zoneKey]).toFixed(1)+" ppt":"NOT ENTERED")+" • Limit ≥ "+zone.salMin+" ppt";
+  ec2.className="env-control "+(r7Ok?"good":"bad"); ec2.textContent="7-day rainfall: "+(isFinite(rain7)?rain7.toFixed(1)+" mm":"UNAVAILABLE")+" • Limit < "+zone.rain7+" mm";
+  ec3.className="env-control "+(rfOk?"good":"bad"); ec3.textContent="River flow: "+(isFinite(riverFlowValue)?riverFlowValue.toFixed(3)+" m³/s":"UNAVAILABLE")+" • Limit < 6.0 m³/s";
   var riverBox=el("riverFlow").parentElement;
   if(isFinite(riverFlowValue)){riverBox.className="river-box "+(rfOk?"good":"bad");riverBox.style.background=rfOk?"#bff3cc":"#ffd0d0";riverBox.style.border="2px solid "+(rfOk?"#31a354":"#c62828");}
   updateBanner();loadReopen();
@@ -230,35 +240,53 @@ function setZone(){
 function isoDate(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 
 async function weather(){
-  var box=el("forecast");box.innerHTML="<div class='loading'>Loading Hobart Airport rainfall…</div>";
+  el("forecast").innerHTML="<div class='loading'>Loading Hobart Airport rainfall…</div>";
   try{
-    var url="https://api.open-meteo.com/v1/forecast?latitude=-42.8367&longitude=147.5048&hourly=precipitation&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&past_days=8&forecast_days=7&timezone=Australia%2FHobart";
-    var r=await fetch(url,{cache:"no-store"});if(!r.ok)throw Error("weather "+r.status);
-    var d=await r.json();
     var parts=Object.fromEntries(new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Hobart",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date()).filter(function(p){return p.type!=="literal";}).map(function(p){return [p.type,p.value];}));
-    var today=parts.year+"-"+parts.month+"-"+parts.day,end9=new Date(today+"T09:00:00+10:00");
-    var start7=new Date(end9);start7.setDate(start7.getDate()-7),start3=new Date(end9);start3.setDate(start3.getDate()-3),start24=new Date(end9);start24.setDate(start24.getDate()-1);
-    rain7=rain3=rain24=0;
-    var observedByDate={};
-    for(var i=0;i<d.hourly.time.length;i++){
-      var t=new Date(String(d.hourly.time[i]).replace(" ","T")+":00+10:00"),x=Number(d.hourly.precipitation[i]||0);
-      if(t>start7&&t<=end9)rain7+=x;if(t>start3&&t<=end9)rain3+=x;if(t>start24&&t<=end9)rain24+=x;
-      var day=String(d.hourly.time[i]).slice(0,10);observedByDate[day]=(observedByDate[day]||0)+x;
-    }
-    var future=d.daily.time.map(function(date,i){return {date:date,rain:Number(d.daily.precipitation_sum[i]||0),min:d.daily.temperature_2m_min[i],max:d.daily.temperature_2m_max[i]};}).filter(function(x){return x.date>=today;}).slice(0,7);
-    future.forEach(function(x,i){
-      var total=x.rain;for(var k=1;k<=6;k++){if(i-k>=0)total+=future[i-k].rain;else{var dd=new Date(x.date+"T00:00:00");dd.setDate(dd.getDate()-k);total+=Number(observedByDate[isoDate(dd)]||0);}}x.seven=total;
+    var today=parts.year+"-"+parts.month+"-"+parts.day;
+    var base=new Date(Date.UTC(+parts.year,+parts.month-1,+parts.day));
+    function iso(d){return d.toISOString().slice(0,10);}
+    var end=new Date(base);end.setUTCDate(end.getUTCDate()+1);
+    var start=new Date(base);start.setUTCDate(start.getUTCDate()-8);
+    var histUrl="https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=-42.8367&longitude=147.5048&start_date="+iso(start)+"&end_date="+iso(end)+"&hourly=precipitation&timezone=Australia%2FHobart";
+    var fcUrl="https://api.open-meteo.com/v1/forecast?latitude=-42.8367&longitude=147.5048&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Australia%2FHobart&forecast_days=7";
+    var rs=await Promise.all([fetch(histUrl,{cache:"no-store"}),fetch(fcUrl,{cache:"no-store"})]);
+    if(!rs[0].ok||!rs[1].ok)throw Error("weather");
+    var h=await rs[0].json(),fc=await rs[1].json();
+    var start7=new Date(base);start7.setUTCDate(start7.getUTCDate()-7);
+    var start3=new Date(base);start3.setUTCDate(start3.getUTCDate()-3);
+    var start24=new Date(base);start24.setUTCDate(start24.getUTCDate()-1);
+    var end9=today+"T09:00";
+    var start7k=iso(start7)+"T09:00",start3k=iso(start3)+"T09:00",start24k=iso(start24)+"T09:00";
+    rain7=0;rain3=0;rain24=0;var byDate={};
+    h.hourly.time.forEach(function(t,i){
+      var x=Number(h.hourly.precipitation[i]||0),k=t.replace(" ","T").slice(0,16);
+      if(k>start7k&&k<=end9)rain7+=x;
+      if(k>start3k&&k<=end9)rain3+=x;
+      if(k>start24k&&k<=end9)rain24+=x;
+      var d=t.slice(0,10);byDate[d]=(byDate[d]||0)+x;
+    });
+    var future=fc.daily.time.map(function(d,i){
+      var total=Number(fc.daily.precipitation_sum[i]||0);
+      for(var k=1;k<=6;k++){
+        if(i-k>=0)total+=Number(fc.daily.precipitation_sum[i-k]||0);
+        else{var dd=new Date(d+"T00:00:00");dd.setDate(dd.getDate()-k);total+=Number(byDate[iso(dd)]||0);}
+      }
+      return {date:d,rain:Number(fc.daily.precipitation_sum[i]||0),total:total,min:fc.daily.temperature_2m_min[i],max:fc.daily.temperature_2m_max[i]};
     });
     updateStatus();
-    box.innerHTML="<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+rain7.toFixed(1)+" mm</div><div class='range'>Previous 3 days: "+rain3.toFixed(1)+" mm</div></div>"+
+    el("forecast").innerHTML="<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+rain7.toFixed(1)+" mm</div><div class='range'>Previous 24h: "+rain24.toFixed(1)+" mm • Previous 3 days: "+rain3.toFixed(1)+" mm</div></div>"+
       future.map(function(x){
-        var total=x.seven,over=total>=zone.rain7;
-        var c=over?"#c62828":(total>=31?"#ffb3b3":(total>=21?"#ff9800":(total>=11?"#90ee90":"#39ff14")));
-        var tc=over?"#fff":(total>=21?"#4a2500":"#073b00");
-        return "<div class='day forecast-day' style='background:"+c+";color:"+tc+";border:2px solid "+c+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+total.toFixed(1)+" mm</strong></div></div>";
+        var over=x.total>=zone.rain7;
+        var c=over?"#c62828":(x.total>=31?"#ffb3b3":(x.total>=21?"#ff9800":(x.total>=11?"#90ee90":"#39ff14")));
+        var tc=over?"#fff":(x.total>=21?"#4a2500":"#073b00");
+        return "<div class='day forecast-day' style='background:"+c+";color:"+tc+";border:2px solid "+c+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+x.total.toFixed(1)+" mm</strong></div></div>";
       }).join("");
     checkAlerts();
-  }catch(e){rain7=rain3=rain24=NaN;updateStatus();box.innerHTML="<div class='loading'>Rainfall unavailable — tap Refresh.</div>";}
+  }catch(e){
+    rain7=rain3=rain24=NaN;updateStatus();
+    el("forecast").innerHTML="<div class='loading'>Rainfall unavailable — tap Refresh.</div>";
+  }
 }
 
 function renderRiverHistory(history){
