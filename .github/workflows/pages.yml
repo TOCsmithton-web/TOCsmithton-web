@@ -44,6 +44,7 @@ jobs:
           EOF
 
       # Force a fresh Pages artifact after control-page repairs.
+      # Deployment trigger repair: ensure direct main-branch pushes publish the latest control pages.
       # Deployment nudge: 2026-10-06T21:20 AEST
       - name: Prepare Pages artifact
         run: |
