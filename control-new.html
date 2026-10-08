@@ -196,7 +196,7 @@ async function loadBays(){
   select.innerHTML=bays.map(function(b){return "<option value=\""+b.bay_name.replace(/"/g,"&quot;")+"\">"+b.bay_name+"</option>";}).join("");
   if(bays.some(function(b){return b.bay_name===saved;}))select.value=saved;
   currentBay=bays.find(function(b){return b.bay_name===select.value;})||bays[0]||null;
-  select.onchange=async function(){currentBay=bays.find(function(b){return b.bay_name===select.value;})||null;localStorage.setItem("toc-smithton-bay",select.value);render();await loadMeatTests();updateBayBanner();};
+  select.onchange=async function(){currentBay=bays.find(function(b){return b.bay_name===select.value;})||null;localStorage.setItem("toc-smithton-bay",select.value);render();await loadCentral();await loadMeatTests();updateBayBanner();};
   render();
   await loadMeatTests();
   weather();
