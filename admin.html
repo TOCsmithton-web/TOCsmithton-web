@@ -467,12 +467,12 @@ async function saveManualReading(location,zone,inputId,msgId,timeId){
   var session=(await supabase.auth.getSession()).data.session;
   if(!session){msg(msgId,"You must be signed in.",false);return;}
   var value=$(inputId).value.trim();
-  if(value===""){msg(msgId,"Enter a salinity reading.",false);return;}
+  var now=new Date().toISOString();
   var r=await supabase.from("manual_control_readings").upsert({
-    location:location,zone:zone,salinity:Number(value),reading_time:new Date().toISOString(),updated_at:new Date().toISOString(),updated_by:session.user.id
+    location:location,zone:zone,salinity:value===""?null:Number(value),reading_time:value===""?null:now,updated_at:now,updated_by:session.user.id
   },{onConflict:"location,zone"});
   if(r.error){msg(msgId,"SAVE BLOCKED: "+r.error.message,false);return;}
-  msg(msgId,"SALINITY SAVED & PUBLISHED ✓",true);
+  msg(msgId,value===""?"SALINITY CLEARED ✓ — public page is now read-only with no current reading.":"SALINITY SAVED & PUBLISHED ✓",true);
   loadManualReading(location,zone,inputId,timeId);
 }
 async function loadPittBiotoxinList(){
