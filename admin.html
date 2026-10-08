@@ -125,6 +125,30 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
   <button id="savePittBiotoxinBtn" class="button" type="button">Save Pittwater biotoxin test</button>
   <p id="pittBiotoxinMsg" class="small"></p>
   <div id="pittBiotoxinList" class="notice"></div>
+<div id="pittwater48Editor" class="admin-card location-panel" style="display:none">
+  <h2>Pittwater — 48-hour salinity reopening</h2>
+  <p class="small">NRE requires T0, T24 and T48 salinity checks at low tide following an environmental closure. Each reading must be above the selected zone criterion.</p>
+  <div class="notice"><b id="pitt48Requirement">Zone 1: ≥ 30 ppt</b></div>
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;margin-top:12px">
+      <thead><tr><th>Check</th><th>Date</th><th>Time</th><th>Low tide</th><th>Salinity</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td><b>T0</b></td><td><input id="p48T0Date" type="date"></td><td><input id="p48T0Time" type="time"></td><td style="text-align:center"><input id="p48T0Low" type="checkbox" style="width:22px;height:22px"></td><td><input id="p48T0Sal" type="number" step="0.1" min="0"></td><td id="p48T0Status">WAITING</td></tr>
+        <tr><td><b>T24</b></td><td><input id="p48T24Date" type="date"></td><td><input id="p48T24Time" type="time"></td><td style="text-align:center"><input id="p48T24Low" type="checkbox" style="width:22px;height:22px"></td><td><input id="p48T24Sal" type="number" step="0.1" min="0"></td><td id="p48T24Status">WAITING</td></tr>
+        <tr><td><b>T48</b></td><td><input id="p48T48Date" type="date"></td><td><input id="p48T48Time" type="time"></td><td style="text-align:center"><input id="p48T48Low" type="checkbox" style="width:22px;height:22px"></td><td><input id="p48T48Sal" type="number" step="0.1" min="0"></td><td id="p48T48Status">WAITING</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="grid2">
+    <label>Sampling officer<input id="p48Officer" type="text"></label>
+    <label>Source / lease<input id="p48Source" type="text" placeholder="Growing area, harvest area or lease number"></label>
+  </div>
+  <label>Notes<input id="p48Notes" type="text" placeholder="Optional notes"></label>
+  <button id="savePitt48Btn" class="button" type="button">Save & Publish 48-hour Progress</button>
+  <p id="pitt48Msg" class="small"></p>
+  <div id="pitt48Overall" class="notice" style="font-weight:800">OVERALL: WAITING — all three checks must pass.</div>
+</div>
+
 </div>
 
 <div id="editor" class="admin-card" style="display:none">
@@ -493,12 +517,68 @@ async function savePittBiotoxin(){
   $("pittBiotoxinResult").value="";$("pittBiotoxinNotes").value="";
   msg("pittBiotoxinMsg","PITTWATER BIOTOXIN TEST SAVED ✓",true);loadPittBiotoxinList();
 }
+function pitt48Threshold(zone){
+  return zone==="Zone 1"?30:zone==="Zone 2"?27:29;
+}
+function pitt48Fields(cp){
+  var p=cp==="T0"?"p48T0":cp==="T24"?"p48T24":"p48T48";
+  return {date:$(p+"Date"),time:$(p+"Time"),low:$(p+"Low"),sal:$(p+"Sal"),status:$(p+"Status")};
+}
+function updatePitt48Status(){
+  var zone=$("pittwaterZone").value, min=pitt48Threshold(zone);
+  $("pitt48Requirement").textContent=zone+": ≥ "+min+" ppt";
+  var all=true, anyFail=false;
+  ["T0","T24","T48"].forEach(function(cp){
+    var f=pitt48Fields(cp), sal=Number(f.sal.value), ok=!!f.date.value&&!!f.time.value&&f.low.checked&&isFinite(sal)&&sal>=min;
+    var recorded=!!f.date.value||!!f.time.value||f.low.checked||f.sal.value!=="";
+    if(ok){f.status.textContent="PASS";f.status.style.color="#176b3b";f.status.style.fontWeight="800";}
+    else if(recorded){f.status.textContent="FAIL";f.status.style.color="#c62828";f.status.style.fontWeight="800";anyFail=true;}
+    else{f.status.textContent="WAITING";f.status.style.color="#52636d";f.status.style.fontWeight="800";}
+    if(!ok)all=false;
+  });
+  $("pitt48Overall").textContent=all?"OVERALL: PASS — T0, T24 and T48 meet the NRE reopening check.":anyFail?"OVERALL: FAIL — correct the failed reading(s) before reopening.":"OVERALL: WAITING — all three checks must pass.";
+  $("pitt48Overall").style.background=all?"#dff5e8":anyFail?"#ffd0d0":"#eef4f7";
+  $("pitt48Overall").style.color=all?"#176b3b":anyFail?"#9d2727":"#52636d";
+}
+async function loadPitt48(){
+  var zone=$("pittwaterZone").value;
+  var r=await supabase.from("pittwater_48h_salinity").select("*").eq("zone",zone).order("check_point");
+  if(r.error){msg("pitt48Msg","Could not load 48-hour record: "+r.error.message,false);return;}
+  var rows={};(r.data||[]).forEach(function(x){rows[x.check_point]=x;});
+  ["T0","T24","T48"].forEach(function(cp){
+    var f=pitt48Fields(cp),x=rows[cp];
+    f.date.value=x&&x.reading_date||""; f.time.value=x&&x.reading_time?String(x.reading_time).slice(0,5):"";
+    f.low.checked=!!(x&&x.low_tide); f.sal.value=x&&x.salinity!=null?x.salinity:"";
+  });
+  var first=rows.T0||rows.T24||rows.T48;
+  $("p48Officer").value=first&&first.sampling_officer||"";
+  $("p48Source").value=first&&first.source||"";
+  $("p48Notes").value=first&&first.notes||"";
+  updatePitt48Status();
+}
+async function savePitt48(){
+  updatePitt48Status();
+  var zone=$("pittwaterZone").value, session=(await supabase.auth.getSession()).data.session;
+  if(!session){msg("pitt48Msg","You must be signed in.",false);return;}
+  var min=pitt48Threshold(zone), payload=[];
+  ["T0","T24","T48"].forEach(function(cp){
+    var f=pitt48Fields(cp), sal=f.sal.value.trim();
+    if(!f.date.value&&!f.time.value&&!sal&&!f.low.checked)return;
+    payload.push({zone:zone,check_point:cp,salinity:sal===""?null:Number(sal),reading_date:f.date.value||null,reading_time:f.time.value||null,low_tide:f.low.checked,sampling_officer:$("p48Officer").value.trim()||null,source:$("p48Source").value.trim()||null,notes:$("p48Notes").value.trim()||null,updated_at:new Date().toISOString(),updated_by:session.user.id});
+  });
+  if(!payload.length){msg("pitt48Msg","Enter at least one reading before saving.",false);return;}
+  var r=await supabase.from("pittwater_48h_salinity").upsert(payload,{onConflict:"zone,check_point"});
+  if(r.error){msg("pitt48Msg","SAVE BLOCKED: "+r.error.message,false);return;}
+  msg("pitt48Msg","PITTWATER 48-HOUR RECORD SAVED & PUBLISHED ✓",true);
+  await loadPitt48();
+}
 async function setAdminLocation(){
   var loc=$("adminLocation").value;
   $("smithtonManualEditor").style.display=loc==="smithton"?"block":"none";
   $("boomerManualEditor").style.display=loc==="boomer"?"block":"none";
   $("pittwaterManualEditor").style.display=loc==="pittwater"?"block":"none";
   $("pittwaterBiotoxinEditor").style.display=loc==="pittwater"?"block":"none";
+  $("pittwater48Editor").style.display=loc==="pittwater"?"block":"none";
   $("editor").style.display=loc==="smithton"?"block":"none";
   $("nreVerificationEditor").style.display=loc==="smithton"?"block":"none";
   $("reopenEditor").style.display=loc==="smithton"?"block":"none";
@@ -519,6 +599,7 @@ async function setAdminLocation(){
     await loadManualReading("Pittwater",$("pittwaterZone").value,"pittwaterSalinity","pittwaterSalinityTime");
     await loadPittBiotoxinList();
     await loadMeatList();
+    await loadPitt48();
   }
 }
 async function showSession(session){
@@ -533,6 +614,7 @@ async function showSession(session){
     $("boomerManualEditor").style.display="none";
     $("pittwaterManualEditor").style.display="none";
     $("pittwaterBiotoxinEditor").style.display="none";
+    $("pittwater48Editor").style.display="none";
     return;
   }
 
@@ -561,6 +643,7 @@ async function showSession(session){
     $("boomerManualEditor").style.display="none";
     $("pittwaterManualEditor").style.display="none";
     $("pittwaterBiotoxinEditor").style.display="none";
+    $("pittwater48Editor").style.display="none";
     msg("accessMsg","READ-ONLY ACCOUNT — this account is not authorised to edit control data.",false);
   }
 }
@@ -568,11 +651,13 @@ async function showSession(session){
 $("adminLocation").onchange=setAdminLocation;
 $("smithtonBay").onchange=function(){loadManualReading("Smithton",this.value,"smithtonSalinity","smithtonSalinityTime");};
 $("boomerZone").onchange=function(){loadManualReading("Boomer Bay",this.value,"boomerSalinity","boomerSalinityTime");};
-$("pittwaterZone").onchange=function(){loadManualReading("Pittwater",this.value,"pittwaterSalinity","pittwaterSalinityTime");};
 $("saveSmithtonSalinityBtn").onclick=function(){saveManualReading("Smithton",$("smithtonBay").value,"smithtonSalinity","smithtonSalinityMsg","smithtonSalinityTime");};
 $("saveBoomerSalinityBtn").onclick=function(){saveManualReading("Boomer Bay",$("boomerZone").value,"boomerSalinity","boomerSalinityMsg","boomerSalinityTime");};
 $("savePittwaterSalinityBtn").onclick=function(){saveManualReading("Pittwater",$("pittwaterZone").value,"pittwaterSalinity","pittwaterSalinityMsg","pittwaterSalinityTime");};
 $("savePittBiotoxinBtn").onclick=savePittBiotoxin;
+$("savePitt48Btn").onclick=savePitt48;
+["p48T0Date","p48T0Time","p48T0Low","p48T0Sal","p48T24Date","p48T24Time","p48T24Low","p48T24Sal","p48T48Date","p48T48Time","p48T48Low","p48T48Sal"].forEach(function(id){$(id).oninput=updatePitt48Status;});
+$("pittwaterZone").onchange=function(){loadManualReading("Pittwater",this.value,"pittwaterSalinity","pittwaterSalinityTime");loadPitt48();};
 $("pittBiotoxinDate").value=new Date().toISOString().slice(0,10);
 
 $("githubBtn").onclick=async function(){
