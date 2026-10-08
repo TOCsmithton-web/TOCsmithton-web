@@ -16,6 +16,11 @@ body{background:#eef4f7}.admin-wrap{max-width:760px;margin:0 auto;padding:18px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:600px){.grid2{grid-template-columns:1fr}}
 label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #c8d3d8;border-radius:9px;font-size:16px}
 .notice{padding:12px;border-radius:10px;background:#eef4f7;margin-top:12px}
+.location-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.location-tabs select{width:100%;padding:13px;border:2px solid #c8d3d8;border-radius:10px;font-size:16px;font-weight:800;background:#fff;color:#17384a}
+.location-panel{border-left:5px solid #0b4f6c;padding-left:14px}
+.reading-time{font-size:.82rem;color:#52636d;margin-top:6px}
+@media(max-width:600px){.location-tabs{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -41,8 +46,89 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 </div>
 </div>
 
+<div id="locationSelectorCard" class="admin-card" style="display:none">
+  <h2>Control location</h2>
+  <p class="small">Select the location you are entering data for. Public control pages are read-only; all manual readings are entered here.</p>
+  <div class="location-tabs">
+    <label>Location
+      <select id="adminLocation">
+        <option value="smithton">Smithton</option>
+        <option value="boomer">Boomer Bay</option>
+        <option value="pittwater">Pittwater</option>
+      </select>
+    </label>
+  </div>
+</div>
+
+<div id="smithtonManualEditor" class="admin-card location-panel" style="display:none">
+  <h2>Smithton — Manual salinity</h2>
+  <div class="grid2">
+    <label>Bay
+      <select id="smithtonBay" style="width:100%;padding:12px;border:1px solid #c8d3d8;border-radius:9px;font-size:16px;background:#fff">
+        <option value="Duck Bay">Duck Bay</option>
+        <option value="Kemps Bay">Kemps Bay</option>
+      </select>
+    </label>
+    <label>Salinity (ppt)<input id="smithtonSalinity" type="number" step="0.1" min="0"></label>
+  </div>
+  <button id="saveSmithtonSalinityBtn" class="button" type="button">Save Smithton salinity</button>
+  <p id="smithtonSalinityMsg" class="small"></p>
+  <p id="smithtonSalinityTime" class="reading-time"></p>
+</div>
+
+<div id="boomerManualEditor" class="admin-card location-panel" style="display:none">
+  <h2>Boomer Bay — Manual salinity</h2>
+  <div class="grid2">
+    <label>Zone
+      <select id="boomerZone" style="width:100%;padding:12px;border:1px solid #c8d3d8;border-radius:9px;font-size:16px;background:#fff">
+        <option value="Zone Little">Zone Little</option>
+        <option value="Zone Narrows">Zone Narrows</option>
+        <option value="East">East</option>
+      </select>
+    </label>
+    <label>Salinity (ppt)<input id="boomerSalinity" type="number" step="0.1" min="0"></label>
+  </div>
+  <button id="saveBoomerSalinityBtn" class="button" type="button">Save Boomer Bay salinity</button>
+  <p id="boomerSalinityMsg" class="small"></p>
+  <p id="boomerSalinityTime" class="reading-time"></p>
+</div>
+
+<div id="pittwaterManualEditor" class="admin-card location-panel" style="display:none">
+  <h2>Pittwater — Manual salinity</h2>
+  <div class="grid2">
+    <label>Zone
+      <select id="pittwaterZone" style="width:100%;padding:12px;border:1px solid #c8d3d8;border-radius:9px;font-size:16px;background:#fff">
+        <option value="Zone 1">Zone 1</option>
+        <option value="Zone 2">Zone 2</option>
+        <option value="Zone 3">Zone 3</option>
+      </select>
+    </label>
+    <label>Salinity (ppt)<input id="pittwaterSalinity" type="number" step="0.1" min="0"></label>
+  </div>
+  <button id="savePittwaterSalinityBtn" class="button" type="button">Save Pittwater salinity</button>
+  <p id="pittwaterSalinityMsg" class="small"></p>
+  <p id="pittwaterSalinityTime" class="reading-time"></p>
+</div>
+
+<div id="pittwaterBiotoxinEditor" class="admin-card location-panel" style="display:none">
+  <h2>Pittwater — Weekly biotoxin test</h2>
+  <p class="small">Record the current weekly Pittwater biotoxin result here. The public page is read-only and uses this record for the control status.</p>
+  <div class="grid2">
+    <label>Test date<input id="pittBiotoxinDate" type="date"></label>
+    <label>Result
+      <select id="pittBiotoxinResult" style="width:100%;padding:12px;border:1px solid #c8d3d8;border-radius:9px;font-size:16px;background:#fff">
+        <option value="">Select result</option><option value="PASS">PASS</option><option value="FAIL">FAIL</option>
+      </select>
+    </label>
+  </div>
+  <label>Notes<input id="pittBiotoxinNotes" type="text" placeholder="Optional laboratory/test notes"></label>
+  <button id="savePittBiotoxinBtn" class="button" type="button">Save Pittwater biotoxin test</button>
+  <p id="pittBiotoxinMsg" class="small"></p>
+  <div id="pittBiotoxinList" class="notice"></div>
+</div>
+
 <div id="editor" class="admin-card" style="display:none">
-<h2>Central environmental controls</h2>
+<h2>Smithton — Environmental controls</h2>
 <div class="grid2">
 <label>Salinity (ppt)<input id="salinity" type="number" step="0.1" min="0"></label>
 <label>Salinity minimum (ppt)<input id="salinityMin" type="number" step="0.1" min="0"></label>
@@ -115,6 +201,8 @@ NRE VERIFIED — Duck Bay is OPEN
 <select id="meatBay" style="width:100%;padding:12px;border:1px solid #c8d3d8;border-radius:9px;font-size:16px;background:#fff">
 <option>Duck Bay</option>
 <option>Kemps Bay</option>
+<option>Boomer Bay</option>
+<option>Pittwater Zone 2</option>
 </select></label>
 <label>Test date<input id="meatDate" type="date"></label>
 </div>
@@ -370,6 +458,66 @@ async function saveMeatTest(){
   msg("meatSaveMsg","MEAT TEST RESULT SAVED ✓",true);
   loadMeatList();
 }
+async function loadManualReading(location,zone,inputId,timeId){
+  var r=await supabase.from("manual_control_readings").select("salinity,reading_time").eq("location",location).eq("zone",zone).maybeSingle();
+  if(r.error){msg(inputId+"Msg","Could not load reading: "+r.error.message,false);return;}
+  $(inputId).value=r.data&&r.data.salinity!=null?r.data.salinity:"";
+  if($(timeId))$(timeId).textContent=r.data&&r.data.reading_time?"Last saved: "+new Date(r.data.reading_time).toLocaleString("en-AU"):"No reading saved yet.";
+}
+async function saveManualReading(location,zone,inputId,msgId,timeId){
+  var session=(await supabase.auth.getSession()).data.session;
+  if(!session){msg(msgId,"You must be signed in.",false);return;}
+  var value=$(inputId).value.trim();
+  if(value===""){msg(msgId,"Enter a salinity reading.",false);return;}
+  var r=await supabase.from("manual_control_readings").upsert({
+    location:location,zone:zone,salinity:Number(value),reading_time:new Date().toISOString(),updated_at:new Date().toISOString(),updated_by:session.user.id
+  },{onConflict:"location,zone"});
+  if(r.error){msg(msgId,"SAVE BLOCKED: "+r.error.message,false);return;}
+  msg(msgId,"SALINITY SAVED & PUBLISHED ✓",true);
+  loadManualReading(location,zone,inputId,timeId);
+}
+async function loadPittBiotoxinList(){
+  var r=await supabase.from("meat_test_results").select("test_date,result,notes").eq("bay_name","Pittwater Biotoxin").order("test_date",{ascending:false}).order("created_at",{ascending:false}).limit(10);
+  if(r.error){$("pittBiotoxinList").textContent="Could not load Pittwater biotoxin tests: "+r.error.message;return;}
+  $("pittBiotoxinList").innerHTML=!r.data.length?"No Pittwater biotoxin tests recorded.":r.data.map(function(x){
+    var pass=String(x.result).toUpperCase()==="PASS";
+    return "<div style='padding:10px 0;border-bottom:1px solid #dce6eb'><b>"+new Date(x.test_date+"T00:00:00").toLocaleDateString("en-AU")+"</b> — <b style='color:"+(pass?"#176b3b":"#9d2727")+"'>"+String(x.result).replace(/</g,"&lt;")+"</b>"+(x.notes?"<br><span class='small'>"+String(x.notes).replace(/</g,"&lt;")+"</span>":"")+"</div>";
+  }).join("");
+}
+async function savePittBiotoxin(){
+  var date=$("pittBiotoxinDate").value,result=$("pittBiotoxinResult").value;
+  if(!date||!result){msg("pittBiotoxinMsg","Enter a test date and result.",false);return;}
+  var session=(await supabase.auth.getSession()).data.session;
+  if(!session){msg("pittBiotoxinMsg","You must be signed in.",false);return;}
+  var r=await supabase.from("meat_test_results").insert({bay_name:"Pittwater Biotoxin",test_date:date,result:result,notes:$("pittBiotoxinNotes").value.trim()||null,entered_by:session.user.id});
+  if(r.error){msg("pittBiotoxinMsg","SAVE BLOCKED: "+r.error.message,false);return;}
+  $("pittBiotoxinResult").value="";$("pittBiotoxinNotes").value="";
+  msg("pittBiotoxinMsg","PITTWATER BIOTOXIN TEST SAVED ✓",true);loadPittBiotoxinList();
+}
+async function setAdminLocation(){
+  var loc=$("adminLocation").value;
+  $("smithtonManualEditor").style.display=loc==="smithton"?"block":"none";
+  $("boomerManualEditor").style.display=loc==="boomer"?"block":"none";
+  $("pittwaterManualEditor").style.display=loc==="pittwater"?"block":"none";
+  $("pittwaterBiotoxinEditor").style.display=loc==="pittwater"?"block":"none";
+  $("editor").style.display=loc==="smithton"?"block":"none";
+  $("nreVerificationEditor").style.display=loc==="smithton"?"block":"none";
+  $("reopenEditor").style.display=loc==="smithton"?"block":"none";
+  $("biotoxinEditor").style.display=loc==="boomer"?"block":"none";
+  $("meatEditor").style.display=(loc==="boomer"||loc==="pittwater")?"block":"none";
+  if(loc==="smithton"){
+    await loadSettings();
+    await loadNreVerification();
+    await loadReopenAdmin();
+    await loadManualReading("Smithton",$("smithtonBay").value,"smithtonSalinity","smithtonSalinityTime");
+  }else if(loc==="boomer"){
+    await loadManualReading("Boomer Bay",$("boomerZone").value,"boomerSalinity","boomerSalinityTime");
+    await loadBiotoxinList();
+  }else{
+    await loadManualReading("Pittwater",$("pittwaterZone").value,"pittwaterSalinity","pittwaterSalinityTime");
+    await loadPittBiotoxinList();
+  }
+}
 async function showSession(session){
   if(!session){
     $("authArea").style.display="block";
@@ -377,6 +525,11 @@ async function showSession(session){
     $("editor").style.display="none";
     $("meatEditor").style.display="none";
     $("biotoxinEditor").style.display="none";
+    $("locationSelectorCard").style.display="none";
+    $("smithtonManualEditor").style.display="none";
+    $("boomerManualEditor").style.display="none";
+    $("pittwaterManualEditor").style.display="none";
+    $("pittwaterBiotoxinEditor").style.display="none";
     return;
   }
 
@@ -388,15 +541,9 @@ async function showSession(session){
 
   var admin=await isAdmin(u);
   if(admin){
-    $("editor").style.display="block";
-    $("nreVerificationEditor").style.display="block";
-    $("meatEditor").style.display="block";
-    $("biotoxinEditor").style.display="block";
-    $("reopenEditor").style.display="block";
-    msg("accessMsg","ADMIN ACCESS CONFIRMED ✓",true);
-    await loadSettings();
-    await loadNreVerification();
-    await loadReopenAdmin();
+    $("locationSelectorCard").style.display="block";
+    msg("accessMsg","ADMIN ACCESS CONFIRMED ✓ — select a location below.",true);
+    await setAdminLocation();
     reopenWatch();
     clearInterval(window.reopenWatchTimer);
     window.reopenWatchTimer=setInterval(reopenWatch,60000);
@@ -406,6 +553,16 @@ async function showSession(session){
     msg("accessMsg","READ-ONLY ACCOUNT — this account is not authorised to edit Smithton Control.",false);
   }
 }
+
+$("adminLocation").onchange=setAdminLocation;
+$("smithtonBay").onchange=function(){loadManualReading("Smithton",this.value,"smithtonSalinity","smithtonSalinityTime");};
+$("boomerZone").onchange=function(){loadManualReading("Boomer Bay",this.value,"boomerSalinity","boomerSalinityTime");};
+$("pittwaterZone").onchange=function(){loadManualReading("Pittwater",this.value,"pittwaterSalinity","pittwaterSalinityTime");};
+$("saveSmithtonSalinityBtn").onclick=function(){saveManualReading("Smithton",$("smithtonBay").value,"smithtonSalinity","smithtonSalinityMsg","smithtonSalinityTime");};
+$("saveBoomerSalinityBtn").onclick=function(){saveManualReading("Boomer Bay",$("boomerZone").value,"boomerSalinity","boomerSalinityMsg","boomerSalinityTime");};
+$("savePittwaterSalinityBtn").onclick=function(){saveManualReading("Pittwater",$("pittwaterZone").value,"pittwaterSalinity","pittwaterSalinityMsg","pittwaterSalinityTime");};
+$("savePittBiotoxinBtn").onclick=savePittBiotoxin;
+$("pittBiotoxinDate").value=new Date().toISOString().slice(0,10);
 
 $("githubBtn").onclick=async function(){
   $("githubBtn").disabled=true;
@@ -443,8 +600,11 @@ $("saveBtn").onclick=async function(){
     updated_at:new Date().toISOString()
   };
   var r=await supabase.from("control_settings").update(payload).eq("id",1);
-  if(r.error)msg("saveMsg","SAVE BLOCKED: "+r.error.message,false);
-  else msg("saveMsg","CENTRAL SETTINGS SAVED ✓",true);
+  if(r.error){msg("saveMsg","SAVE BLOCKED: "+r.error.message,false);return;}
+  if($("smithtonSalinity").value!==""){
+    await saveManualReading("Smithton",$("smithtonBay").value,"smithtonSalinity","smithtonSalinityMsg","smithtonSalinityTime");
+  }
+  msg("saveMsg","SMITHTON ENVIRONMENTAL SETTINGS SAVED ✓",true);
 };
 
 $("meatBay").onchange=loadMeatList;
