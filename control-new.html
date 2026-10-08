@@ -85,10 +85,10 @@
 <label>Environmental maximum<input id="salinityMax" type="number" disabled></label>
 <p class="hint">Read-only — central environmental settings.</p></article>
 
-<article class="card"><div class="card-head"><h2>Rainfall alert control</h2><span class="badge">Previous 7 days + next 7 days</span></div>
-<label>Alert threshold (mm / 24h)<input id="rainThreshold" type="number" disabled></label>
+<article class="card"><div class="card-head"><h2>Rainfall alert control</h2><span class="badge">NRE criteria by bay</span></div>
+<label>24-hour rainfall warning (informational)<input id="rainThreshold" type="number" disabled></label>
 <label>Alert threshold (mm / 7 days)<input id="rain7Threshold" type="number" disabled></label>
-<label>Duck Bay 3-day management limit<input id="rain3Threshold" type="number" value="25" disabled></label>
+<label>NRE 3-day management limit (Duck Bay only)<input id="rain3Threshold" type="number" value="25" disabled></label>
 <p class="hint">Duck Bay Management Plan (issued 23/12/2025): 3-day rainfall ≥25 mm is a combined environmental closure criterion. This limit is fixed by the management plan.</p>
 </article>
 </section>
@@ -563,7 +563,7 @@ function render(){
   }
   var dot=el("statusDot");if(dot)dot.className="status-dot "+(envReady?(envOk?"ok":"alert"):"neutral");
   el("statusText").textContent=!envReady?"Awaiting readings":(envOk?"ENVIRONMENTAL CONTROLS OK":"ENVIRONMENTAL CONTROL ALERT");
-  el("bayCriteria").textContent=bayName()+" • 7-day rainfall closure threshold: "+limit.toFixed(1)+" mm"+(bayName()==="Duck Bay"?" • 3-day rainfall closure threshold: 25.0 mm":"")+(salRequired?" • Salinity ≥ "+(currentBay.salinity_min??"")+" ppt":" • Salinity not required")+(riverRequired?" • River flow <5.0 m³/s":" • River flow not required")+(isKemps?" • Meat test: passing result required fortnightly":"");
+  el("bayCriteria").textContent=bayName()+" • NRE 7-day rainfall closure threshold: "+limit.toFixed(1)+" mm"+(bayName()==="Duck Bay"?" • NRE 3-day rainfall closure threshold: 25.0 mm":"")+(salRequired?" • Salinity ≥ "+(currentBay.salinity_min??"")+" ppt":" • Salinity not required")+(riverRequired?" • River flow <5.0 m³/s":" • River flow not required")+(isKemps?" • Meat test: passing result required fortnightly":"");
   var riverSection=document.querySelector("#riverFlow")?.closest("section");
   if(riverSection)riverSection.style.display=riverRequired?"":"none";
   var riverBox=document.querySelector("#riverFlow")?.parentElement;
