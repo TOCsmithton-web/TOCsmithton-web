@@ -86,8 +86,8 @@
 <section class="grid two">
 <article class="card">
   <div class="card-head"><h2>Manual salinity</h2><span class="badge">Selected zone</span></div>
-  <label>Salinity (ppt)<input id="salinityInput" type="number" step="0.1" inputmode="decimal"></label>
-  <p class="hint">Enter the current representative salinity reading for the selected zone.</p>
+  <label>Salinity (ppt)<input id="salinityInput" type="number" step="0.1" inputmode="decimal" disabled></label>
+  <p class="hint">Read-only. Current salinity is entered by an authorised administrator.</p>
 </article>
 
 <article class="card">
@@ -144,10 +144,18 @@ var salinity={little:"",narrows:"",east:""};
 
 function el(id){return document.getElementById(id);}
 
-function loadSalinity(){
-  Object.keys(zoneData).forEach(function(k){
-    salinity[k]=localStorage.getItem("toc-boomer-salinity-"+k)||"";
-  });
+async function loadSalinity(){
+  try{
+    var r=await supabase.from("manual_control_readings").select("zone,salinity,reading_time").eq("location","Boomer Bay");
+    if(r.error)throw r.error;
+    Object.keys(zoneData).forEach(function(k){salinity[k]="";});
+    (r.data||[]).forEach(function(x){
+      var k=Object.keys(zoneData).find(function(z){return zoneData[z].name===x.zone;});
+      if(k)salinity[k]=x.salinity==null?"":String(x.salinity);
+    });
+  }catch(e){
+    Object.keys(zoneData).forEach(function(k){salinity[k]="";});
+  }
 }
 
 function zoneIsOpen(k){
@@ -312,15 +320,10 @@ async function meat(){
 }
 
 el("zoneSelect").onchange=setZone;
-el("salinityInput").oninput=function(){
-  salinity[zoneKey]=this.value;
-  localStorage.setItem("toc-boomer-salinity-"+zoneKey,this.value);
-  updateSelectedStatus();
-};
+el("salinityInput").oninput=null;
 el("refreshWeather").onclick=weather;
 
-loadSalinity();
-setZone();
+loadSalinity().then(function(){setZone();});
 weather();
 meat();
 biotoxin();
