@@ -130,7 +130,6 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 <div id="editor" class="admin-card" style="display:none">
 <h2>Smithton — Environmental controls</h2>
 <div class="grid2">
-<label>Salinity (ppt)<input id="salinity" type="number" step="0.1" min="0"></label>
 <label>Salinity minimum (ppt)<input id="salinityMin" type="number" step="0.1" min="0"></label>
 <label>Salinity maximum (ppt)<input id="salinityMax" type="number" step="0.1" min="0"></label>
 <label>24h rainfall limit (mm)<input id="rain24" type="number" step="0.1" min="0"></label>
@@ -282,7 +281,7 @@ function buildReopenPDF(){
   return true;
 }
 function reopenWatch(){
-  var sal=Number($("salinity").value), min=Number($("salinityMin").value||32.5), rain24=Number($("rain24").value), rain7=Number($("rain7").value);
+  var sal=Number($("smithtonSalinity").value), min=Number($("salinityMin").value||32.5), rain24=Number($("rain24").value), rain7=Number($("rain7").value);
   fetch("./river.json?ts="+Date.now(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(async function(d){
     var river=Number(d&&d.flow), ok=isFinite(sal)&&sal>=min&&isFinite(rain24)&&rain24<=25&&isFinite(rain7)&&rain7<=40&&isFinite(river)&&river<=5;
     $("reopenEditor").style.display="block";
@@ -369,7 +368,6 @@ async function loadSettings(){
   var r=await supabase.from("control_settings").select("*").eq("id",1).maybeSingle();
   if(r.error){msg("saveMsg","Could not load central settings: "+r.error.message,false);return;}
   var d=r.data||{};
-  $("salinity").value=d.salinity==null?"":d.salinity;
   $("salinityMin").value=d.salinity_min==null?"":d.salinity_min;
   $("salinityMax").value=d.salinity_max==null?"":d.salinity_max;
   $("rain24").value=d.rain_24h_limit==null?"":d.rain_24h_limit;
@@ -592,7 +590,6 @@ $("copyId").onclick=async function(){
 $("saveNreVerificationBtn").onclick=saveNreVerification;
 $("saveBtn").onclick=async function(){
   var payload={
-    salinity:$("salinity").value===""?null:Number($("salinity").value),
     salinity_min:$("salinityMin").value===""?null:Number($("salinityMin").value),
     salinity_max:$("salinityMax").value===""?null:Number($("salinityMax").value),
     rain_24h_limit:$("rain24").value===""?null:Number($("rain24").value),
