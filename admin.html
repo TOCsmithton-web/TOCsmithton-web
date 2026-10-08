@@ -281,6 +281,7 @@ function buildReopenPDF(){
   return true;
 }
 function reopenWatch(){
+  if($("adminLocation")&&$("adminLocation").value!=="smithton")return;
   var sal=Number($("smithtonSalinity").value), min=Number($("salinityMin").value||32.5), rain24=Number($("rain24").value), rain7=Number($("rain7").value);
   fetch("./river.json?ts="+Date.now(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(async function(d){
     var river=Number(d&&d.flow), ok=isFinite(sal)&&sal>=min&&isFinite(rain24)&&rain24<=25&&isFinite(rain7)&&rain7<=40&&isFinite(river)&&river<=5;
