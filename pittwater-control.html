@@ -362,18 +362,27 @@ async function loadBiotoxin(){
 }
 async function loadReopen(){
   try{
-    var names=["Pittwater "+zone.name+" Salinity T0","Pittwater "+zone.name+" Salinity T24","Pittwater "+zone.name+" Salinity T48"];
-    var r=await supabase.from("meat_test_results").select("bay_name,test_date,result,notes,created_at").in("bay_name",names).order("created_at",{ascending:false}).limit(20);if(r.error)throw r.error;
-    var latest={};(r.data||[]).forEach(function(x){if(!latest[x.bay_name])latest[x.bay_name]=x;});
-    function show(id,x,time){if(!x){el(id).textContent="—";return;}if(time){try{var m=x.notes?JSON.parse(x.notes):{};el(id).textContent=m.salinityTime||new Date(x.created_at).toLocaleString("en-AU");}catch(e){el(id).textContent=new Date(x.created_at).toLocaleString("en-AU");}}else{el(id).textContent=Number(x.result).toFixed(1)+" ppt";}}
-    var t0=latest[names[0]],t24=latest[names[1]],t48=latest[names[2]];
-    show("t0Time",t0,true);show("t0Sal",t0,false);show("t24Time",t24,true);show("t24Sal",t24,false);show("t48Time",t48,true);show("t48Sal",t48,false);
-    ["t0Req","t24Req","t48Req"].forEach(function(id){el(id).textContent="Above "+zone.salMin+" ppt";});
-    var ready=environmentalOpen(),complete=t0&&t24&&t48;
-    el("reopenBadge").textContent=complete?"COMPLETED":ready?"READY TO START":"WAITING";el("reopenBadge").style.background=complete?"#bff3cc":ready?"#bff3cc":"#f4f7f8";el("reopenBadge").style.color=complete||ready?"#176b3b":"#52636d";
-    el("reopenStatus").textContent=complete?"T0, T24 and T48 readings are recorded. Verify all readings are above the zone criterion and submit to NRE as required.":ready?"Environmental readings are within limits. A 48-hour salinity check can be commenced.":"Waiting for all environmental controls to be within limits before the 48-hour check starts.";
+    var r=await supabase.from("pittwater_48h_salinity").select("*").eq("zone",zone.name).order("check_point");
+    if(r.error)throw r.error;
+    var latest={};(r.data||[]).forEach(function(x){latest[x.check_point]=x;});
+    var min=zone.salMin;
+    function show(cp,timeId,salId,reqId){
+      var x=latest[cp];
+      el(timeId).textContent=x&&x.reading_date?(x.reading_date+(x.reading_time?" "+String(x.reading_time).slice(0,5):"")):"—";
+      el(salId).textContent=x&&x.salinity!=null?Number(x.salinity).toFixed(1)+" ppt":"—";
+      el(reqId).textContent="≥ "+min+" ppt";
+    }
+    show("T0","t0Time","t0Sal","t0Req");show("T24","t24Time","t24Sal","t24Req");show("T48","t48Time","t48Sal","t48Req");
+    var complete=["T0","T24","T48"].every(function(cp){var x=latest[cp];return x&&x.reading_date&&x.reading_time&&x.low_tide&&x.salinity!=null&&Number(x.salinity)>=min;});
+    var recorded=Object.keys(latest).some(function(cp){return latest[cp]&&latest[cp].salinity!=null;});
+    var failed=Object.keys(latest).some(function(cp){var x=latest[cp];return x&&((x.salinity!=null&&Number(x.salinity)<min)||(x.reading_date&&x.reading_time&&!x.low_tide));});
+    el("reopenBadge").textContent=complete?"COMPLETED":failed?"FAILED":environmentalOpen()?"READY TO START":"WAITING";
+    el("reopenBadge").style.background=complete?"#bff3cc":failed?"#ffd0d0":environmentalOpen()?"#bff3cc":"#f4f7f8";
+    el("reopenBadge").style.color=complete||(!failed&&environmentalOpen())?"#176b3b":failed?"#9d2727":"#52636d";
+    el("reopenStatus").textContent=complete?"T0, T24 and T48 are recorded, at low tide, and above the zone salinity criterion.":failed?"One or more reopening readings do not meet the requirement — correct before reopening.":environmentalOpen()?"Environmental readings are within limits. A 48-hour salinity check can be commenced.":"Waiting for all environmental controls to be within limits before the 48-hour check starts.";
   }catch(e){el("reopenBadge").textContent="UNAVAILABLE";el("reopenStatus").textContent="48-hour salinity records unavailable.";}
 }
+
 function updateNotify(){el("notifyBtn").textContent=alertEnabled?"Alerts ON ✓":"Enable alerts";}
 async function enableAlerts(){
   if(alertEnabled){alertEnabled=false;localStorage.setItem("toc-pittwater-alert-enabled","false");updateNotify();return;}
