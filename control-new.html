@@ -326,16 +326,19 @@ function renderMeatTests(errorText){
 }
 async function loadCentral(){
  try{
-  var r=await supabase.from("control_settings").select("salinity,salinity_min,salinity_max,rain_24h_limit,rain_7d_limit,updated_at").eq("id",1).maybeSingle();
+  var r=await supabase.from("control_settings").select("salinity_min,salinity_max,rain_24h_limit,rain_7d_limit,updated_at").eq("id",1).maybeSingle();
   if(r.error)throw r.error;
+  var bay=bayName();
+  var mr=await supabase.from("manual_control_readings").select("salinity,reading_time").eq("location","Smithton").eq("zone",bay).maybeSingle();
+  if(mr.error)throw mr.error;
+  state.salinity=mr.data&&mr.data.salinity!=null?String(mr.data.salinity):"";
   if(r.data){
-   state.salinity=r.data.salinity==null?"":String(r.data.salinity);
    state.salinityMin=r.data.salinity_min==null?"":String(r.data.salinity_min);
    state.salinityMax=r.data.salinity_max==null?"":String(r.data.salinity_max);
    state.rainThreshold=r.data.rain_24h_limit==null?"":String(r.data.rain_24h_limit);
    state.rain7Threshold=r.data.rain_7d_limit==null?"":String(r.data.rain_7d_limit);
    render();
-   el("lastUpdated").textContent=r.data.updated_at?"Central settings updated "+new Date(r.data.updated_at).toLocaleString("en-AU"):"Central control connected ✓";
+   el("lastUpdated").textContent=mr.data&&mr.data.reading_time?"Salinity reading updated "+new Date(mr.data.reading_time).toLocaleString("en-AU"):"No manual salinity reading entered";
    status("CENTRAL CONTROL CONNECTED ✓",true);
   }
  }catch(e){status("CENTRAL CONTROL UNAVAILABLE",false);}
