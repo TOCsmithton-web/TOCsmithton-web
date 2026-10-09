@@ -48,6 +48,11 @@
   <div id="saveStatus" aria-live="polite"></div>
 </article></section>
 
+<section class="card" id="salinitySensorWarning" role="alert" aria-live="assertive" style="display:none;background:#fff0f0;border:3px solid #c62828">
+  <div class="card-head"><div><h2 style="color:#9d2727">⚠ SALINITY SENSOR OFFLINE</h2><p style="margin-bottom:0;font-weight:800;color:#9d2727">Duck Bay sensor is down due to weather damage in the field.</p></div><span class="badge" style="background:#ffd0d0;color:#9d2727">OFFLINE</span></div>
+  <p><strong>Do not rely on missing or old sensor readings.</strong> Manually check and record salinity using the approved procedure, and follow the Duck Bay Management Plan and current NRE classification before harvesting.</p>
+  <p class="hint" style="margin-bottom:0">This warning will remain visible for Duck Bay until the sensor is repaired and the offline flag is removed from the app. A missing reading must never be treated as a safe result.</p>
+</section>
 
 <section class="card">
 <div class="card-head"><div><h2>Duck River — Scotchtown</h2><p class="muted">NRE Tasmania station 14214 • Environmental control: 5 m³/s</p></div></div>
@@ -506,6 +511,8 @@ function checkAlerts(){
 }
 function render(){
   var salRequired=bayUsesSalinity(), riverRequired=bayUsesRiver(), limit=bayRainLimit();
+  var sensorWarning=el("salinitySensorWarning");
+  if(sensorWarning) sensorWarning.style.display=bayName().trim().toLowerCase()==="duck bay"?"":"none";
   var salOk=!salRequired||(state.salinity!==""&&isFinite(Number(state.salinity))&&(currentBay.salinity_min==null||Number(state.salinity)>=Number(currentBay.salinity_min))&&(currentBay.salinity_max==null||Number(state.salinity)<=Number(currentBay.salinity_max)));
   var rain24Ok=isFinite(previous24Total)&&previous24Total<Number(state.rainThreshold||25);
   var rain3Ok=bayName()==="Duck Bay" ? (isFinite(previous3Total)&&previous3Total<DUCK_RAIN3_LIMIT) : true;
