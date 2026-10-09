@@ -63,6 +63,12 @@
   <p id="criteria" class="hint"></p>
 </section>
 
+<section class="card" aria-live="polite">
+  <div class="card-head"><div><h2>Boomer Bay live salinity sensor</h2><p class="muted">SensorRight feed • East, Zone Little and Zone Narrows</p></div><span class="badge">LIVE DATA</span></div>
+  <div id="liveSensorStatus" class="notice" style="margin:0">Checking live salinity sensor…</div>
+  <p class="hint" style="margin:8px 0 0">Live readings are used for the zone status. If readings are missing or older than 2 hours, the affected zone stays CLOSED. Confirm sensor values and current NRE classification before harvesting.</p>
+</section>
+
 <section class="status-grid">
 <article class="card hero">
   <div class="card-head">
@@ -144,17 +150,77 @@ var salinity={little:"",narrows:"",east:""};
 
 function el(id){return document.getElementById(id);}
 
+var liveSensorStatus="Checking live salinity sensor…";
+var liveSensorTimes={little:"",narrows:"",east:""};
+var liveSensorLastCheck="";
 async function loadSalinity(){
+  // Live SensorRight readings are authoritative for the zone status. If the feed
+  // is unavailable or stale, do not substitute an old/manual value as live data.
+  Object.keys(zoneData).forEach(function(k){salinity[k]="";liveSensorTimes[k]="";});
   try{
-    var r=await supabase.from("manual_control_readings").select("zone,salinity,reading_time").eq("location","Boomer Bay");
-    if(r.error)throw r.error;
-    Object.keys(zoneData).forEach(function(k){salinity[k]="";});
-    (r.data||[]).forEach(function(x){
-      var k=Object.keys(zoneData).find(function(z){return zoneData[z].name===x.zone;});
-      if(k)salinity[k]=x.salinity==null?"":String(x.salinity);
+    var now=Date.now(),from=now-24*60*60*1000;
+    var sites=[
+      {key:"east",refId:"East",site:"Boomer Bay East"},
+      {key:"little",refId:"Little",site:"Boomer Bay Narrows 1"},
+      {key:"narrows",refId:"Narrows",site:"Boomer Bay Narrows 3"}
+    ];
+    var queries=sites.map(function(x){return {
+      refId:x.refId,
+      datasource:{uid:"qhZkWGznk"},
+      rawSql:'SELECT "time" AS "time", measurement AS "Salinity" FROM ind_otmetrics WHERE $__timeFilter("time") AND sensor_name = \'Salinity\' AND site_address = \'Boomer Bay\' AND site_name = \''+x.site+'\' AND measurement > 0 ORDER BY 1,2',
+      format:"time_series",intervalMs:600000,maxDataPoints:100
+    };});
+    var response=await fetch("https://graphs.senseright.com.au/api/ds/query?ds_type=grafana-postgresql-datasource",{
+      method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",cache:"no-store",
+      body:JSON.stringify({queries:queries,from:String(from),to:String(now)})
     });
+    if(!response.ok)throw new Error("SensorRight returned HTTP "+response.status);
+    var payload=await response.json();
+    var results=payload.results||payload;
+    var got=0;
+    sites.forEach(function(site){
+      var result=results[site.refId]||results[site.key];
+      var frames=result&&(result.frames||result.data&&result.data.frames)||[];
+      var latest=null;
+      frames.forEach(function(frame){
+        var fields=frame.schema&&frame.schema.fields||frame.fields||[];
+        var vals=frame.data&&frame.data.values||frame.values||[];
+        var timeIndex=fields.findIndex(function(f){return String(f.name||"").toLowerCase()==="time";});
+        var salIndex=fields.findIndex(function(f){return String(f.name||"").toLowerCase()==="salinity";});
+        if(salIndex<0)salIndex=fields.findIndex(function(f){return /salinity/i.test(String(f.name||""));});
+        if(salIndex<0||!vals[salIndex])return;
+        for(var i=0;i<vals[salIndex].length;i++){
+          var n=Number(vals[salIndex][i]);
+          if(!isFinite(n)||n<=0)continue;
+          var t=timeIndex>=0&&vals[timeIndex]?new Date(vals[timeIndex][i]).getTime():0;
+          if(!latest||(t&&t>latest.time)){latest={value:n,time:t};}
+        }
+      });
+      if(latest){
+        // Do not use sensor data older than 2 hours as a current reading.
+        if(latest.time && now-latest.time<=2*60*60*1000){
+          salinity[site.key]=String(latest.value);
+          liveSensorTimes[site.key]=new Date(latest.time).toLocaleString("en-AU");
+          got++;
+        }
+      }
+    });
+    if(got===3)liveSensorStatus="LIVE SENSOR CONNECTED — all 3 zones reporting";
+    else if(got>0)liveSensorStatus="PARTIAL SENSOR DATA — "+got+" of 3 zones reporting; non-reporting zones remain CLOSED";
+    else throw new Error("No recent salinity readings returned for the three Boomer Bay zones");
+    liveSensorLastCheck=new Date().toLocaleString("en-AU");
   }catch(e){
-    Object.keys(zoneData).forEach(function(k){salinity[k]="";});
+    Object.keys(zoneData).forEach(function(k){salinity[k]="";liveSensorTimes[k]="";});
+    liveSensorStatus="SENSOR FEED UNAVAILABLE — all zones remain CLOSED until live readings are verified";
+    liveSensorLastCheck=new Date().toLocaleString("en-AU");
+    console.warn("Boomer Bay live salinity sensor:",e);
+  }
+  var sensorBox=el("liveSensorStatus");
+  if(sensorBox){
+    sensorBox.textContent=liveSensorStatus+" • Last checked "+liveSensorLastCheck;
+    sensorBox.style.background=liveSensorStatus.indexOf("all 3 zones reporting")>=0?"#d8f3df":"#ffd0d0";
+    sensorBox.style.border="2px solid "+(liveSensorStatus.indexOf("all 3 zones reporting")>=0?"#31a354":"#c62828");
+    sensorBox.style.color=liveSensorStatus.indexOf("all 3 zones reporting")>=0?"#176b3b":"#9d2727";
   }
 }
 
@@ -214,7 +280,7 @@ c3.textContent="Previous 7-day rainfall: "+rain7.toFixed(1)+" mm • Limit < "+z
   el("rain7Value").textContent=rain7.toFixed(1);
   el("statusText").textContent=open?"ENVIRONMENTAL CONDITIONS OK":"ENVIRONMENTAL CONTROL ALERT";
   el("statusDot").className="status-dot "+(open?"good":"bad");
-  el("lastUpdated").textContent="Rainfall/status updated "+new Date().toLocaleString("en-AU");
+  el("lastUpdated").textContent=(liveSensorTimes[zoneKey]?"Live salinity reading: "+liveSensorTimes[zoneKey]+" • ":"")+"Sensor status checked "+(liveSensorLastCheck||"—");
   updateBanner();
 }
 
@@ -325,6 +391,7 @@ el("refreshWeather").onclick=weather;
 
 loadSalinity().then(function(){setZone();});
 weather();
+setInterval(function(){loadSalinity().then(function(){setZone();});},600000);
 meat();
 biotoxin();
 setInterval(weather,3600000);
