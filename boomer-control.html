@@ -24,6 +24,11 @@
 .boomer-zone-status .zone-state{font-size:1.15rem;display:block}
 .boomer-zone-status .zone-detail{font-size:.72rem;font-weight:600;display:block;margin-top:4px;opacity:.95}
 @media(max-width:560px){.boomer-zone-banner{grid-template-columns:1fr 1fr}.boomer-zone-status:last-child{grid-column:1/-1}}
+.salinity-history-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:12px}
+.salinity-history-panel{border:1px solid #d4e0e6;border-radius:10px;padding:12px;min-width:0;background:#fbfdfe}
+.salinity-history-panel svg{display:block;width:100%;height:auto}
+.salinity-history-panel .history-subtitle{font-size:12px;color:#526875;margin:4px 0 8px}
+.salinity-history-panel .history-empty{background:#ffe2e2;color:#962a2a;border-radius:6px;padding:14px 8px;text-align:center;font-weight:700}
 </style>
 </head>
 <body>
@@ -72,6 +77,16 @@
     <div id="salinityCardEast" class="notice">BOOMER BAY EAST<br><strong>NO DATA</strong></div>
   </div>
   <p class="hint" style="margin:8px 0 0">Live readings are used for the zone status. If readings are missing or older than 2 hours, the affected zone stays CLOSED. Confirm sensor values and current NRE classification before harvesting.</p>
+</section>
+
+<section class="card" aria-label="48 hour salinity history">
+  <div class="card-head"><div><h2>Salinity history — last 48 hours</h2><p class="muted">Blue: verified sensor readings • Red: minimum environmental salinity threshold • Updates every minute</p></div></div>
+  <div id="salinityHistoryCharts" class="salinity-history-grid">
+    <div class="salinity-history-panel" id="history-little"><strong>Zone Little</strong><p>Loading 48-hour readings…</p></div>
+    <div class="salinity-history-panel" id="history-narrows"><strong>Zone Narrows</strong><p>Loading 48-hour readings…</p></div>
+    <div class="salinity-history-panel" id="history-east"><strong>Boomer Bay East</strong><p>Loading 48-hour readings…</p></div>
+  </div>
+  <p class="hint">Graphs show recorded sensor measurements only. Missing readings are not estimated. Harvest status continues to depend on current verified readings and all other environmental controls.</p>
 </section>
 
 <section class="status-grid">
@@ -367,13 +382,83 @@ async function meat(){
   }
 }
 
+
+// Plot actual sensor observations from the previous 48 hours, without interpolating missing periods.
+async function loadSalinityHistory(){
+  var end=Date.now(),start=end-48*3600000;
+  var client=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
+  await Promise.all(["little","narrows","east"].map(async function(k){
+    var node=el("history-"+k),z=zoneData[k],rows=[];
+    if(!node)return;
+    try{
+      // Supabase REST defaults to a 1,000-row limit. Page to retain the complete 48-hour history.
+      for(var offset=0;offset<6000;offset+=1000){
+        var q=await client.from("boomer_salinity_readings")
+          .select("salinity,observed_at").eq("zone",k)
+          .gte("observed_at",new Date(start).toISOString())
+          .lte("observed_at",new Date(end).toISOString())
+          .order("observed_at",{ascending:true}).range(offset,offset+999);
+        if(q.error)throw q.error;
+        rows=rows.concat(q.data||[]);
+        if(!q.data||q.data.length<1000)break;
+      }
+      rows=rows.map(function(r){return {t:Date.parse(r.observed_at),v:Number(r.salinity)};})
+        .filter(function(r){return isFinite(r.t)&&r.t>=start&&r.t<=end&&isFinite(r.v)&&r.v>0&&r.v<=50;});
+      drawSalinityHistory(node,z,rows,start,end);
+    }catch(err){
+      node.innerHTML="<strong>"+escapeHistory(z.name)+"</strong><p class='history-empty'>History unavailable</p>";
+      console.warn("Salinity history "+k,err);
+    }
+  }));
+}
+function escapeHistory(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function drawSalinityHistory(node,z,rows,start,end){
+  var threshold=z.min,w=440,h=200,l=42,r=12,t=12,b=30,iw=w-l-r,ih=h-t-b;
+  var values=rows.map(function(x){return x.v;}).concat([threshold]);
+  var lo=Math.max(0,Math.floor((Math.min.apply(null,values)-1)*2)/2);
+  var hi=Math.ceil((Math.max.apply(null,values)+1)*2)/2;
+  if(hi-lo<3){lo=Math.max(0,threshold-1.5);hi=threshold+1.5;}
+  function x(v){return l+(v-start)/(end-start)*iw;}
+  function y(v){return t+(hi-v)/(hi-lo)*ih;}
+  var parts=[];
+  for(var i=0;i<=4;i++){
+    var val=lo+(hi-lo)*i/4,yy=y(val);
+    parts.push('<line x1="'+l+'" y1="'+yy+'" x2="'+(w-r)+'" y2="'+yy+'" stroke="#e2e9ed"/>');
+    parts.push('<text x="'+(l-5)+'" y="'+(yy+4)+'" font-size="11" fill="#4a5d69" text-anchor="end">'+val.toFixed(1)+'</text>');
+  }
+  for(var j=0;j<=4;j++){
+    var tm=start+(end-start)*j/4,xx=x(tm);
+    parts.push('<text x="'+xx+'" y="'+(h-8)+'" font-size="11" fill="#4a5d69" text-anchor="middle">'+new Date(tm).toLocaleTimeString("en-AU",{hour:"2-digit",minute:"2-digit"})+'</text>');
+  }
+  var ty=y(threshold);
+  parts.push('<line x1="'+l+'" y1="'+ty+'" x2="'+(w-r)+'" y2="'+ty+'" stroke="#d62828" stroke-width="2" stroke-dasharray="6 3"/>');
+  parts.push('<text x="'+(w-r-3)+'" y="'+Math.max(10,ty-5)+'" font-size="12" font-weight="700" fill="#c62828" text-anchor="end">LIMIT '+threshold+' ppt</text>');
+  // Do not join measurements across long gaps (sensor outages).
+  var chunks=[],chunk=[];
+  rows.forEach(function(v,i){
+    if(i&&v.t-rows[i-1].t>20*60000){if(chunk.length)chunks.push(chunk);chunk=[];}
+    chunk.push(x(v.t).toFixed(1)+","+y(v.v).toFixed(1));
+  });
+  if(chunk.length)chunks.push(chunk);
+  chunks.forEach(function(points){
+    if(points.length===1){var xy=points[0].split(",");parts.push('<circle cx="'+xy[0]+'" cy="'+xy[1]+'" r="2.5" fill="#087bc1"/>');}
+    else parts.push('<polyline points="'+points.join(" ")+'" fill="none" stroke="#087bc1" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round"/>');
+  });
+  var latest=rows.length?rows[rows.length-1]:null;
+  var subtitle=latest?rows.length+" readings • Last "+latest.v.toFixed(3)+" ppt at "+new Date(latest.t).toLocaleString("en-AU"):"No readings in the last 48 hours";
+  node.innerHTML="<strong>"+escapeHistory(z.name)+" — threshold "+threshold+" ppt</strong><div class='history-subtitle'>"+escapeHistory(subtitle)+"</div>"+
+    '<svg viewBox="0 0 '+w+' '+h+'" role="img" aria-label="'+escapeHistory(z.name)+' salinity over the last 48 hours; red threshold at '+threshold+' ppt">'+parts.join("")+'</svg>'+
+    (rows.length?"":"<div class='history-empty'>NO SENSOR DATA — FIELD SENSOR OFFLINE OR NOT REPORTING</div>");
+}
+
 el("zoneSelect").onchange=setZone;
 el("salinityInput").oninput=null;
 el("refreshWeather").onclick=weather;
 
 loadSalinity().then(function(){setZone();});
+loadSalinityHistory();
 weather();
-setInterval(function(){loadSalinity().then(function(){setZone();});},60000);
+setInterval(function(){loadSalinity().then(function(){setZone();});loadSalinityHistory();},60000);
 meat();
 biotoxin();
 setInterval(weather,3600000);
