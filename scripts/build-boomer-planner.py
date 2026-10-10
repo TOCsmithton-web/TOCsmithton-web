@@ -3,7 +3,7 @@ import json, os, math, urllib.request, urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
-from bom_tides import fetch_bom_tides
+from bom_tides import fetch_bom_tides, cached_bom_tides
 ROOT=Path(__file__).resolve().parents[1]
 LAT,LON=-42.88,147.86
 
@@ -20,8 +20,13 @@ def main():
     except Exception:data['errors'].append('Weather feed unavailable')
     try:
         data['tides']=fetch_bom_tides(now.astimezone(ZoneInfo('Australia/Hobart')).date())
-    except Exception:
-        data['errors'].append('BOM reference tide predictions unavailable')
+    except Exception as exc:
+        print('BOM live retrieval failed:',type(exc).__name__,getattr(exc,'code',''))
+        try:
+            data['tides']=cached_bom_tides(now.astimezone(ZoneInfo('Australia/Hobart')).date())
+            data['errors'].append('Live BOM download unavailable; using verified published BOM tables')
+        except Exception:
+            data['errors'].append('BOM reference tide predictions unavailable')
     # AI explains only supplied facts; it cannot change the deterministic work windows.
     endpoint=os.environ.get('PLANNER_AI_ENDPOINT','')
     key=os.environ.get('PLANNER_AI_API_KEY','')

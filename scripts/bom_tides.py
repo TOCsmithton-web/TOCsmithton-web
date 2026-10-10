@@ -53,3 +53,16 @@ def fetch_bom_tides(start):
     events=sorted(weeks[0]+weeks[1],key=lambda e:e['dt'])
     if len({e['dt'] for e in events})!=len(events):raise ValueError('Duplicate BOM events')
     return {'source':'Bureau of Meteorology — Pirates Bay (nearby reference)','source_url':BASE+'#!/tas-pirates-bay','station':STATION,'datum':'BOM prediction datum','extremes':events,'coverage_start':start.isoformat(),'coverage_end':(start+timedelta(days=13)).isoformat(),'weather_adjusted':False,'copyright':'© Commonwealth of Australia, Bureau of Meteorology','notice':'Secondary-port predictions based on limited observations. Reference only: Pirates Bay is not Boomer Bay; times and heights at the lease may differ. Weather effects are not included in BOM tide predictions.'}
+
+def cached_bom_tides(start):
+    """Use verified, published astronomical tables when BOM rejects runner requests."""
+    import json
+    from pathlib import Path
+    cache=json.loads((Path(__file__).resolve().parents[1]/'bom-pirates-tides.json').read_text())
+    end=start+timedelta(days=13)
+    events=[{'dt':int(t),'type':'Low' if kind=='L' else 'High','height':float(h)} for t,kind,h in cache['events'] if start<=datetime.fromtimestamp(t,TZ).date()<=end]
+    dates={datetime.fromtimestamp(e['dt'],TZ).date() for e in events}
+    expected={start+timedelta(days=i) for i in range(14)}
+    # Retain only actual BOM events. When the cache ends, unsupported days stay blank.
+    if not events:raise ValueError('BOM cache has no dates in requested period')
+    return {'source':'Bureau of Meteorology — Pirates Bay (nearby reference)','source_url':BASE+'#!/tas-pirates-bay','station':STATION,'datum':'BOM prediction datum','extremes':events,'coverage_start':min(dates).isoformat(),'coverage_end':max(dates).isoformat(),'weather_adjusted':False,'copyright':'© Commonwealth of Australia, Bureau of Meteorology','notice':'Secondary-port predictions based on limited observations. Pirates Bay is a nearby reference, not a Boomer Bay lease prediction. Weather effects are excluded.','using_stored_tables':True,'source_downloaded_at':cache['downloaded_at'],'complete_14_days':dates==expected}
