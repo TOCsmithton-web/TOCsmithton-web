@@ -34,35 +34,37 @@ class TideParser(HTMLParser):
                 if not -5<=height<=10:raise ValueError('Invalid BOM height')
                 self.events.append({**self.pending,'height':height});self.pending=None
 
-def parse_table(html,start):
+def parse_table(html,start,station=STATION):
     parser=TideParser();parser.feed(html)
-    if STATION['name'] not in parser.title:raise ValueError('Unexpected BOM station')
+    if station['name'] not in parser.title:raise ValueError('Unexpected BOM station')
     dates={datetime.fromtimestamp(x['dt'],TZ).date() for x in parser.events}
     expected={start+timedelta(days=i) for i in range(7)}
     if dates!=expected or len(parser.events)<14:raise ValueError('Incomplete BOM seven-day table')
     return parser.events
 
-def fetch_week(start):
-    q={'type':'tide','aac':STATION['aac'],'date':start.strftime('%d-%m-%Y'),'days':7,'region':'TAS','offset':0,'offsetName':'','tz':'Australia/Hobart','tz_js':datetime.combine(start,datetime.min.time(),TZ).tzname()}
+def fetch_week(start,station=STATION):
+    q={'type':'tide','aac':station['aac'],'date':start.strftime('%d-%m-%Y'),'days':7,'region':'TAS','offset':0,'offsetName':'','tz':'Australia/Hobart','tz_js':datetime.combine(start,datetime.min.time(),TZ).tzname()}
     url=BASE+'scripts/getTidesTable.php?'+urllib.parse.urlencode(q)
     with urllib.request.urlopen(url,timeout=30) as r:html=r.read().decode('utf-8')
-    return parse_table(html,start)
+    return parse_table(html,start,station)
 
-def fetch_bom_tides(start):
-    with ThreadPoolExecutor(max_workers=2) as pool:weeks=list(pool.map(fetch_week,[start,start+timedelta(days=7)]))
-    events=sorted(weeks[0]+weeks[1],key=lambda e:e['dt'])
+def fetch_bom_tides(start,station=STATION):
+    starts=[start,start+timedelta(days=7)]
+    if station.get('time_offset_minutes'):starts.insert(0,start-timedelta(days=7))
+    with ThreadPoolExecutor(max_workers=3) as pool:weeks=list(pool.map(lambda day: fetch_week(day,station),starts))
+    events=sorted([event for week in weeks for event in week],key=lambda e:e['dt'])
     if len({e['dt'] for e in events})!=len(events):raise ValueError('Duplicate BOM events')
-    return {'source':'Bureau of Meteorology — Pirates Bay (nearby reference)','source_url':BASE+'#!/tas-pirates-bay','station':STATION,'datum':'BOM prediction datum','extremes':events,'coverage_start':start.isoformat(),'coverage_end':(start+timedelta(days=13)).isoformat(),'weather_adjusted':False,'copyright':'© Commonwealth of Australia, Bureau of Meteorology','notice':'Secondary-port predictions based on limited observations. Reference only: Pirates Bay is not Boomer Bay; times and heights at the lease may differ. Weather effects are not included in BOM tide predictions.'}
+    return {'source':'Bureau of Meteorology — '+station['name']+' (reference)', 'source_url':BASE+'?aac='+station['aac'],'station':station,'datum':'BOM prediction datum','extremes':events,'coverage_start':start.isoformat(),'coverage_end':(start+timedelta(days=13)).isoformat(),'weather_adjusted':False,'copyright':'© Commonwealth of Australia, Bureau of Meteorology','notice':'Reference port predictions; lease times and heights may differ. Weather effects are not included.'}
 
-def cached_bom_tides(start):
+def cached_bom_tides(start,station=STATION):
     """Use verified, published astronomical tables when BOM rejects runner requests."""
     import json
     from pathlib import Path
-    cache=json.loads((Path(__file__).resolve().parents[1]/'bom-pirates-tides.json').read_text())
+    cache=json.loads((Path(__file__).resolve().parents[1]/('bom-'+station['aac']+'-tides.json' if station['aac']!=STATION['aac'] else 'bom-pirates-tides.json')).read_text())
     end=start+timedelta(days=13)
-    events=[{'dt':int(t),'type':'Low' if kind=='L' else 'High','height':float(h)} for t,kind,h in cache['events'] if start<=datetime.fromtimestamp(t,TZ).date()<=end]
+    events=[{'dt':int(t),'type':'Low' if kind=='L' else 'High','height':float(h)} for t,kind,h in cache['events'] if start-timedelta(days=1 if station.get('time_offset_minutes') else 0)<=datetime.fromtimestamp(t,TZ).date()<=end]
     dates={datetime.fromtimestamp(e['dt'],TZ).date() for e in events}
     expected={start+timedelta(days=i) for i in range(14)}
     # Retain only actual BOM events. When the cache ends, unsupported days stay blank.
     if not events:raise ValueError('BOM cache has no dates in requested period')
-    return {'source':'Bureau of Meteorology — Pirates Bay (nearby reference)','source_url':BASE+'#!/tas-pirates-bay','station':STATION,'datum':'BOM prediction datum','extremes':events,'coverage_start':min(dates).isoformat(),'coverage_end':max(dates).isoformat(),'weather_adjusted':False,'copyright':'© Commonwealth of Australia, Bureau of Meteorology','notice':'Secondary-port predictions based on limited observations. Pirates Bay is a nearby reference, not a Boomer Bay lease prediction. Weather effects are excluded.','using_stored_tables':True,'source_downloaded_at':cache['downloaded_at'],'complete_14_days':dates==expected}
+    return {'source':'Bureau of Meteorology — '+station['name']+' (reference)','source_url':BASE+'?aac='+station['aac'],'station':station,'datum':'BOM prediction datum','extremes':events,'coverage_start':min(dates).isoformat(),'coverage_end':max(dates).isoformat(),'weather_adjusted':False,'copyright':'© Commonwealth of Australia, Bureau of Meteorology','notice':'Reference port predictions; lease times and heights may differ. Weather effects are excluded.','using_stored_tables':True,'source_downloaded_at':cache['downloaded_at'],'complete_14_days':dates==expected}
