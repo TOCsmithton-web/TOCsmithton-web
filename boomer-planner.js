@@ -68,6 +68,7 @@ function graph(data,day){
 }
 function render(data){
  const now=Date.now()/1000,age=now-Date.parse(data.updated_at)/1000,stale=!valid(age)||age>3*HOUR;
+ if(data.location?.id==='smithton'){renderSmithton(data,now,stale);return;}
  const days=forecast(data,now);
  el('updated').textContent='Forecast retrieved '+new Date(data.updated_at).toLocaleString('en-AU',{timeZone:TZ})+' • Page checks every 15 minutes • '+(stale?'OUTDATED — refresh required':'Forecast refreshes with app deployment, normally every 15 minutes');
  el('tideSource').textContent=data.tides?'Tides: '+data.tides.source+' • Heights in metres above '+data.tides.datum+'. Published BOM tables provide the daily tide predictions. '+data.tides.station.name+' is the reference port; lease times and heights may differ. Wind and pressure effects are not included in these tide heights.':'BOM reference tide feed unavailable. Work windows are unconfirmed; no other tide source is substituted.';
@@ -100,6 +101,34 @@ function render(data){
   metric('Daylight',clock(day.sunrise)+'–'+clock(day.sunset))+'</div><p class="reason">'+escape(reason)+'</p>'+graph(data,day)+
   '<details><summary>All BOM tides and daily weather</summary><p>'+escape(day.allTides.map(l=>l.type+' '+clock(l.dt)+' · '+l.height.toFixed(2)+' m').join(' / ')||'No BOM tide coverage')+'</p>'+hourlyTable(data,day)+'</details></article>';
  }).join('')||'<p>Weather forecast unavailable. Refresh to try again.</p>';
+}
+function renderSmithton(data,now,stale){
+ const H=HOUR;
+ const model=root.SmithtonTides.model(data),daily=data.weather.daily;
+ el('updated').textContent='Forecast retrieved '+new Date(data.updated_at).toLocaleString('en-AU',{timeZone:TZ})+' • Checks every 15 minutes'+(stale?' • OUTDATED':'');
+ el('tideSource').textContent='BOM Burnie tide times +1 hour. Dashed line: interpolated Burnie heights. Blue line: estimated Duck Bay height after local wind and pressure adjustments; same reference datum, not measured lease depth.';
+ el('assessment').textContent='Smithton: green bands show four-hour planning windows. Starts match the estimated falling tide to the level normally reached four hours before an ideal 1 m low. Windows may include darkness; daylight and strong-wind flags are shown separately.';
+ el('ai').textContent='Farm-calibrated estimate using Daniel’s wind examples, not a trained AI tide model. N/E at 35 km/h adds about 0.4 m; S/W subtracts about 0.4 m. Pressure uses a provisional 1013.25 hPa baseline and 0.01 m per hPa. Week 2 is tentative. No measured Duck Bay calibration is available yet.';
+ el('days').innerHTML=daily.time.map((start,i)=>({start,end:daily.time[i+1]||start+86400,i,date:dateKey(start)})).filter(d=>d.date>=dateKey(now)).slice(0,14).map(day=>{
+  const lows=model.tides.filter(t=>t.type==='Low'&&dateKey(t.dt)===day.date);
+  const plans=lows.map(l=>model.plan(l)).filter(Boolean);
+  // Prefer a remaining window with most daylight, then the low closest to the ideal.
+  const overlap=p=>Math.max(0,Math.min(p.end,daily.sunset[day.i])-Math.max(p.start,daily.sunrise[day.i]));
+  plans.sort((a,b)=>Number(b.end>now)-Number(a.end>now)||overlap(b)-overlap(a)||Math.abs(a.atLow.adjusted-1)-Math.abs(b.atLow.adjusted-1));
+  const p=stale?null:plans[0],ended=p&&p.end<=now;
+  const start=p?Math.min(day.start,Math.floor(p.start/HOUR)*HOUR):day.start,end=p?Math.max(day.end,Math.ceil(p.end/HOUR)*HOUR):day.end;
+  const rows=[];for(let t=start;t<=end;t+=600)rows.push(model.point(t));
+  const values=rows.flatMap(r=>[r.base,r.adjusted]).filter(valid),min=values.length?Math.min(0,...values)-.1:0,max=values.length?Math.max(...values)+.2:4;
+  const x=t=>42+((t-start)/(end-start))*550,y=h=>18+(max-h)/(max-min)*160;
+  let marks='';for(let n=0;n<=4;n++){const v=min+(max-min)*n/4;marks+='<line x1="42" x2="592" y1="'+y(v)+'" y2="'+y(v)+'" stroke="#dae3e8"/><text x="37" y="'+(y(v)+4)+'" text-anchor="end" font-size="12">'+v.toFixed(1)+'</text>';}
+  for(let t=start;t<=end;t+=6*H)marks+='<text x="'+x(t)+'" y="198" text-anchor="middle" font-size="11">'+escape(clock(t))+'</text>';
+  function path(key){let d='',gap=true;rows.forEach(r=>{if(!valid(r[key])){gap=true;return;}d+=(gap?'M':'L')+x(r.t).toFixed(1)+','+y(r[key]).toFixed(1)+' ';gap=false;});return d;}
+  const band=p?'<rect x="'+x(p.start)+'" y="18" width="'+(x(p.end)-x(p.start))+'" height="160" fill="#22c55e" opacity=".24"/><text x="'+(x(p.start)+4)+'" y="31" font-size="11" fill="#14532d">4 h lease window</text>':'';
+  const graph='<div class="plot"><svg viewBox="0 0 620 210" role="img" aria-label="Daily estimated tide height in metres and four-hour lease window"><title>'+day.date+' tide estimate</title>'+band+marks+'<path d="'+path('base')+'" fill="none" stroke="#718096" stroke-width="2" stroke-dasharray="6 4"/><path d="'+(stale?'':path('adjusted'))+'" fill="none" stroke="#087bc1" stroke-width="3"/><text x="5" y="12" font-size="11">m</text></svg><small>Dashed: Burnie +1 h • Blue: weather-adjusted estimate • Green: 4-hour planning window</small></div>';
+  const daylight=p&&overlap(p)>=4*H-1,strong=p&&(p.maxWind>27.78||p.maxGust>37.04);
+  const status=stale?'OUTDATED':!p?'INSUFFICIENT DATA / NO CROSSING':ended?'WINDOW FINISHED':strong?'STRONG WIND — REVIEW':!daylight?'INCLUDES DARKNESS':'ESTIMATED LEASE WINDOW';
+  return '<article class="day-card '+(!p?'unknown':strong?'poor':'')+'"><h3>'+escape(new Intl.DateTimeFormat('en-AU',{timeZone:TZ,weekday:'long',day:'numeric',month:'short'}).format(new Date(day.start*1000)))+'</h3><span class="pill">'+status+'</span><div class="window">'+(p?clock(p.start)+'–'+clock(p.end):'No confirmed work time')+'</div><p>'+ (day.i>=7?'Week 2 • tentative':'Recheck before departure')+'</p>'+graph+(p?'<div class="metrics">'+metric('BOM low time +1 h',clock(p.low.dt))+metric('Burnie low height',p.low.height.toFixed(2)+' m')+metric('Estimated height at low',p.atLow.adjusted.toFixed(2)+' m')+metric('Start adjustment',Math.abs(p.shift).toFixed(0)+' min '+(p.shift<0?'earlier':'later'))+metric('Wind height effect',(p.atLow.c.wind>=0?'+':'')+p.atLow.c.wind.toFixed(2)+' m')+metric('Pressure height effect',(p.atLow.c.pressure>=0?'+':'')+p.atLow.c.pressure.toFixed(2)+' m')+metric('Max wind / gust',p.maxWind.toFixed(0)+' / '+p.maxGust.toFixed(0)+' km/h')+metric('Daylight',clock(daily.sunrise[day.i])+'–'+clock(daily.sunset[day.i]))+'</div><p class="reason">'+(!daylight?'Part of this four-hour window is outside daylight. ':'')+(strong?'Wind exceeds the existing provisional screening settings. ':'')+'Start is an estimated water-level crossing, rounded for display; the BOM low-tide time is not shifted by weather. Green identifies the requested work period, not a safety clearance.</p>':'<p>Fresh weather, bounding high/low tides and a falling-tide crossing are required. No window is invented when coverage is missing.</p>')+'<details><summary>Weather and all low tides</summary><p>'+escape(lows.map(l=>clock(l.dt)+' · '+l.height.toFixed(2)+' m').join(' / '))+'</p>'+hourlyTable(data,{date:day.date})+'</details></article>';
+ }).join('');
 }
 function hourlyTable(data,day){const w=data.weather.hourly;let rows='';w.time.forEach((t,i)=>{if(dateKey(t)!==day.date||i%3!==0)return;rows+='<tr><td>'+clock(t)+'</td><td>'+direction(w.wind_direction_10m[i])+'</td><td>'+(valid(w.wind_speed_10m[i])?w.wind_speed_10m[i].toFixed(0):'—')+' kn</td><td>'+(valid(w.pressure_msl[i])?w.pressure_msl[i].toFixed(0):'—')+' hPa</td></tr>';});return '<table><thead><tr><th>Time</th><th>Wind from</th><th>Wind</th><th>Pressure</th></tr></thead><tbody>'+rows+'</tbody></table>';}
 const locations={
