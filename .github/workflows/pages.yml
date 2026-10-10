@@ -43,7 +43,6 @@ jobs:
       # Deployment nudge: 2026-10-06T21:20 AEST
       - name: Build Boomer Bay weather and tide forecast
         env:
-          WORLDTIDES_API_KEY: ${{ secrets.WORLDTIDES_API_KEY }}
           PLANNER_AI_ENDPOINT: ${{ secrets.PLANNER_AI_ENDPOINT }}
           PLANNER_AI_API_KEY: ${{ secrets.PLANNER_AI_API_KEY }}
           PLANNER_AI_MODEL: ${{ secrets.PLANNER_AI_MODEL }}
