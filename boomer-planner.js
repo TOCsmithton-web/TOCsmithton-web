@@ -55,7 +55,7 @@ function graph(data,day){
   const x=t=>35+(t-start)/(end-start)*290,y=h=>10+(max-h)/(max-min)*75;
   let marks='';for(let i=0;i<=2;i++){const v=min+(max-min)*i/2;marks+='<line x1="35" y1="'+y(v)+'" x2="325" y2="'+y(v)+'" stroke="#dce6eb"/><text x="30" y="'+(y(v)+4)+'" text-anchor="end" font-size="10">'+v.toFixed(1)+'</text>';}
   rows.forEach(r=>{marks+='<circle cx="'+x(r.dt)+'" cy="'+y(r.height)+'" r="4" fill="'+(r.type==='Low'?'#087bc1':'#b7791f')+'"><title>'+r.type+' '+clock(r.dt)+' '+r.height.toFixed(2)+' m</title></circle>';});
-  return '<div class="plot"><svg viewBox="0 0 340 110" role="img" aria-label="BOM Pirates Bay high and low tide heights"><title>BOM Pirates Bay reference tides</title>'+marks+'<text x="35" y="103" font-size="10">12 am</text><text x="180" y="103" text-anchor="middle" font-size="10">12 pm</text><text x="325" y="103" text-anchor="end" font-size="10">12 am</text></svg><small>BOM reference heights • blue: low • amber: high • no interpolation</small></div>';
+  return '<div class="plot"><svg viewBox="0 0 340 110" role="img" aria-label="BOM reference port high and low tide heights"><title>BOM reference port tides</title>'+marks+'<text x="35" y="103" font-size="10">12 am</text><text x="180" y="103" text-anchor="middle" font-size="10">12 pm</text><text x="325" y="103" text-anchor="end" font-size="10">12 am</text></svg><small>BOM reference heights • blue: low • amber: high • no interpolation</small></div>';
  }
  const m=data.marine&&data.marine.hourly;if(!m||data.tides)return '';
  const rows=m.time.map((t,i)=>({t,h:m.sea_level_height_msl[i]})).filter(x=>dateKey(x.t)===day.date&&valid(x.h));
@@ -70,7 +70,8 @@ function render(data){
  const now=Date.now()/1000,age=now-Date.parse(data.updated_at)/1000,stale=!valid(age)||age>3*HOUR;
  const days=forecast(data,now);
  el('updated').textContent='Forecast retrieved '+new Date(data.updated_at).toLocaleString('en-AU',{timeZone:TZ})+' • Page checks every 15 minutes • '+(stale?'OUTDATED — refresh required':'Forecast refreshes with app deployment, normally every 15 minutes');
- el('tideSource').textContent=data.tides?'Tides: '+data.tides.source+' • Heights in metres above '+data.tides.datum+'. Published BOM tables provide the daily tide predictions. Pirates Bay is a nearby reference, not a Boomer Bay lease prediction. Wind and pressure effects are not included in these tide heights.':'BOM reference tide feed unavailable. Work windows are unconfirmed; no other tide source is substituted.';
+ el('tideSource').textContent=data.tides?'Tides: '+data.tides.source+' • Heights in metres above '+data.tides.datum+'. Published BOM tables provide the daily tide predictions. '+data.tides.station.name+' is the reference port; lease times and heights may differ. Wind and pressure effects are not included in these tide heights.':'BOM reference tide feed unavailable. Work windows are unconfirmed; no other tide source is substituted.';
+ if(data.tides&&data.tides.time_adjustment_minutes)el('tideSource').textContent+=' Smithton times = BOM Burnie +1 hour, as specified by the farm. Heights remain Burnie predictions.';
  if(data.tides&&data.tides.using_stored_tables)el('tideSource').textContent+=' Using verified BOM tables downloaded '+new Date(data.tides.source_downloaded_at).toLocaleString('en-AU',{timeZone:TZ})+'. Latest live download unavailable; published astronomical times and heights are retained.';
  const usable=days.filter(x=>x.best&&!x.best.missing&&!x.best.poor);
  const best=usable.slice().sort((a,b)=>a.best.score-b.best.score)[0];
@@ -81,7 +82,7 @@ function render(data){
   const b=stale?null:day.best,unknown=!b||b.missing,bad=b&&!unknown&&(b.poor||b.lowPressure);
   let tag=unknown?'UNCONFIRMED':bad?'POOR / WATER-LEVEL RISK':'BOM REFERENCE WINDOW';
   let reason=stale?'Outdated forecast. Refresh before planning.':!b?day.allLows.length?'No remaining daylight low-tide window today.':'Tide prediction unavailable for this day; no work time is guessed.':b.missing?'Required wind or pressure readings are missing; no recommendation.':
-  (b.poor?'Wind or gusts exceed the provisional screening setting. ':'Wind and gusts are within the provisional screening settings. ')+(b.lowPressure?'Low pressure: higher risk of water staying on the lease. ':b.pressure>=1020?'Higher pressure favours a lower water level. ':'Pressure is near the reference range. ')+(b.falling?'Pressure is falling quickly; watch for the tide not dropping as expected. ':'')+'BOM times and heights are for Pirates Bay. Lease timing, height and wind setup are not calibrated.';
+  (b.poor?'Wind or gusts exceed the provisional screening setting. ':'Wind and gusts are within the provisional screening settings. ')+(b.lowPressure?'Low pressure: higher risk of water staying on the lease. ':b.pressure>=1020?'Higher pressure favours a lower water level. ':'Pressure is near the reference range. ')+(b.falling?'Pressure is falling quickly; watch for the tide not dropping as expected. ':'')+'BOM reference: '+(data.tides?data.tides.station.name:'unavailable')+(data.tides&&data.tides.time_adjustment_minutes?' +1 hour for Smithton; Burnie heights unchanged.':' — lease timing and heights may differ.')+' Wind setup is not calibrated.';
   const display=b&&!b.missing?b:null;
   const w=data.weather.hourly,dayIndices=w.time.map((t,i)=>({t,i})).filter(x=>dateKey(x.t)===day.date&&x.t>=day.sunrise&&x.t<=day.sunset);
   const ref=dayIndices.length?dayIndices[Math.floor(dayIndices.length/2)].i:-1;
@@ -89,7 +90,7 @@ function render(data){
   const weatherDisplay=display||(!stale&&ref>=0?{wind:maximum('wind_speed_10m'),gust:maximum('wind_gusts_10m'),pressure:w.pressure_msl[ref],direction:w.wind_direction_10m[ref],trend:valid(w.pressure_msl[ref])&&valid(w.pressure_msl[ref-3])?w.pressure_msl[ref]-w.pressure_msl[ref-3]:null}:null);
   const noon=day.sunrise;
   return '<article class="day-card '+(unknown?'unknown':bad?'poor':'')+'"><h3>'+escape(new Intl.DateTimeFormat('en-AU',{timeZone:TZ,weekday:'long',day:'numeric',month:'short'}).format(new Date(noon*1000)))+'</h3><span class="pill">'+tag+'</span><div class="window">'+(display?clock(display.start)+'–'+clock(display.end):'No confirmed work time')+'</div><p class="forecast-meta">'+(day.index>=7?'Week 2 • tentative forecast':'Week 1 • recheck each day')+'</p><div class="metrics">'+
-  metric('Low tide'+(display&&display.low.reference?' • Pirates Bay':display&&!display.low.local?' (estimated)':''),display?clock(display.low.t):'Unavailable')+
+  metric('Low tide'+(display&&display.low.reference?' • '+escape(data.tides.station.name)+(data.tides.time_adjustment_minutes?' +1 h':''):display&&!display.low.local?' (estimated)':''),display?clock(display.low.t):'Unavailable')+
   metric('Low height • '+(data.tides?escape(data.tides.datum):'MSL'),display?display.low.h.toFixed(2)+' m':'Unavailable')+
   metric(display?'Max wind in window':'Max daylight wind',weatherDisplay&&valid(weatherDisplay.wind)?weatherDisplay.wind.toFixed(1)+' kn':'Unavailable')+
   metric(display?'Max gust in window':'Max daylight gust',weatherDisplay&&valid(weatherDisplay.gust)?weatherDisplay.gust.toFixed(1)+' kn':'Unavailable')+
@@ -101,7 +102,45 @@ function render(data){
  }).join('')||'<p>Weather forecast unavailable. Refresh to try again.</p>';
 }
 function hourlyTable(data,day){const w=data.weather.hourly;let rows='';w.time.forEach((t,i)=>{if(dateKey(t)!==day.date||i%3!==0)return;rows+='<tr><td>'+clock(t)+'</td><td>'+direction(w.wind_direction_10m[i])+'</td><td>'+(valid(w.wind_speed_10m[i])?w.wind_speed_10m[i].toFixed(0):'—')+' kn</td><td>'+(valid(w.pressure_msl[i])?w.pressure_msl[i].toFixed(0):'—')+' hPa</td></tr>';});return '<table><thead><tr><th>Time</th><th>Wind from</th><th>Wind</th><th>Pressure</th></tr></thead><tbody>'+rows+'</tbody></table>';}
-let last=null,busy=false;
-async function refresh(){if(busy)return;busy=true;el('refresh').disabled=true;try{const r=await fetch('boomer-planner.json?ts='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('feed');last=await r.json();render(last);}catch(e){el('updated').textContent='Forecast feed unavailable — cannot confirm work windows.';el('assessment').textContent='Refresh to retry the forecast feed.';el('days').innerHTML='<div class="card">Forecast data unavailable.</div>';}finally{busy=false;el('refresh').disabled=false;}}
-el('refresh').onclick=refresh;refresh();setInterval(refresh,900000);
+const locations={
+ smithton:{name:'Smithton / Duck Bay',port:'Burnie',aac:'TAS_TP001',offset:60,controls:'control-new.html'},
+ boomer:{name:'Boomer Bay',port:'Pirates Bay',aac:'TAS_TP025',controls:'boomer-control.html'},
+ pittwater:{name:'Pitt Water',port:'Hobart',aac:'TAS_TP003',controls:'pittwater-control.html'}
+};
+let selected=new URLSearchParams(location.search).get('location');
+if(!locations[selected])selected='boomer';
+let requestNumber=0;
+function setLocation(){
+ const site=locations[selected];
+ el('plannerLocation').value=selected;
+ el('plannerTitle').textContent=site.name.toUpperCase()+' • 14-DAY LEASE PLANNER';
+ document.title=site.name+' — Weather & tides';
+ el('controlsLink').href=site.controls;el('controlsLink').textContent=site.name+' controls';
+ el('referenceTitle').textContent='BOM '+site.port+(site.offset?' +1 hour':'')+' tides — reference for '+site.name;
+ el('referencePort').textContent=site.port+(site.offset?' +1 hour (farm timing adjustment; Burnie heights unchanged)':'');
+ el('bomLink').href='https://www.bom.gov.au/australia/tides/?aac='+site.aac;
+ el('bomLink').textContent='BOM '+site.port+' tide predictions';
+}
+async function refresh(){
+ const current=++requestNumber,id=selected;
+ el('refresh').disabled=true;
+ el('updated').textContent='Loading '+locations[id].name+' forecast…';
+ el('assessment').textContent='Checking available work windows…';el('ai').textContent='';
+ el('tideSource').textContent='Checking '+locations[id].port+' tide predictions…';
+ el('days').innerHTML='<div class="loading">Loading 14-day forecast…</div>';
+ try{
+  const response=await fetch(id+'-planner.json?ts='+Date.now(),{cache:'no-store'});
+  if(!response.ok)throw Error('feed');const data=await response.json();
+  if(current!==requestNumber)return;
+  if(data.location.id&&data.location.id!==id)throw Error('Wrong location');
+  render(data);
+ }catch(e){if(current!==requestNumber)return;
+  el('updated').textContent='Forecast feed unavailable — cannot confirm work windows.';
+  el('assessment').textContent='Refresh to retry the forecast feed.';
+  el('tideSource').textContent='Tide data unavailable for this location.';
+  el('days').innerHTML='<div class="card">Forecast data unavailable.</div>';
+ }finally{if(current===requestNumber)el('refresh').disabled=false;}
+}
+el('plannerLocation').onchange=()=>{selected=el('plannerLocation').value;const url=new URL(location.href);url.searchParams.set('location',selected);history.replaceState(null,'',url);setLocation();refresh();};
+el('refresh').onclick=refresh;setLocation();refresh();setInterval(refresh,900000);
 })(typeof window==='undefined'?globalThis:window);
