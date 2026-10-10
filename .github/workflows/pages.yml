@@ -41,6 +41,14 @@ jobs:
       # Force a fresh Pages artifact after control-page repairs.
       # Deployment trigger repair: ensure direct main-branch pushes publish the latest control pages.
       # Deployment nudge: 2026-10-06T21:20 AEST
+      - name: Build Boomer Bay weather and tide forecast
+        env:
+          WORLDTIDES_API_KEY: ${{ secrets.WORLDTIDES_API_KEY }}
+          PLANNER_AI_ENDPOINT: ${{ secrets.PLANNER_AI_ENDPOINT }}
+          PLANNER_AI_API_KEY: ${{ secrets.PLANNER_AI_API_KEY }}
+          PLANNER_AI_MODEL: ${{ secrets.PLANNER_AI_MODEL }}
+        run: python3 scripts/build-boomer-planner.py
+
       - name: Prepare Pages artifact
         run: |
           touch .nojekyll
