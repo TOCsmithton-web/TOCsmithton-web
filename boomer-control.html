@@ -154,60 +154,23 @@ var liveSensorStatus="Checking live salinity sensor…";
 var liveSensorTimes={little:"",narrows:"",east:""};
 var liveSensorLastCheck="";
 async function loadSalinity(){
-  // Live SensorRight readings are authoritative for the zone status. If the feed
-  // is unavailable or stale, do not substitute an old/manual value as live data.
+  // Only verified, time-stamped sensor readings are used for harvest status.
   Object.keys(zoneData).forEach(function(k){salinity[k]="";liveSensorTimes[k]="";});
   try{
-    var now=Date.now(),from=now-24*60*60*1000;
-    var sites=[
-      {key:"east",refId:"East",site:"Boomer Bay East"},
-      {key:"little",refId:"Little",site:"Boomer Bay Narrows 1"},
-      {key:"narrows",refId:"Narrows",site:"Boomer Bay Narrows 3"}
-    ];
-    var queries=sites.map(function(x){return {
-      refId:x.refId,
-      datasource:{uid:"qhZkWGznk"},
-      rawSql:'SELECT "time" AS "time", measurement AS "Salinity" FROM ind_otmetrics WHERE $__timeFilter("time") AND sensor_name = \'Salinity\' AND site_address = \'Boomer Bay\' AND site_name = \''+x.site+'\' AND measurement > 0 ORDER BY 1,2',
-      format:"time_series",intervalMs:600000,maxDataPoints:100
-    };});
-    var response=await fetch("https://graphs.senseright.com.au/api/ds/query?ds_type=grafana-postgresql-datasource",{
-      method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",cache:"no-store",
-      body:JSON.stringify({queries:queries,from:String(from),to:String(now)})
+    var client=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
+    var r=await client.from("boomer_salinity_readings").select("zone,salinity,observed_at").order("observed_at",{ascending:false}).limit(60);
+    if(r.error)throw r.error;
+    var now=Date.now(),seen={},got=0;
+    (r.data||[]).forEach(function(row){
+      var k=row.zone,t=Date.parse(row.observed_at),n=Number(row.salinity);
+      if(!Object.prototype.hasOwnProperty.call(zoneData,k)||seen[k])return;
+      seen[k]=true;
+      if(!isFinite(t)||t>now+60000||now-t>2*60*60*1000||!isFinite(n)||n<=0||n>50)return;
+      salinity[k]=String(n);
+      liveSensorTimes[k]=new Date(t).toLocaleString("en-AU");
+      got++;
     });
-    if(!response.ok)throw new Error("SensorRight returned HTTP "+response.status);
-    var payload=await response.json();
-    var results=payload.results||payload;
-    var got=0;
-    sites.forEach(function(site){
-      var result=results[site.refId]||results[site.key];
-      var frames=result&&(result.frames||result.data&&result.data.frames)||[];
-      var latest=null;
-      frames.forEach(function(frame){
-        var fields=frame.schema&&frame.schema.fields||frame.fields||[];
-        var vals=frame.data&&frame.data.values||frame.values||[];
-        var timeIndex=fields.findIndex(function(f){return String(f.name||"").toLowerCase()==="time";});
-        var salIndex=fields.findIndex(function(f){return String(f.name||"").toLowerCase()==="salinity";});
-        if(salIndex<0)salIndex=fields.findIndex(function(f){return /salinity/i.test(String(f.name||""));});
-        if(salIndex<0||!vals[salIndex])return;
-        for(var i=0;i<vals[salIndex].length;i++){
-          var n=Number(vals[salIndex][i]);
-          if(!isFinite(n)||n<=0)continue;
-          var t=timeIndex>=0&&vals[timeIndex]?new Date(vals[timeIndex][i]).getTime():0;
-          if(!latest||(t&&t>latest.time)){latest={value:n,time:t};}
-        }
-      });
-      if(latest){
-        // Do not use sensor data older than 2 hours as a current reading.
-        if(latest.time && now-latest.time<=2*60*60*1000){
-          salinity[site.key]=String(latest.value);
-          liveSensorTimes[site.key]=new Date(latest.time).toLocaleString("en-AU");
-          got++;
-        }
-      }
-    });
-    if(got===3)liveSensorStatus="LIVE SENSOR CONNECTED — all 3 zones reporting";
-    else if(got>0)liveSensorStatus="PARTIAL SENSOR DATA — "+got+" of 3 zones reporting; non-reporting zones remain CLOSED";
-    else throw new Error("No recent salinity readings returned for the three Boomer Bay zones");
+    liveSensorStatus=got===3?"LIVE SENSOR CONNECTED — all 3 zones reporting":got>0?"PARTIAL SENSOR DATA — "+got+" of 3 zones reporting; non-reporting zones remain CLOSED":"NO VERIFIED RECENT SENSOR DATA — all zones remain CLOSED";
     liveSensorLastCheck=new Date().toLocaleString("en-AU");
   }catch(e){
     Object.keys(zoneData).forEach(function(k){salinity[k]="";liveSensorTimes[k]="";});
@@ -215,12 +178,12 @@ async function loadSalinity(){
     liveSensorLastCheck=new Date().toLocaleString("en-AU");
     console.warn("Boomer Bay live salinity sensor:",e);
   }
-  var sensorBox=el("liveSensorStatus");
-  if(sensorBox){
-    sensorBox.textContent=liveSensorStatus+" • Last checked "+liveSensorLastCheck;
-    sensorBox.style.background=liveSensorStatus.indexOf("all 3 zones reporting")>=0?"#d8f3df":"#ffd0d0";
-    sensorBox.style.border="2px solid "+(liveSensorStatus.indexOf("all 3 zones reporting")>=0?"#31a354":"#c62828");
-    sensorBox.style.color=liveSensorStatus.indexOf("all 3 zones reporting")>=0?"#176b3b":"#9d2727";
+  var box=el("liveSensorStatus"),ok=liveSensorStatus.indexOf("all 3 zones reporting")>=0;
+  if(box){
+    box.textContent=liveSensorStatus+" • Last checked "+liveSensorLastCheck;
+    box.style.background=ok?"#d8f3df":"#ffd0d0";
+    box.style.border="2px solid "+(ok?"#31a354":"#c62828");
+    box.style.color=ok?"#176b3b":"#9d2727";
   }
 }
 
@@ -391,7 +354,7 @@ el("refreshWeather").onclick=weather;
 
 loadSalinity().then(function(){setZone();});
 weather();
-setInterval(function(){loadSalinity().then(function(){setZone();});},600000);
+setInterval(function(){loadSalinity().then(function(){setZone();});},60000);
 meat();
 biotoxin();
 setInterval(weather,3600000);
