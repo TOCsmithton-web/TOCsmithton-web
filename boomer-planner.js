@@ -72,15 +72,19 @@ function render(data){
   let reason=stale?'Outdated forecast. Refresh before planning.':!b?day.allLows.length?'No remaining daylight low-tide window today.':'Tide prediction unavailable for this day; no work time is guessed.':b.missing?'Required wind or pressure readings are missing; no recommendation.':
   (b.poor?'Wind or gusts exceed the provisional screening setting. ':'Wind and gusts are within the provisional screening settings. ')+(b.lowPressure?'Low pressure: higher risk of water staying on the lease. ':b.pressure>=1020?'Higher pressure favours a lower water level. ':'Pressure is near the reference range. ')+(b.falling?'Pressure is falling quickly; watch for the tide not dropping as expected. ':'')+'Wind setup inside the bay has not been calibrated.';
   const display=b&&!b.missing?b:null;
+  const w=data.weather.hourly,dayIndices=w.time.map((t,i)=>({t,i})).filter(x=>dateKey(x.t)===day.date&&x.t>=day.sunrise&&x.t<=day.sunset);
+  const ref=dayIndices.length?dayIndices[Math.floor(dayIndices.length/2)].i:-1;
+  const maximum=k=>{const values=dayIndices.map(x=>w[k][x.i]).filter(valid);return values.length?Math.max(...values):null;};
+  const weatherDisplay=display||(!stale&&ref>=0?{wind:maximum('wind_speed_10m'),gust:maximum('wind_gusts_10m'),pressure:w.pressure_msl[ref],direction:w.wind_direction_10m[ref],trend:valid(w.pressure_msl[ref])&&valid(w.pressure_msl[ref-3])?w.pressure_msl[ref]-w.pressure_msl[ref-3]:null}:null);
   const noon=day.sunrise;
   return '<article class="day-card '+(unknown?'unknown':bad?'poor':'')+'"><h3>'+escape(new Intl.DateTimeFormat('en-AU',{timeZone:TZ,weekday:'long',day:'numeric',month:'short'}).format(new Date(noon*1000)))+'</h3><span class="pill">'+tag+'</span><div class="window">'+(display?clock(display.start)+'–'+clock(display.end):'No confirmed work time')+'</div><p class="forecast-meta">'+(day.index>=7?'Week 2 • tentative forecast':'Week 1 • recheck each day')+'</p><div class="metrics">'+
   metric('Low tide'+(display&&!display.low.local?' (estimated)':''),display?clock(display.low.t):'Unavailable')+
   metric('Low height • '+(data.tides?escape(data.tides.datum):'MSL'),display?display.low.h.toFixed(2)+' m':'Unavailable')+
-  metric('Max wind in window',display?display.wind.toFixed(1)+' kn':'Unavailable')+
-  metric('Max gust in window',display?display.gust.toFixed(1)+' kn':'Unavailable')+
-  metric('Wind from at low tide',display?direction(display.direction):'Unavailable')+
-  metric('Pressure at low tide',display?display.pressure.toFixed(0)+' hPa':'Unavailable')+
-  metric('Pressure change / 3 h',display&&valid(display.trend)?(display.trend>0?'+':'')+display.trend.toFixed(1)+' hPa':'Unavailable')+
+  metric(display?'Max wind in window':'Max daylight wind',weatherDisplay&&valid(weatherDisplay.wind)?weatherDisplay.wind.toFixed(1)+' kn':'Unavailable')+
+  metric(display?'Max gust in window':'Max daylight gust',weatherDisplay&&valid(weatherDisplay.gust)?weatherDisplay.gust.toFixed(1)+' kn':'Unavailable')+
+  metric(display?'Wind from at low tide':'Wind from near midday',weatherDisplay?direction(weatherDisplay.direction):'Unavailable')+
+  metric(display?'Pressure at low tide':'Pressure near midday',weatherDisplay&&valid(weatherDisplay.pressure)?weatherDisplay.pressure.toFixed(0)+' hPa':'Unavailable')+
+  metric('Pressure change / 3 h',weatherDisplay&&valid(weatherDisplay.trend)?(weatherDisplay.trend>0?'+':'')+weatherDisplay.trend.toFixed(1)+' hPa':'Unavailable')+
   metric('Daylight',clock(day.sunrise)+'–'+clock(day.sunset))+'</div><p class="reason">'+escape(reason)+'</p>'+graph(data,day)+
   '<details><summary>All low tides and daily weather</summary><p>'+escape(day.allLows.map(l=>clock(l.t)+' · '+l.h.toFixed(2)+' m').join(' / ')||'No tide coverage')+'</p>'+hourlyTable(data,day)+'</details></article>';
  }).join('')||'<p>Weather forecast unavailable. Refresh to try again.</p>';
