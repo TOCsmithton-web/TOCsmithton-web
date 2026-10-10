@@ -27,10 +27,10 @@ function model(data){
  function point(t){const h=base(t),c=weather(t);return {t,base:h,adjusted:h!==null&&c?h+c.total:null,c};}
  function plan(low){
   const nominal=low.dt-4*H,b=base(nominal);if(b===null)return null;
-  // Normalise this cycle to the farmer's ideal 1 m low, then match its -4 h height.
-  const target=b+(1-low.height),prev=tides.filter(x=>x.dt<low.dt&&x.type==='High').pop();if(!prev)return null;
-  let last=point(prev.dt),start=null;
-  for(let t=prev.dt+300;t<=low.dt;t=Math.min(t+300,low.dt)){
+  // Match this tide's normal -4 h water level; weather alone shifts the start.
+  const target=b,prev=tides.filter(x=>x.dt<low.dt&&x.type==='High').pop();if(!prev)return null;
+  let last=point(prev.dt),start=last.adjusted!==null&&Math.abs(last.adjusted-target)<1e-9?prev.dt:null;
+  for(let t=prev.dt+300;start===null&&t<=low.dt;t=Math.min(t+300,low.dt)){
    const p=point(t);
    if(last.adjusted!==null&&p.adjusted!==null&&last.adjusted>=target&&p.adjusted<=target&&last.adjusted>p.adjusted){start=last.t+(t-last.t)*(last.adjusted-target)/(last.adjusted-p.adjusted);break;}
    if(t===low.dt)break;last=p;
