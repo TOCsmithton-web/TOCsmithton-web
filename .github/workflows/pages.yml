@@ -48,6 +48,9 @@ jobs:
           PLANNER_AI_MODEL: ${{ secrets.PLANNER_AI_MODEL }}
         run: python3 scripts/build-boomer-planner.py
 
+      - name: Fetch confirmed BOM Smithton rainfall
+        run: python3 scripts/fetch-smithton-rainfall.py
+
       - name: Prepare Pages artifact
         run: |
           touch .nojekyll
