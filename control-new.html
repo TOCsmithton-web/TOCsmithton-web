@@ -104,10 +104,12 @@
 <section class="card" id="nreVerificationCard">
   <div class="card-head"><div><h2>Duck Bay — NRE classification verification</h2><p class="muted">NRE verification is a separate regulatory check and does not replace the environmental controls.</p></div><span id="publicNreBadge" class="badge">NOT VERIFIED</span></div>
   <div class="notice" id="publicNreNotice">
-    <strong>NRE VERIFIED — Duck Bay is OPEN</strong>
+    <strong>NRE VERIFICATION REQUIRED — CHECK NRE WEBSITE</strong>
     <p class="hint" style="margin:6px 0 0">Classification notice: <strong id="publicNreNoticeNumber">—</strong></p>
-    <p class="hint" style="margin:6px 0 0">NRE open from: <span id="publicNreVerifiedAt">—</span></p>
+    <p class="hint" style="margin:6px 0 0">Classification effective from: <span id="publicNreVerifiedAt">—</span></p>
   </div>
+  <p id="publicNreFreshness" class="hint" aria-live="polite">Awaiting current NRE check.</p>
+  <p class="hint">Automatic checks scheduled every 10 minutes, 24/7. This page refreshes every minute. Delayed checks expire after 30 minutes.</p>
   <a href="https://nre.tas.gov.au/SiteAssets/ShellMAP%20Current%20Harvest%20Status.pdf" target="_blank" rel="noopener">Open current NRE Classification Notice</a>
 </section>
 
@@ -213,29 +215,36 @@ function bayUsesRiver(){return !!(currentBay&&currentBay.river_flow_limit!=null)
 function bayUsesSalinity(){return !!(currentBay&&(currentBay.salinity_min!=null||currentBay.salinity_max!=null));}
 function bayRainLimit(){return currentBay&&currentBay.rainfall_7d_limit!=null?Number(currentBay.rainfall_7d_limit):40;}
 function bayName(){return currentBay?currentBay.bay_name:"Duck Bay";}
+var NRE_MAX_AGE_MS=30*60*1000;
+var nreRequestInFlight=false;
+function nreIsFresh(){
+ var checked=Date.parse(nreAutoVerification.checkedAt||"");
+ var age=Date.now()-checked;
+ return nreAutoVerification.available&&isFinite(checked)&&age>=0&&age<NRE_MAX_AGE_MS;
+}
+function syncNreVerification(){
+ nreVerification={verified:nreIsFresh()&&nreAutoVerification.verified===true,
+  noticeNumber:nreAutoVerification.noticeNumber||"",verifiedAt:nreAutoVerification.openFrom||""};
+}
 async function loadNreAuto(){
+ if(nreRequestInFlight)return;
+ nreRequestInFlight=true;
+ var controller=new AbortController(),timeout=setTimeout(function(){controller.abort();},15000);
  try{
-  var r=await fetch("./nre.json?ts="+Date.now(),{cache:"no-store"});
+  // Read the checker's latest commit directly, without waiting for a Pages rebuild.
+  var r=await fetch("https://raw.githubusercontent.com/TOCsmithton-web/TOCsmithton-web/main/nre-classification.json?ts="+Date.now(),{cache:"no-store",signal:controller.signal});
   if(!r.ok)throw new Error("NRE status unavailable");
   var d=await r.json();
-  if(bayName().trim().toLowerCase()==="duck bay"){
-    nreAutoVerification={
-      available:true,
-      verified:!!(d&&d.duck_bay_open===true),
-      noticeNumber:d&&d.notice_number||"",
-      openFrom:d&&d.duck_bay_open_from||""
-    };
-    if(nreAutoVerification.verified){
-      nreVerification={verified:true,noticeNumber:nreAutoVerification.noticeNumber,verifiedAt:nreAutoVerification.openFrom};
-    }else{
-      nreVerification={verified:false,noticeNumber:nreAutoVerification.noticeNumber,verifiedAt:nreAutoVerification.openFrom};
-    }
-  }else{
-    nreAutoVerification={available:false,verified:false,noticeNumber:"",openFrom:""};
-  }
-  updateNreVerificationDisplay();updateBayBanner();
+  if(!d||d.area!=="Duck Bay Harvest Area"||!/^\d{4}\/\d+$/.test(d.classificationNotice||"")||
+     !["OPEN","CLOSED","OPEN (CONDITIONAL)"].includes(d.statusLabel)||!isFinite(Date.parse(d.checkedAt)))throw new Error("Invalid NRE verification");
+  nreAutoVerification={available:true,verified:d.status==="OPEN"&&d.statusLabel==="OPEN"&&d.conditional===false,
+   noticeNumber:d.classificationNotice,openFrom:d.effectiveFrom||"",checkedAt:d.checkedAt,statusLabel:d.statusLabel};
  }catch(e){
   nreAutoVerification.available=false;
+  nreAutoVerification.verified=false;
+ }finally{
+  clearTimeout(timeout);nreRequestInFlight=false;
+  syncNreVerification();updateNreVerificationDisplay();updateBayBanner();
  }
 }
 async function loadMeatTests(){
@@ -245,25 +254,7 @@ async function loadMeatTests(){
   var wanted=bayName().trim().toLowerCase();
   var allRows=r.data||[];
   meatTests=allRows.filter(function(x){return String(x.bay_name||"").trim().toLowerCase()===wanted;}).slice(0,5);
-  if(bayName().trim().toLowerCase()==="duck bay"){
-    if(!nreAutoVerification.available){
-      var nr=allRows.find(function(x){return String(x.bay_name||"").trim().toLowerCase()==="duck bay nre classification";});
-      nreVerification={verified:!!(nr&&String(nr.result||"").toUpperCase()==="VERIFIED"),noticeNumber:"",verifiedAt:""};
-      try{
-        var meta=nr&&nr.notes?JSON.parse(nr.notes):{};
-        nreVerification.noticeNumber=meta.noticeNumber||"";
-        nreVerification.verifiedAt=meta.verifiedAt||nr&&nr.created_at||"";
-      }catch(e){
-        nreVerification.noticeNumber="";
-        nreVerification.verifiedAt=nr&&nr.created_at||"";
-      }
-    }else{
-      nreVerification={verified:nreAutoVerification.verified,noticeNumber:nreAutoVerification.noticeNumber,verifiedAt:nreAutoVerification.openFrom};
-    }
-  }else{
-    nreAutoVerification={available:false,verified:false,noticeNumber:"",openFrom:""};
-    nreVerification={verified:true,noticeNumber:"",verifiedAt:""};
-  }
+  syncNreVerification();
   renderMeatTests();
   updateNreVerificationDisplay();
   updateMeatCompliance();
@@ -365,11 +356,12 @@ function updateNreVerificationDisplay(){
   var isDuck=bayName().trim().toLowerCase()==="duck bay";
   card.style.display=isDuck?"":"none";
   if(!isDuck)return;
-  if(nreAutoVerification.available){
-    nreVerification.verified=nreAutoVerification.verified;
-    nreVerification.noticeNumber=nreAutoVerification.noticeNumber;
-    nreVerification.verifiedAt=nreAutoVerification.openFrom;
-  }
+  syncNreVerification();
+  var checked=Date.parse(nreAutoVerification.checkedAt||"");
+  var stamp=isFinite(checked)?new Date(checked).toLocaleString("en-AU",{timeZone:"Australia/Hobart"}):"No successful check";
+  var fresh=nreIsFresh();
+  el("publicNreFreshness").textContent="Last successful NRE check: "+stamp+" (Tasmania time). "+
+   (!nreAutoVerification.available?"Verification unavailable — check NRE directly.":!fresh?"Verification expired — check NRE directly.":"Check is current. Official status: "+nreAutoVerification.statusLabel+".");
   if(nreVerification.verified){
     badge.textContent="NRE VERIFIED ✓";badge.style.background="#bff3cc";badge.style.color="#176b3b";
     notice.style.background="#effaf2";notice.style.border="2px solid #31a354";
@@ -377,15 +369,16 @@ function updateNreVerificationDisplay(){
     el("publicNreVerifiedAt").textContent=formatNreOpenFrom(nreVerification.verifiedAt);
     notice.querySelector("strong").textContent="NRE VERIFIED — Duck Bay is OPEN";
   }else{
-    badge.textContent="NOT VERIFIED";badge.style.background="#ffd0d0";badge.style.color="#9d2727";
+    badge.textContent=!nreAutoVerification.available?"UNAVAILABLE":!fresh?"OUT OF DATE":nreAutoVerification.statusLabel;badge.style.background="#ffd0d0";badge.style.color="#9d2727";
     notice.style.background="#fff0f0";notice.style.border="2px solid #c62828";
     el("publicNreNoticeNumber").textContent=nreVerification.noticeNumber||"—";
-    el("publicNreVerifiedAt").textContent="—";
-    notice.querySelector("strong").textContent="NRE VERIFICATION REQUIRED — CHECK NRE WEBSITE";
+    el("publicNreVerifiedAt").textContent=formatNreOpenFrom(nreVerification.verifiedAt);
+    notice.querySelector("strong").textContent=fresh?"NRE STATUS: "+nreAutoVerification.statusLabel+" — CHECK NRE NOTICE":"NRE VERIFICATION REQUIRED — CHECK NRE WEBSITE";
   }
 }
 
 function updateBayBanner(){
+  syncNreVerification();
   var sal=Number(state.salinity), min=currentBay&&currentBay.salinity_min!=null?Number(currentBay.salinity_min):null, max=currentBay&&currentBay.salinity_max!=null?Number(currentBay.salinity_max):null;
   var salOk=!bayUsesSalinity()||(state.salinity!==""&&isFinite(sal)&&(min==null||sal>=min)&&(max==null||sal<=max));
   var rain24Ok=isFinite(previous24Total)&&previous24Total<Number(state.rainThreshold||25);
@@ -847,7 +840,10 @@ function init(){
   el("baySelect").addEventListener("change",function(){setTimeout(function(){riverFlow();weather();loadMeatTests();},50);});
   el("notifyBtn").addEventListener("click",async function(){if(state.alertEnabled){state.alertEnabled=false;try{localStorage.setItem("toc-smithton-alert-enabled","false");}catch(e){}updateNotifyButton();status("ALERTS OFF — this device will not receive environmental notifications.",true);return;}if(!("Notification" in window)){status("ALERTS NOT SUPPORTED",false);return;}try{var p=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(p!=="granted"){status("ALERTS BLOCKED — allow notifications in Chrome settings",false);return;}state.alertEnabled=true;try{localStorage.setItem("toc-smithton-alert-enabled","true");}catch(e){}updateNotifyButton();var reg=await navigator.serviceWorker.ready;await reg.showNotification("TOC Smithton Control",{body:"Environmental alerts are enabled on this device. This setting stays on until you turn it off.",tag:"toc-test"});status("ALERTS ON ✓ — this setting stays on until you turn it off.",true);}catch(e){status("ALERT SETUP FAILED",false);}});
 }
-load();render();updateNreVerificationDisplay();init();updateNotifyButton();status("APP READY ✓",true);updateMeatCompliance();loadNreAuto();loadBays();loadCentral();weather();riverFlow();loadMeatTests();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,60000);setInterval(loadMeatTests,10000);
+load();render();updateNreVerificationDisplay();init();updateNotifyButton();status("APP READY ✓",true);updateMeatCompliance();loadNreAuto();loadBays();loadCentral();weather();riverFlow();loadMeatTests();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,60000);setInterval(loadMeatTests,10000);setInterval(loadNreAuto,60000);
+setInterval(function(){updateNreVerificationDisplay();updateBayBanner();},10000);
+document.addEventListener("visibilitychange",function(){if(!document.hidden){updateNreVerificationDisplay();updateBayBanner();loadNreAuto();}});
+window.addEventListener("online",loadNreAuto);
 })();
 </script>
 <script>
