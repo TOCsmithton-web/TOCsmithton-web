@@ -90,7 +90,7 @@
 </section>
 
 <section class="card">
-  <div class="card-head"><div><h2>Hobart Airport rainfall — previous 7 days + next 7 days</h2><p class="muted">Rainfall station 94008 (Hobart Airport). Previous totals are calculated to 9am Hobart time; forecast is from Open-Meteo near the station.</p></div><button id="refreshWeather" class="button secondary" type="button">Refresh</button></div>
+  <div class="card-head"><div><h2>Hobart Airport rainfall — previous 7 days + next 7 days</h2><p class="muted">BOM Hobart Airport, current station 094250 (replacing station 094008). Recorded totals end at 9am. Each projected total combines that day and the preceding six days, using recorded rain where available and forecasts for days not yet recorded.</p></div><button id="refreshWeather" class="button secondary" type="button">Refresh</button></div>
   <div id="forecast" class="forecast"><div class="loading">Loading forecast…</div></div>
 </section>
 
@@ -158,6 +158,7 @@
 
 <footer>TOC Pittwater Control • Hobart Airport rainfall • Coal River at Richmond • NRE Pitt Water criteria</footer>
 
+<script src="./rainfall-rolling.js"></script>
 <script>
 (function(){
 "use strict";
@@ -254,56 +255,25 @@ function updateStatus(){
 }
 function setZone(){
   zoneKey=el("zoneSelect").value;localStorage.setItem("toc-pittwater-zone",zoneKey);updateStatus();loadMeatTests();loadReopen();
+  renderRainfall();
 }
 function isoDate(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 
+var rainfallView=null;
+function renderRainfall(){
+  if(rainfallView)TOCRainfall.render(el("forecast"),rainfallView,{seven:zone.rain7,three:null});
+}
 async function weather(){
-  el("forecast").innerHTML="<div class='loading'>Loading Hobart Airport rainfall…</div>";
+  el("forecast").innerHTML="<div class='loading'>Loading BOM recorded rainfall and forecast…</div>";
   try{
-    var parts=Object.fromEntries(new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Hobart",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date()).filter(function(p){return p.type!=="literal";}).map(function(p){return [p.type,p.value];}));
-    var today=parts.year+"-"+parts.month+"-"+parts.day;
-    var base=new Date(Date.UTC(+parts.year,+parts.month-1,+parts.day));
-    function iso(d){return d.toISOString().slice(0,10);}
-    var end=new Date(base);end.setUTCDate(end.getUTCDate()+1);
-    var start=new Date(base);start.setUTCDate(start.getUTCDate()-8);
-    var histUrl="https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=-42.8367&longitude=147.5048&start_date="+iso(start)+"&end_date="+iso(end)+"&hourly=precipitation&timezone=Australia%2FHobart";
-    var fcUrl="https://api.open-meteo.com/v1/forecast?latitude=-42.8367&longitude=147.5048&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Australia%2FHobart&forecast_days=7";
-    var rs=await Promise.all([fetch(histUrl,{cache:"no-store"}),fetch(fcUrl,{cache:"no-store"})]);
-    if(!rs[0].ok||!rs[1].ok)throw Error("weather");
-    var h=await rs[0].json(),fc=await rs[1].json();
-    var start7=new Date(base);start7.setUTCDate(start7.getUTCDate()-7);
-    var start3=new Date(base);start3.setUTCDate(start3.getUTCDate()-3);
-    var start24=new Date(base);start24.setUTCDate(start24.getUTCDate()-1);
-    var end9=today+"T09:00";
-    var start7k=iso(start7)+"T09:00",start3k=iso(start3)+"T09:00",start24k=iso(start24)+"T09:00";
-    rain7=0;rain3=0;rain24=0;var byDate={};
-    h.hourly.time.forEach(function(t,i){
-      var x=Number(h.hourly.precipitation[i]||0),k=t.replace(" ","T").slice(0,16);
-      if(k>start7k&&k<=end9)rain7+=x;
-      if(k>start3k&&k<=end9)rain3+=x;
-      if(k>start24k&&k<=end9)rain24+=x;
-      var d=t.slice(0,10);byDate[d]=(byDate[d]||0)+x;
-    });
-    var future=fc.daily.time.map(function(d,i){
-      var total=Number(fc.daily.precipitation_sum[i]||0);
-      for(var k=1;k<=6;k++){
-        if(i-k>=0)total+=Number(fc.daily.precipitation_sum[i-k]||0);
-        else{var dd=new Date(d+"T00:00:00");dd.setDate(dd.getDate()-k);total+=Number(byDate[iso(dd)]||0);}
-      }
-      return {date:d,rain:Number(fc.daily.precipitation_sum[i]||0),total:total,min:fc.daily.temperature_2m_min[i],max:fc.daily.temperature_2m_max[i]};
-    });
-    updateStatus();
-    el("forecast").innerHTML="<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+rain7.toFixed(1)+" mm</div><div class='range'>Previous 24h: "+rain24.toFixed(1)+" mm • Previous 3 days: "+rain3.toFixed(1)+" mm</div></div>"+
-      future.map(function(x){
-        var over=x.total>=zone.rain7;
-        var c=over?"#c62828":(x.total>=31?"#ffb3b3":(x.total>=21?"#ff9800":(x.total>=11?"#90ee90":"#39ff14")));
-        var tc=over?"#fff":(x.total>=21?"#4a2500":"#073b00");
-        return "<div class='day forecast-day' style='background:"+c+";color:"+tc+";border:2px solid "+c+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+x.total.toFixed(1)+" mm</strong></div></div>";
-      }).join("");
+    rainfallView=await TOCRainfall.load("./pittwater-rainfall.json","https://api.open-meteo.com/v1/forecast?latitude=-42.83&longitude=147.51&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Australia%2FHobart&forecast_days=7");
+    rain7=rainfallView.seven;rain3=rainfallView.three;
+    rain24=rainfallView.one;
+    updateStatus();renderRainfall();
     checkAlerts();
   }catch(e){
-    rain7=rain3=rain24=NaN;updateStatus();
-    el("forecast").innerHTML="<div class='loading'>Rainfall unavailable — tap Refresh.</div>";
+    rainfallView=null;rain7=rain3=rain24=NaN;updateStatus();
+    el("forecast").innerHTML="<div class='loading'>Recorded rainfall or forecast unavailable — refresh to retry.</div>";
   }
 }
 

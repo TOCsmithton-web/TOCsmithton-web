@@ -49,7 +49,10 @@ jobs:
         run: python3 scripts/build-boomer-planner.py
 
       - name: Fetch confirmed BOM Smithton rainfall
-        run: python3 scripts/fetch-smithton-rainfall.py
+        run: |
+          python3 scripts/fetch-smithton-rainfall.py
+          python3 scripts/fetch-smithton-rainfall.py IDCJDW7061 094254 "Dunalley (Stroud Point)" boomer-rainfall.json
+          python3 scripts/fetch-smithton-rainfall.py IDCJDW7062 094250 "Hobart Airport" pittwater-rainfall.json
 
       - name: Prepare Pages artifact
         run: |

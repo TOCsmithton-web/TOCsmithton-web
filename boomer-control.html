@@ -129,7 +129,7 @@
 <section class="card">
   <div class="card-head">
     <div><h2>Dunalley (Stroud Point) rainfall — previous 7 days + next 7 days</h2>
-    <p class="muted">Rainfall station 94254. Previous totals are calculated to 9am Hobart time; forecast is from Open-Meteo at the station location.</p></div>
+    <p class="muted">BOM Dunalley (Stroud Point), station 094254. Recorded totals end at 9am. Each projected total combines that day and the preceding six days, using recorded rain where available and forecasts for days not yet recorded.</p></div>
   </div>
   <div id="forecast" class="forecast"><div class="loading">Loading rainfall…</div></div>
 </section>
@@ -158,6 +158,7 @@
 
 <footer>TOC Boomer Bay Control • Dunalley (Stroud Point) rainfall • ShellMAP criteria</footer>
 
+<script src="./rainfall-rolling.js"></script>
 <script>
 "use strict";
 
@@ -166,7 +167,7 @@ var zoneData={
   narrows:{name:"Zone Narrows",min:27,r3:35,r7:60},
   east:{name:"East",min:29,r3:30,r7:60}
 };
-var zoneKey="little",zone=zoneData.little,rain3=0,rain7=0,biotoxinCurrent=false;
+var zoneKey="little",zone=zoneData.little,rain3=NaN,rain7=NaN,biotoxinCurrent=false;
 var salinity={little:"",narrows:"",east:""};
 
 function el(id){return document.getElementById(id);}
@@ -234,7 +235,7 @@ function setBannerCard(id,k){
   node.className="boomer-zone-status "+(open?"open":"closed");
   el(id).querySelector(".zone-state").textContent=open?"OPEN":"CLOSED";
   el(id).querySelector(".zone-detail").innerHTML=(hasSal
-    ? "Salinity "+Number(salinity[k]).toFixed(1)+" • 3d "+rain3.toFixed(1)+" • 7d "+rain7.toFixed(1)
+    ? "Salinity "+Number(salinity[k]).toFixed(1)+" • 3d "+(isFinite(rain3)?rain3.toFixed(1):"Unavailable")+" • 7d "+(isFinite(rain7)?rain7.toFixed(1):"Unavailable")
     : "Salinity not entered")+"<br><a href=\"https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas\" target=\"_blank\" rel=\"noopener\" style=\"color:#fff;text-decoration:underline\">CHECK NRE CLASSIFICATION BEFORE HARVESTING</a>";
 }
 
@@ -272,10 +273,10 @@ function updateSelectedStatus(){
 var c1=el("envSalinity"),c2=el("envRain3"),c3=el("envRain7");
 c1.className="env-control "+(okSal?"good":"bad"); c2.className="env-control "+(ok3?"good":"bad"); c3.className="env-control "+(ok7?"good":"bad");
 c1.textContent="Salinity: "+(sal?Number(sal).toFixed(1)+" ppt":"NOT ENTERED")+" • Limit ≥ "+zone.min+" ppt";
-c2.textContent="Previous 3-day rainfall: "+rain3.toFixed(1)+" mm • Limit < "+zone.r3+" mm";
-c3.textContent="Previous 7-day rainfall: "+rain7.toFixed(1)+" mm • Limit < "+zone.r7+" mm";
-  el("rain3Value").textContent=rain3.toFixed(1);
-  el("rain7Value").textContent=rain7.toFixed(1);
+c2.textContent="Previous 3-day rainfall: "+(isFinite(rain3)?rain3.toFixed(1):"Unavailable")+" mm • Limit < "+zone.r3+" mm";
+c3.textContent="Previous 7-day rainfall: "+(isFinite(rain7)?rain7.toFixed(1):"Unavailable")+" mm • Limit < "+zone.r7+" mm";
+  el("rain3Value").textContent=(isFinite(rain3)?rain3.toFixed(1):"Unavailable");
+  el("rain7Value").textContent=(isFinite(rain7)?rain7.toFixed(1):"Unavailable");
   el("statusText").textContent=open?"ENVIRONMENTAL CONDITIONS OK":"ENVIRONMENTAL CONTROL ALERT";
   el("statusDot").className="status-dot "+(open?"good":"bad");
   el("lastUpdated").textContent=(liveSensorTimes[zoneKey]?"Live salinity reading: "+liveSensorTimes[zoneKey]+" • ":"")+"Sensor status checked "+(liveSensorLastCheck||"—");
@@ -285,70 +286,26 @@ c3.textContent="Previous 7-day rainfall: "+rain7.toFixed(1)+" mm • Limit < "+z
 function setZone(){
   zoneKey=el("zoneSelect").value;
   updateSelectedStatus();
+  renderRainfall();
 }
 
+var rainfallView=null;
+function renderRainfall(){
+  if(rainfallView)TOCRainfall.render(el("forecast"),rainfallView,{seven:zone.r7,three:zone.r3});
+}
 async function weather(){
-  el("forecast").innerHTML="<div class='loading'>Loading Dunalley rainfall…</div>";
+  el("forecast").innerHTML="<div class='loading'>Loading BOM recorded rainfall and forecast…</div>";
   try{
-    var parts=Object.fromEntries(
-      new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Hobart",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"})
-      .formatToParts(new Date()).filter(function(p){return p.type!=="literal";}).map(function(p){return [p.type,p.value];})
-    );
-    var today=parts.year+"-"+parts.month+"-"+parts.day;
-    var base=new Date(Date.UTC(+parts.year,+parts.month-1,+parts.day));
-    function iso(d){return d.toISOString().slice(0,10);}
-    var end=new Date(base);end.setUTCDate(end.getUTCDate()+1);
-    var start=new Date(base);start.setUTCDate(start.getUTCDate()-8);
+    rainfallView=await TOCRainfall.load("./boomer-rainfall.json","https://api.open-meteo.com/v1/forecast?latitude=-42.9017&longitude=147.7894&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Australia%2FHobart&forecast_days=7");
+    rain7=rainfallView.seven;rain3=rainfallView.three;
 
-    var histUrl="https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=-42.9017&longitude=147.7894&start_date="+iso(start)+"&end_date="+iso(end)+"&hourly=precipitation&timezone=Australia%2FHobart";
-    var fcUrl="https://api.open-meteo.com/v1/forecast?latitude=-42.9017&longitude=147.7894&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=Australia%2FHobart&forecast_days=7";
-    var rs=await Promise.all([fetch(histUrl,{cache:"no-store"}),fetch(fcUrl,{cache:"no-store"})]);
-    if(!rs[0].ok||!rs[1].ok)throw Error("weather");
+    updateSelectedStatus();renderRainfall();
 
-    var h=await rs[0].json(),f=await rs[1].json();
-    var end9=today+"T09:00";
-    var start7=new Date(base);start7.setUTCDate(start7.getUTCDate()-7);
-    var start7k=iso(start7)+"T09:00";
-    var start3=new Date(base);start3.setUTCDate(start3.getUTCDate()-3);
-    var start3k=iso(start3)+"T09:00";
-    rain3=0;rain7=0;var byDate={};
-
-    h.hourly.time.forEach(function(t,i){
-      var x=Number(h.hourly.precipitation[i]||0);
-      var k=t.replace(" ","T").slice(0,16);
-      if(k>start3k&&k<=end9)rain3+=x;
-      if(k>start7k&&k<=end9)rain7+=x;
-      var d=t.slice(0,10);
-      byDate[d]=(byDate[d]||0)+x;
-    });
-
-    var future=f.daily.time.map(function(d,i){
-      var total=Number(f.daily.precipitation_sum[i]||0);
-      for(var k=1;k<=6;k++){
-        if(i-k>=0)total+=Number(f.daily.precipitation_sum[i-k]||0);
-        else{
-          var dd=new Date(d+"T00:00:00");
-          dd.setDate(dd.getDate()-k);
-          total+=Number(byDate[iso(dd)]||0);
-        }
-      }
-      return {date:d,rain:Number(f.daily.precipitation_sum[i]||0),total:total,min:f.daily.temperature_2m_min[i],max:f.daily.temperature_2m_max[i]};
-    });
-
-    el("forecast").innerHTML=
-      "<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='rain'>"+rain7.toFixed(1)+" mm</div><div class='range'>Previous 3 days: "+rain3.toFixed(1)+" mm</div></div>"+
-      future.map(function(x){
-        var level=x.total>=60?"over":"under";
-        return "<div class='day forecast-day "+level+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+x.rain.toFixed(1)+" mm</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='seven-day-total'>7-day total: <strong>"+x.total.toFixed(1)+" mm</strong></div></div>";
-      }).join("");
-
-    updateSelectedStatus();
   }catch(e){
-    el("forecast").innerHTML="<div class='loading'>Rainfall unavailable — tap Refresh/reload.</div>";
-    updateBanner();
+    rainfallView=null;rain7=rain3=NaN;updateSelectedStatus();
+    el("forecast").innerHTML="<div class='loading'>Recorded rainfall or forecast unavailable — refresh to retry.</div>";
   }
 }
-
 
 async function biotoxin(){
   try{
@@ -459,6 +416,7 @@ el("refreshWeather").onclick=weather;
 loadSalinity().then(function(){setZone();});
 loadSalinityHistory();
 weather();
+setInterval(weather,3600000);
 setInterval(function(){loadSalinity().then(function(){setZone();});loadSalinityHistory();},60000);
 meat();
 biotoxin();
