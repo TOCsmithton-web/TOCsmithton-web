@@ -60,7 +60,7 @@ jobs:
           status_label = status.group(1)
           if "CONDITIONAL" in status_label:
               print("Conditional classification detected; requires manual review.")
-          open_state = status_label.startswith("OPEN")
+          open_state = status_label == "OPEN"
           effective = re.search(r"Duck Bay Harvest Area is\s+(OPEN|CLOSED).*?from\s+([0-9]{4}hrs\s+[0-9]{2}/[0-9]{2}/[0-9]{4})", block)
 
           data = {
