@@ -42,8 +42,8 @@
   <div class="metric-row">
     <div><span id="salinityLabel">Salinity</span><strong id="salinityValue">—</strong><small id="salinityUnit">ppt</small></div>
     <div><span id="rain24Label">Previous 24h rainfall</span><strong id="rain24Value">—</strong><small id="rain24Unit">mm</small></div>
-    <div><span id="rain3Label">Previous 3-day rainfall</span><strong id="rain3Value">—</strong><small>mm</small></div>
-    <div><span id="rain7Label">Previous 7-day rainfall</span><strong id="rainValue">—</strong><small>mm</small></div>
+    <div><span id="rain3Label">Live 3-day rainfall</span><strong id="rain3Value">—</strong><small>mm</small></div>
+    <div><span id="rain7Label">Live 7-day rainfall</span><strong id="rainValue">—</strong><small>mm</small></div>
   </div>
   <p id="lastUpdated" class="muted">No readings entered yet.</p>
   <div id="saveStatus" aria-live="polite"></div>
@@ -81,7 +81,7 @@
 </div>
 </section>
 
-<section class="card"><div class="card-head"><div><h2>Smithton rainfall — previous 7 days + next 7 days</h2><p class="muted">Previous 7 days: confirmed BOM rainfall to 9am. Each projected total drops the oldest recorded day and adds the next forecast: 6 recorded + 1 forecast, down to 0 recorded + 7 forecasts. BOM dates refer to rainfall ending at 9am; forecasts are calendar-day planning estimates.</p></div><button id="refreshWeather" class="button secondary" type="button">Refresh</button></div>
+<section class="card"><div class="card-head"><div><h2>Smithton rainfall — live total + 7-day outlook</h2><p class="muted">Live total: 6 completed BOM rainfall days + observed rain in the current 9am-to-9am period. Forecast cards end at 9am on the date shown and add only the remaining forecast rainfall. Updates follow BOM observations; partial-hour forecasts are prorated.</p></div><button id="refreshWeather" class="button secondary" type="button">Refresh</button></div>
 <div id="forecast" class="forecast"><div class="loading">Loading forecast…</div></div>
 </section>
 
@@ -500,7 +500,7 @@ function checkAlerts(){
   if(low&&!state.lastAlerts.salinity)alertNow("SALINITY ALERT","Salinity is "+sal.toFixed(1)+" ppt — below minimum.","salinity-alert");
   if(high24&&!state.lastAlerts.rain24)alertNow("24-HOUR RAINFALL ALERT","Previous 24-hour rainfall is "+previous24Total.toFixed(1)+" mm.","rain24-alert");
   if(high3&&!state.lastAlerts.rain3)alertNow("3-DAY RAINFALL ALERT","Duck Bay 3-day rainfall is "+previous3Total.toFixed(1)+" mm — management limit is 25 mm.","rain3-alert");
-  if(high7&&!state.lastAlerts.rain7)alertNow("7-DAY RAINFALL ALERT","Previous 7-day rainfall is "+previous7Total.toFixed(1)+" mm.","rain7-alert");
+  if(high7&&!state.lastAlerts.rain7)alertNow("7-DAY RAINFALL ALERT","Live 7-day rainfall is "+previous7Total.toFixed(1)+" mm.","rain7-alert");
   state.lastAlerts={salinity:low,rain24:high24,rain3:high3,rain7:high7};save();
 }
 function render(){
@@ -535,7 +535,7 @@ function render(){
   el("rain3Value").textContent=bayName()==="Duck Bay"?previous3Total.toFixed(1):"N/A";
   el("salinityLabel").textContent=salRequired?"Salinity":"Salinity (not required)";
   el("rain24Label").textContent="Previous 24h rainfall";
-  el("rain3Label").textContent=bayName()==="Duck Bay"?"Previous 3-day rainfall":"3-day rainfall (not required)";
+  el("rain3Label").textContent=bayName()==="Duck Bay"?"Live 3-day rainfall":"3-day rainfall (not required)";
   var salOk=!salRequired||(state.salinity!==""&&isFinite(Number(state.salinity))&&(currentBay.salinity_min==null||Number(state.salinity)>=Number(currentBay.salinity_min))&&(currentBay.salinity_max==null||Number(state.salinity)<=Number(currentBay.salinity_max)));
   var rain3Ok=bayName()==="Duck Bay" ? (isFinite(previous3Total)&&previous3Total<DUCK_RAIN3_LIMIT) : true;
   var rain7Ok=isFinite(previous7Total)&&previous7Total<limit;
@@ -590,7 +590,7 @@ function isoDate(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2
 async function weather(){
   var box=el("forecast");box.innerHTML="<div class='loading'>Loading Smithton rainfall…</div>";
   try{
-    var url="https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&hourly=precipitation&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&past_days=8&forecast_days=7&timezone=Australia%2FHobart";
+    var url="https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&hourly=precipitation&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&past_days=2&forecast_days=8&timeformat=unixtime&timezone=Australia%2FHobart";
     var response=await fetch(url,{cache:"no-store"});
     if(!response.ok)throw new Error("weather service "+response.status);
     var data=await response.json();
@@ -607,50 +607,65 @@ async function weather(){
     if(!bomResponse.ok)throw new Error("BOM recorded rainfall unavailable");
     var bom=await bomResponse.json();
     var observedByDate=bom.daily||{};
-    var latest=bom.latest_date;
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(latest)||latest>todayKey||latest<shiftDate(todayKey,-1))throw new Error("BOM recorded rainfall is out of date");
+    var live=bom.live;
+    if(!live||!validRain(live.rain_since_9am))throw new Error("BOM live rainfall unavailable");
+    var observedAt=Date.parse(live.observed_at),periodEnd=Date.parse(live.period_end);
+    if(!isFinite(observedAt)||Date.now()<observedAt||Date.now()-observedAt>90*60000||Date.now()>periodEnd+30*60000)throw new Error("BOM live rainfall is out of date");
+    var latest=live.period_start.slice(0,10);
     function recordedTotal(days){
       var total=0;
       for(var k=0;k<days;k++){
         var value=observedByDate[shiftDate(latest,-k)];
-        if(!validRain(value))throw new Error("Missing BOM rainfall day");
+        if(!validRain(value))throw new Error("Missing completed BOM rainfall day");
         total+=value;
       }
       return total;
     }
-    previous7Total=recordedTotal(7);
-    previous3Total=recordedTotal(3);
+    var sixRecorded=recordedTotal(6);
+    previous7Total=sixRecorded+live.rain_since_9am;
+    previous3Total=recordedTotal(2)+live.rain_since_9am;
     previous24Total=recordedTotal(1);
-    var forecastByDate={};
-    var future=data.daily.time.map(function(date,i){
-      var rain=data.daily.precipitation_sum[i];
-      forecastByDate[date]=rain;
-      return {date:date,rain:validRain(rain)?rain:NaN,max:data.daily.temperature_2m_max[i],min:data.daily.temperature_2m_min[i]};
-    }).filter(function(x){return x.date>=todayKey;}).slice(0,7);
-    function projectedTotal(day,days){
-      var total=0, recorded=0, forecast=0;
-      var dayIndex=Math.round((Date.parse(day.date)-Date.parse(todayKey))/86400000);
+    function forecastBetween(start,end){
+      var total=0,covered=0;
+      for(var i=0;i<data.hourly.time.length;i++){
+        var hourEnd=data.hourly.time[i]*1000;
+        var overlap=Math.max(0,Math.min(end,hourEnd)-Math.max(start,hourEnd-3600000));
+        if(!overlap)continue;
+        var rain=data.hourly.precipitation[i];
+        if(!validRain(rain))return NaN;
+        total+=rain*overlap/3600000;covered+=overlap;
+      }
+      return Math.abs(covered-(end-start))<1000?total:NaN;
+    }
+    var future=live.forecast_period_ends.map(function(end,i){
+      var endMs=Date.parse(end),startMs=i===0?observedAt:Date.parse(live.forecast_period_ends[i-1]);
+      var remaining=forecastBetween(startMs,endMs);
+      var date=end.slice(0,10);
+      var di=data.daily.time.findIndex(function(t){return new Intl.DateTimeFormat("en-CA",{timeZone:"Australia/Hobart",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(t*1000))===date;});
+      return {date:date,rain:remaining+(i===0?live.rain_since_9am:0),remaining:remaining,
+        max:di>=0?data.daily.temperature_2m_max[di]:NaN,min:di>=0?data.daily.temperature_2m_min[di]:NaN};
+    });
+    function projectedTotal(index,days){
+      var total=0,recorded=0,forecast=0;
       for(var k=0;k<days;k++){
-        var index=dayIndex-k, value;
-        // Forecast cards form one continuous series after the latest BOM records.
-        // Never replace a displayed forecast with a same-date 9am observation.
-        if(index>=0){value=forecastByDate[shiftDate(todayKey,index)];forecast++;}
-        else {value=observedByDate[shiftDate(latest,index+1)];recorded++;}
+        var position=index-k,value;
+        if(position>=0){value=future[position].rain;forecast++;}
+        else{value=observedByDate[shiftDate(latest,position+1)];recorded++;}
         if(!validRain(value))return {total:NaN,recorded:recorded,forecast:forecast};
         total+=value;
       }
       return {total:total,recorded:recorded,forecast:forecast};
     }
-    future.forEach(function(x){
-      var seven=projectedTotal(x,7),three=projectedTotal(x,3);
+    future.forEach(function(x,i){
+      var seven=projectedTotal(i,7),three=projectedTotal(i,3);
       x.sevenDayTotal=seven.total;x.threeDayTotal=three.total;
-      x.rainBreakdown=seven.recorded+" recorded + "+seven.forecast+" forecast days";
+      x.rainBreakdown=seven.recorded+" completed + "+seven.forecast+" projected days"+(i===0?" (includes observed rain)":"");
     });
     function mm(v){return isFinite(v)?v.toFixed(1)+" mm":"Unavailable";}
 
     save();render();checkAlerts();
     box.innerHTML=
-      "<div class='day observed-summary'><div class='date'>Previous 7 days to 9am</div><div class='range'>"+shiftDate(latest,-6)+" to "+latest+"</div><div class='rain'>"+previous7Total.toFixed(1)+" mm</div><div class='range'>Previous 3 days: "+previous3Total.toFixed(1)+" mm • BOM recorded rainfall</div></div>"+
+      "<div class='day observed-summary'><div class='date'>Live 7-day rainfall</div><div class='range'>6 completed days + current period to 9am</div><div class='rain'>"+mm(previous7Total)+"</div><div class='range'>"+mm(sixRecorded)+" recorded + "+mm(live.rain_since_9am)+" observed since 9am "+latest+"</div><div class='range'>BOM observation: "+new Date(observedAt).toLocaleString("en-AU",{timeZone:"Australia/Hobart"})+"</div><div class='range'>Live 3-day total: "+mm(previous3Total)+"</div></div>"+
       future.map(function(x){
         var sevenDay=x.sevenDayTotal;
         var threeDay=x.threeDayTotal;
@@ -681,7 +696,7 @@ async function weather(){
         var combinedRainfallAlert=bayName().trim().toLowerCase()==="duck bay" && (sevenDay>=bayRainLimit() || threeDay>=DUCK_RAIN3_LIMIT);
         if(!isFinite(sevenDay)||!isFinite(threeDay)){rainfallColour="#e5e7eb";rainfallText="#374151";}
         var level=combinedRainfallAlert?"over":"under";
-        return "<div class='day forecast-day "+level+"' style='background:"+(combinedRainfallAlert?"#c62828":rainfallColour)+";color:"+(combinedRainfallAlert?"#fff":rainfallText)+";border:2px solid "+(combinedRainfallAlert?"#c62828":rainfallColour)+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+"</div><div class='rain'>"+mm(x.rain)+"</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='range'>"+x.rainBreakdown+"</div><div class='seven-day-total'>Projected 7-day total: <strong>"+mm(sevenDay)+"</strong></div><div style='margin-top:7px;padding:5px 6px;border-radius:6px;background:"+(combinedRainfallAlert?"#c62828":threeColour)+";color:"+(combinedRainfallAlert?"#fff":threeText)+";font-weight:700;font-size:11px;border:1px solid rgba(0,0,0,.12)'>Projected 3-day total: <strong>"+mm(threeDay)+"</strong> / 25 mm limit</div></div>";
+        return "<div class='day forecast-day "+level+"' style='background:"+(combinedRainfallAlert?"#c62828":rainfallColour)+";color:"+(combinedRainfallAlert?"#fff":rainfallText)+";border:2px solid "+(combinedRainfallAlert?"#c62828":rainfallColour)+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+" • to 9am</div><div class='rain'>"+mm(x.rain)+"</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='range'>"+x.rainBreakdown+"</div><div class='seven-day-total'>Projected 7-day total: <strong>"+mm(sevenDay)+"</strong></div><div style='margin-top:7px;padding:5px 6px;border-radius:6px;background:"+(combinedRainfallAlert?"#c62828":threeColour)+";color:"+(combinedRainfallAlert?"#fff":threeText)+";font-weight:700;font-size:11px;border:1px solid rgba(0,0,0,.12)'>Projected 3-day total: <strong>"+mm(threeDay)+"</strong> / 25 mm limit</div></div>";
       }).join("");
   }catch(e){
     previous7Total=NaN;previous3Total=NaN;previous24Total=NaN;
@@ -840,7 +855,7 @@ function init(){
   el("baySelect").addEventListener("change",function(){setTimeout(function(){riverFlow();weather();loadMeatTests();},50);});
   el("notifyBtn").addEventListener("click",async function(){if(state.alertEnabled){state.alertEnabled=false;try{localStorage.setItem("toc-smithton-alert-enabled","false");}catch(e){}updateNotifyButton();status("ALERTS OFF — this device will not receive environmental notifications.",true);return;}if(!("Notification" in window)){status("ALERTS NOT SUPPORTED",false);return;}try{var p=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(p!=="granted"){status("ALERTS BLOCKED — allow notifications in Chrome settings",false);return;}state.alertEnabled=true;try{localStorage.setItem("toc-smithton-alert-enabled","true");}catch(e){}updateNotifyButton();var reg=await navigator.serviceWorker.ready;await reg.showNotification("TOC Smithton Control",{body:"Environmental alerts are enabled on this device. This setting stays on until you turn it off.",tag:"toc-test"});status("ALERTS ON ✓ — this setting stays on until you turn it off.",true);}catch(e){status("ALERT SETUP FAILED",false);}});
 }
-load();render();updateNreVerificationDisplay();init();updateNotifyButton();status("APP READY ✓",true);updateMeatCompliance();loadNreAuto();loadBays();loadCentral();weather();riverFlow();loadMeatTests();setInterval(loadCentral,30000);setInterval(weather,3600000);setInterval(riverFlow,60000);setInterval(loadMeatTests,10000);setInterval(loadNreAuto,60000);
+load();render();updateNreVerificationDisplay();init();updateNotifyButton();status("APP READY ✓",true);updateMeatCompliance();loadNreAuto();loadBays();loadCentral();weather();riverFlow();loadMeatTests();setInterval(loadCentral,30000);setInterval(weather,300000);setInterval(riverFlow,60000);setInterval(loadMeatTests,10000);setInterval(loadNreAuto,60000);
 setInterval(function(){updateNreVerificationDisplay();updateBayBanner();},10000);
 document.addEventListener("visibilitychange",function(){if(!document.hidden){updateNreVerificationDisplay();updateBayBanner();loadNreAuto();}});
 window.addEventListener("online",loadNreAuto);
