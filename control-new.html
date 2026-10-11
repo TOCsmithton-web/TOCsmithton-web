@@ -81,7 +81,7 @@
 </div>
 </section>
 
-<section class="card"><div class="card-head"><div><h2>Smithton rainfall — previous 7 days + next 7 days</h2><p class="muted">Previous 7 days: confirmed BOM rainfall to 9am. Each forecast total includes that day plus the preceding 6 days, using BOM records where available and forecasts for days not yet recorded. BOM dates refer to rainfall ending at 9am; forecasts are calendar-day planning estimates.</p></div><button id="refreshWeather" class="button secondary" type="button">Refresh</button></div>
+<section class="card"><div class="card-head"><div><h2>Smithton rainfall — previous 7 days + next 7 days</h2><p class="muted">Previous 7 days: confirmed BOM rainfall to 9am. Each projected total drops the oldest recorded day and adds the next forecast: 6 recorded + 1 forecast, down to 0 recorded + 7 forecasts. BOM dates refer to rainfall ending at 9am; forecasts are calendar-day planning estimates.</p></div><button id="refreshWeather" class="button secondary" type="button">Refresh</button></div>
 <div id="forecast" class="forecast"><div class="loading">Loading forecast…</div></div>
 </section>
 
@@ -635,12 +635,14 @@ async function weather(){
       return {date:date,rain:validRain(rain)?rain:NaN,max:data.daily.temperature_2m_max[i],min:data.daily.temperature_2m_min[i]};
     }).filter(function(x){return x.date>=todayKey;}).slice(0,7);
     function projectedTotal(day,days){
-      var total=day.rain, recorded=0, forecast=1;
-      for(var k=1;k<days;k++){
-        var date=shiftDate(day.date,-k), value=observedByDate[date];
-        if(validRain(value)){recorded++;}
-        else if(date>latest){value=forecastByDate[date];forecast++;}
-        else {value=NaN;}
+      var total=0, recorded=0, forecast=0;
+      var dayIndex=Math.round((Date.parse(day.date)-Date.parse(todayKey))/86400000);
+      for(var k=0;k<days;k++){
+        var index=dayIndex-k, value;
+        // Forecast cards form one continuous series after the latest BOM records.
+        // Never replace a displayed forecast with a same-date 9am observation.
+        if(index>=0){value=forecastByDate[shiftDate(todayKey,index)];forecast++;}
+        else {value=observedByDate[shiftDate(latest,index+1)];recorded++;}
         if(!validRain(value))return {total:NaN,recorded:recorded,forecast:forecast};
         total+=value;
       }

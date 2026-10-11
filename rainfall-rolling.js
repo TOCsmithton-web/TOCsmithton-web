@@ -9,8 +9,18 @@ function calculate(bom,fc,today){
   function recorded(n){var total=0;for(var k=0;k<n;k++){var v=records[shift(latest,-k)];if(!valid(v))throw Error('Missing recorded day');total+=v;}return total;}
   if(!fc.daily||!Array.isArray(fc.daily.time))throw Error('Missing forecast');
   fc.daily.time.forEach(function(d,i){forecasts[d]=fc.daily.precipitation_sum[i];});
-  function projected(day,n){var total=forecasts[day],observed=0;if(!valid(total))throw Error('Missing forecast day');
-    for(var k=1;k<n;k++){var date=shift(day,-k),value=records[date];if(valid(value))observed++;else if(date>latest)value=forecasts[date];if(!valid(value))throw Error('Missing rainfall day');total+=value;}
+  function projected(day,n){
+    var total=0,observed=0;
+    var dayIndex=Math.round((Date.parse(day)-Date.parse(today))/86400000);
+    for(var k=0;k<n;k++){
+      var index=dayIndex-k,value;
+      // Append forecasts to the latest recorded sequence; 9am dates must not
+      // replace any of the displayed calendar-day forecasts.
+      if(index>=0)value=forecasts[shift(today,index)];
+      else {value=records[shift(latest,index+1)];observed++;}
+      if(!valid(value))throw Error('Missing rainfall day');
+      total+=value;
+    }
     return {total:total,recorded:observed,forecast:n-observed};
   }
   var future=fc.daily.time.map(function(d,i){return {date:d,rain:forecasts[d],seven:projectedIfFuture(d,7),three:projectedIfFuture(d,3),min:fc.daily.temperature_2m_min[i],max:fc.daily.temperature_2m_max[i]};}).filter(function(x){return x.date>=today;}).slice(0,7);

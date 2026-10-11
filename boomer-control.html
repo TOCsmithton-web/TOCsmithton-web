@@ -129,7 +129,7 @@
 <section class="card">
   <div class="card-head">
     <div><h2>Dunalley (Stroud Point) rainfall — previous 7 days + next 7 days</h2>
-    <p class="muted">BOM Dunalley (Stroud Point), station 094254. Recorded totals end at 9am. Each projected total combines that day and the preceding six days, using recorded rain where available and forecasts for days not yet recorded.</p></div>
+    <p class="muted">BOM Dunalley (Stroud Point), station 094254. Recorded totals end at 9am. Each projected total drops the oldest recorded day and adds the next forecast: 6 recorded + 1 forecast, down to 0 recorded + 7 forecasts.</p></div>
   </div>
   <div id="forecast" class="forecast"><div class="loading">Loading rainfall…</div></div>
 </section>
@@ -158,7 +158,7 @@
 
 <footer>TOC Boomer Bay Control • Dunalley (Stroud Point) rainfall • ShellMAP criteria</footer>
 
-<script src="./rainfall-rolling.js"></script>
+<script src="./rainfall-rolling.js?v=20261011-rolling2"></script>
 <script>
 "use strict";
 
