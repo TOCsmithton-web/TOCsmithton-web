@@ -21,7 +21,8 @@
 .env-control.good{background:#bff3cc;border-color:#31a354;color:#176b3b}
 .env-control.bad{background:#ffd0d0;border-color:#c62828;color:#9d2727}
 @media(max-width:700px){.env-control-grid{grid-template-columns:1fr}}
-</style></head>
+</style><script src="./environmental-alerts.js?v=20261013"></script>
+</head>
 <body>
 <div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite" style="padding:0;overflow:hidden">
   <div class="pitt-zone-banner">
@@ -354,24 +355,24 @@ async function loadReopen(){
   }catch(e){el("reopenBadge").textContent="UNAVAILABLE";el("reopenStatus").textContent="48-hour salinity records unavailable.";}
 }
 
-function updateNotify(){el("notifyBtn").textContent=alertEnabled?"Alerts ON ✓":"Enable alerts";}
-async function enableAlerts(){
-  if(alertEnabled){alertEnabled=false;localStorage.setItem("toc-pittwater-alert-enabled","false");updateNotify();return;}
-  if(!("Notification" in window)){el("saveStatus").textContent="Alerts not supported on this device.";return;}
-  var p=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;if(p!=="granted"){el("saveStatus").textContent="Notifications are blocked in Chrome settings.";return;}
-  alertEnabled=true;localStorage.setItem("toc-pittwater-alert-enabled","true");updateNotify();try{var reg=await navigator.serviceWorker.ready;await reg.showNotification("TOC Pittwater Control",{body:"Environmental alerts are enabled.",tag:"pittwater-test"});}catch(e){}
-}
-function alertNow(title,body,tag){if(!alertEnabled||!("Notification"in window)||Notification.permission!=="granted")return;if("serviceWorker"in navigator)navigator.serviceWorker.ready.then(function(r){r.showNotification(title,{body:body,tag:tag});}).catch(function(){});}
-function checkAlerts(){
-  if(isFinite(rain7)&&rain7>=zone.rain7)alertNow("7-DAY RAINFALL ALERT","Pittwater "+zone.name+" rainfall is "+rain7.toFixed(1)+" mm — closure criterion is "+zone.rain7+" mm.","pittwater-rain7");
-  if(isFinite(riverFlowValue)&&riverFlowValue>=6)alertNow("RIVER FLOW ALERT","Coal River flow is "+riverFlowValue.toFixed(3)+" m³/s — closure criterion is 6.0 m³/s.","pittwater-river");
-}
+function updateNotify(){} function enableAlerts(){} function alertNow(){} function checkAlerts(){if(typeof environmentalAlerts!=="undefined"&&environmentalAlerts)environmentalAlerts.check();}
 el("zoneSelect").value=localStorage.getItem("toc-pittwater-zone")||"zone1";
 el("zoneSelect").onchange=setZone;
 el("salinityInput").oninput=null;
 el("refreshWeather").onclick=weather;el("notifyBtn").onclick=enableAlerts;
 loadSalinity().then(function(){setZone();});updateNotify();weather();river();loadMeatTests();loadBiotoxin();
-setInterval(weather,3600000);setInterval(river,60000);setInterval(loadMeatTests,10000);setInterval(loadBiotoxin,3600000);
+setInterval(weather,300000);setInterval(river,60000);setInterval(loadMeatTests,10000);setInterval(loadBiotoxin,3600000);
+
+var environmentalAlerts=TOCAlerts.create({key:"toc-pittwater-alert-enabled",scope:"all three Pitt Water zones",read:function(){
+ var items=[],r=TOCAlerts.reading;
+ Object.keys(zones).forEach(function(k){var z=zones[k],name="Pitt Water "+z.name;
+ items.push(r(k+"-sal",name+" salinity",salinity[k],z.salMin,"<","ppt"));
+ items.push(r(k+"-rain7",name+" 7-day rainfall",rain7,z.rain7,">=","mm"));});
+ items.push(r("river","Pitt Water Coal River flow",riverFlowValue,6,">=","m³/s"));
+ if(meatTests.length)items.push(r("meat-zone2","Pitt Water Zone 2 meat test",String(meatTests[0].result).replace(",","."),2.3,">",""));
+ return items;
+}});
+setInterval(function(){loadSalinity().then(function(){updateStatus();checkAlerts();});},30000);
 })();
 </script>
 <script>

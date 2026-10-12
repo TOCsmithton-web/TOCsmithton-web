@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./supabase-config.js"></script>
+<script src="./environmental-alerts.js?v=20261013"></script>
 </head>
 <body>
 <div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite">CHECKING ENVIRONMENTAL CONTROLS</div>
@@ -490,19 +491,9 @@ async function renderPublicReopen(){
 function load(){try{var raw=localStorage.getItem(KEY);if(raw){Object.assign(state,JSON.parse(raw));} state.alertEnabled=localStorage.getItem("toc-smithton-alert-enabled")==="true";}catch(e){state.alertEnabled=false;}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));return true;}catch(e){return false;}}
 function status(msg,ok){var e=el("saveStatus");if(!e)return;e.textContent=msg;e.style.display="block";e.style.padding="10px";e.style.marginTop="10px";e.style.fontWeight="700";e.style.background=ok?"#dff5e8":"#fde2e2";e.style.color=ok?"#176b3b":"#9d2727";}
-function updateNotifyButton(){var b=el("notifyBtn");if(b)b.textContent=state.alertEnabled?"Alerts ON ✓":"Alerts OFF";} function alertNow(title,body,tag){if(!state.alertEnabled||!("Notification" in window)||Notification.permission!=="granted")return;if("serviceWorker" in navigator){navigator.serviceWorker.ready.then(function(reg){reg.showNotification(title,{body:body,tag:tag});}).catch(function(){});}}
-function checkAlerts(){
-  var sal=Number(state.salinity);
-  var low=state.salinity!==""&&sal<Number(state.salinityMin||32.5);
-  var high24=previous24Total>Number(state.rainThreshold||25);
-  var high3=bayName()==="Duck Bay"&&previous3Total>=DUCK_RAIN3_LIMIT;
-  var high7=previous7Total>=bayRainLimit();
-  if(low&&!state.lastAlerts.salinity)alertNow("SALINITY ALERT","Salinity is "+sal.toFixed(1)+" ppt — below minimum.","salinity-alert");
-  if(high24&&!state.lastAlerts.rain24)alertNow("24-HOUR RAINFALL ALERT","Previous 24-hour rainfall is "+previous24Total.toFixed(1)+" mm.","rain24-alert");
-  if(high3&&!state.lastAlerts.rain3)alertNow("3-DAY RAINFALL ALERT","Duck Bay 3-day rainfall is "+previous3Total.toFixed(1)+" mm — management limit is 25 mm.","rain3-alert");
-  if(high7&&!state.lastAlerts.rain7)alertNow("7-DAY RAINFALL ALERT","Live 7-day rainfall is "+previous7Total.toFixed(1)+" mm.","rain7-alert");
-  state.lastAlerts={salinity:low,rain24:high24,rain3:high3,rain7:high7};save();
-}
+function updateNotifyButton(){}
+function alertNow(){}
+function checkAlerts(){if(window.TOCAlerts && typeof environmentalAlerts!=="undefined" && environmentalAlerts)environmentalAlerts.check();}
 function render(){
   var salRequired=bayUsesSalinity(), riverRequired=bayUsesRiver(), limit=bayRainLimit();
   var sensorWarning=el("salinitySensorWarning");
@@ -865,5 +856,20 @@ window.addEventListener("online",loadNreAuto);
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).catch(function(){});
 }
+
+var environmentalAlerts=TOCAlerts.create({key:"toc-smithton-alert-enabled",scope:"the selected Smithton bay",read:function(){
+ if(!currentBay)return [];
+ var name=bayName(),items=[],r=TOCAlerts.reading;
+ if(bayUsesSalinity()){
+  if(currentBay.salinity_min!=null)items.push(r(name+"-sal-low",name+" salinity",state.salinity,currentBay.salinity_min,"<","ppt"));
+  if(currentBay.salinity_max!=null)items.push(r(name+"-sal-high",name+" salinity",state.salinity,currentBay.salinity_max,">","ppt"));
+ }
+ items.push(r(name+"-rain24",name+" 24-hour rainfall",previous24Total,Number(state.rainThreshold||25),">=","mm"));
+ if(name==="Duck Bay")items.push(r(name+"-rain3",name+" 3-day rainfall",previous3Total,DUCK_RAIN3_LIMIT,">=","mm"));
+ items.push(r(name+"-rain7",name+" 7-day rainfall",previous7Total,bayRainLimit(),">=","mm"));
+ if(bayUsesRiver())items.push(r(name+"-river",name+" river flow",window.riverCurrentFlow,currentBay.river_flow_limit,">=","m³/s"));
+ if(name.trim().toLowerCase()==="kemps bay"&&meatTests&&meatTests.length)items.push(r(name+"-meat",name+" meat test",String(meatTests[0].result).replace(",","."),2.3,">",""));
+ return items;
+}});
 </script>
 </body></html>

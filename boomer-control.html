@@ -30,6 +30,7 @@
 .salinity-history-panel .history-subtitle{font-size:12px;color:#526875;margin:4px 0 8px}
 .salinity-history-panel .history-empty{background:#ffe2e2;color:#962a2a;border-radius:6px;padding:14px 8px;text-align:center;font-weight:700}
 </style>
+<script src="./environmental-alerts.js?v=20261013"></script>
 </head>
 <body>
 <div id="bayBanner" class="bay-banner waiting" style="padding:0;overflow:hidden">
@@ -52,6 +53,7 @@
       <option value="boomer-control.html" selected>Boomer Bay Control</option>
       <option value="pittwater-control.html">Pittwater Control</option>
     </select>
+    <button id="notifyBtn" class="button secondary" type="button">Enable alerts</button>
     <button id="refreshWeather" class="button secondary" type="button">Refresh</button>
   </div>
 </header>
@@ -416,12 +418,21 @@ el("refreshWeather").onclick=weather;
 loadSalinity().then(function(){setZone();});
 loadSalinityHistory();
 weather();
-setInterval(weather,3600000);
+setInterval(weather,300000);
 setInterval(function(){loadSalinity().then(function(){setZone();});loadSalinityHistory();},60000);
 meat();
 biotoxin();
 setInterval(weather,3600000);
 setInterval(biotoxin,3600000);
+
+TOCAlerts.create({key:"toc-boomer-alert-enabled",scope:"all three Boomer Bay zones",read:function(){
+ var items=[],r=TOCAlerts.reading;
+ Object.keys(zoneData).forEach(function(k){var z=zoneData[k],name="Boomer Bay "+z.name;
+ items.push(r(k+"-sal",name+" salinity",salinity[k],z.min,"<","ppt"));
+ items.push(r(k+"-rain3",name+" 3-day rainfall",rain3,z.r3,">=","mm"));
+ items.push(r(k+"-rain7",name+" 7-day rainfall",rain7,z.r7,">=","mm"));});
+ return items;
+}});
 </script>
 </body>
 </html>
