@@ -352,30 +352,24 @@ function el(id){return document.getElementById(id);}function formatNreOpenFrom(v
   return isFinite(d.getTime())?d.toLocaleString("en-AU"):"—";
 }
 function updateNreVerificationDisplay(){
-  var card=el("nreVerificationCard"),badge=el("publicNreBadge"),notice=el("publicNreNotice");
-  if(!card||!badge||!notice)return;
-  var isDuck=bayName().trim().toLowerCase()==="duck bay";
-  card.style.display=isDuck?"":"none";
-  if(!isDuck)return;
-  syncNreVerification();
-  var checked=Date.parse(nreAutoVerification.checkedAt||"");
-  var stamp=isFinite(checked)?new Date(checked).toLocaleString("en-AU",{timeZone:"Australia/Hobart"}):"No successful check";
-  var fresh=nreIsFresh();
-  el("publicNreFreshness").textContent="Last successful NRE check: "+stamp+" (Tasmania time). "+
-   (!nreAutoVerification.available?"Verification unavailable — check NRE directly.":!fresh?"Verification expired — check NRE directly.":"Check is current. Official status: "+nreAutoVerification.statusLabel+".");
-  if(nreVerification.verified){
-    badge.textContent="NRE VERIFIED ✓";badge.style.background="#bff3cc";badge.style.color="#176b3b";
-    notice.style.background="#effaf2";notice.style.border="2px solid #31a354";
-    el("publicNreNoticeNumber").textContent=nreVerification.noticeNumber||"—";
-    el("publicNreVerifiedAt").textContent=formatNreOpenFrom(nreVerification.verifiedAt);
-    notice.querySelector("strong").textContent="NRE VERIFIED — Duck Bay is OPEN";
-  }else{
-    badge.textContent=!nreAutoVerification.available?"UNAVAILABLE":!fresh?"OUT OF DATE":nreAutoVerification.statusLabel;badge.style.background="#ffd0d0";badge.style.color="#9d2727";
-    notice.style.background="#fff0f0";notice.style.border="2px solid #c62828";
-    el("publicNreNoticeNumber").textContent=nreVerification.noticeNumber||"—";
-    el("publicNreVerifiedAt").textContent=formatNreOpenFrom(nreVerification.verifiedAt);
-    notice.querySelector("strong").textContent=fresh?"NRE STATUS: "+nreAutoVerification.statusLabel+" — CHECK NRE NOTICE":"NRE VERIFICATION REQUIRED — CHECK NRE WEBSITE";
-  }
+ var card=el("nreVerificationCard"),badge=el("publicNreBadge"),notice=el("publicNreNotice");
+ if(!card||!badge||!notice)return;
+ card.style.display=bayName().trim().toLowerCase()==="duck bay"?"":"none";
+ if(bayName().trim().toLowerCase()!=="duck bay")return;
+ syncNreVerification();
+ var checked=Date.parse(nreAutoVerification.checkedAt||""),fresh=nreIsFresh();
+ var stamp=isFinite(checked)?new Date(checked).toLocaleString("en-AU",{timeZone:"Australia/Hobart"}):"No successful check";
+ var label=fresh&&["OPEN","OPEN (CONDITIONAL)","CLOSED"].includes(nreAutoVerification.statusLabel)?nreAutoVerification.statusLabel:"UNVERIFIED";
+ var color=label==="OPEN"?"#176b3b":label==="OPEN (CONDITIONAL)"?"#8b5600":"#9d2727";
+ var bg=label==="OPEN"?"#effaf2":label==="OPEN (CONDITIONAL)"?"#fff4d7":"#fff0f0";
+ var border=label==="OPEN"?"#31a354":label==="OPEN (CONDITIONAL)"?"#d79b20":"#c62828";
+ badge.textContent=label==="UNVERIFIED"?"NRE UNVERIFIED":("NRE VERIFIED — "+label);
+ badge.style.background=bg;badge.style.color=color;
+ notice.style.background=bg;notice.style.border="2px solid "+border;
+ notice.querySelector("strong").textContent=label==="UNVERIFIED"?"NRE STATUS UNVERIFIED — CHECK LATEST OFFICIAL NOTICE":"NRE VERIFIED — Duck Bay "+label;
+ el("publicNreNoticeNumber").textContent=nreAutoVerification.noticeNumber||"—";
+ el("publicNreVerifiedAt").textContent=formatNreOpenFrom(nreAutoVerification.openFrom||"");
+ el("publicNreFreshness").textContent="Last successful NRE check: "+stamp+" (Tasmania time). "+(fresh?"Latest reported classification: "+label+".":"Check unavailable or older than 30 minutes. Verify the official NRE notice before harvesting.")+(label==="OPEN (CONDITIONAL)"?" Review all conditions in the classification notice before harvesting.":"");
 }
 
 function updateBayBanner(){
