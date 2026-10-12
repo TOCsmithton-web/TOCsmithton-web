@@ -567,7 +567,7 @@ function render(){
   if(riverSection)riverSection.style.display=riverRequired?"":"none";
   var riverBox=document.querySelector("#riverFlow")?.parentElement;
   if(riverBox&&riverRequired){
-    var rf=Number(window.riverCurrentFlow), good=rf<=Number(currentBay.river_flow_limit);
+    var rf=Number(window.riverCurrentFlow), good=rf<Number(currentBay.river_flow_limit);
     riverBox.className=isFinite(rf)?(good?"river-box good":"river-box bad"):"river-box neutral";
     riverBox.style.background=good?"#bff3cc":"#ffd0d0";
     riverBox.style.border="2px solid "+(good?"#31a354":"#c62828");
@@ -739,8 +739,8 @@ async function riverFlow(){
   var v=Number(fallback.flow);
   var limit=Number(currentBay.river_flow_limit);
   el("riverFlow").textContent=v.toFixed(3);
-  el("riverStatus").textContent=v>limit?"RIVER FLOW ALERT — above "+limit.toFixed(1)+" m³/s":"Within environmental control limit";
-  el("riverStatus").style.color=v>limit?"#9d2727":"#176b3b";
+  el("riverStatus").textContent=v>=limit?"RIVER FLOW ALERT — at or above "+limit.toFixed(1)+" m³/s":"Within environmental control limit";
+  el("riverStatus").style.color=v>=limit?"#9d2727":"#176b3b";
   var when=fallback.timestamp;
   if(when){
     var readingTime=new Date(when);
@@ -750,8 +750,8 @@ async function riverFlow(){
   window.riverHistoryForEvents=fallback.history||[];
   renderRiverHistory(fallback.history||[]);
   renderRiverThresholdEvents(fallback.threshold_events||[]);
-  if(v>limit&&window.riverAlertState!==true)alertNow("RIVER FLOW ALERT",bayName()+" river flow is "+v.toFixed(3)+" m³/s — above the "+limit.toFixed(1)+" m³/s limit.","river-flow-alert");
-  window.riverCurrentFlow=v;window.riverAlertState=v>limit;updateBayBanner();render();
+  if(v>=limit&&window.riverAlertState!==true)alertNow("RIVER FLOW ALERT",bayName()+" river flow is "+v.toFixed(3)+" m³/s — at or above the "+limit.toFixed(1)+" m³/s limit.","river-flow-alert");
+  window.riverCurrentFlow=v;window.riverAlertState=v>=limit;updateBayBanner();render();
 }
 
 function init(){
