@@ -1,48 +1,14 @@
-/* Device notifications while this dashboard is running; no background push service. */
-(function(){
-'use strict';
-function create(options){
-  var sent={},pending={},enabled=false,message='';
-  try{enabled=localStorage.getItem(options.key)==='true';}catch(e){}
-  var old=document.getElementById('notifyBtn'),button=old.cloneNode(true);old.replaceWith(button);
-  var note=document.createElement('p');note.className='hint';note.setAttribute('role','status');button.parentElement.appendChild(note);
-  function permitted(){return 'Notification' in window&&Notification.permission==='granted';}
-  function update(){button.textContent=enabled?(permitted()?'Alerts ON ✓':'Alerts blocked — tap to retry'):'Enable alerts';note.textContent=(message?message+' ':'')+'Alerts cover '+options.scope+' while this page is running. Closed-app/background alerts are not configured.';}
-  async function show(title,body,tag){
-    if(!('serviceWorker' in navigator))throw Error('This browser does not support device alerts.');
-    await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});
-    var reg=await Promise.race([navigator.serviceWorker.ready,new Promise(function(_,reject){setTimeout(function(){reject(Error('Notification service did not become ready.'));},10000);})]);
-    await reg.showNotification(title,{body:body,tag:tag,renotify:true,data:{url:location.href}});
-  }
-  async function check(){
-    update();
-    var items=options.read();
-    await Promise.all(items.map(async function(item){
-      if(item.breach===null)return; // Unknown data must not re-arm a previous breach.
-      if(!item.breach){delete sent[item.id];return;}
-      if(!enabled||!permitted()||sent[item.id]||pending[item.id])return;
-      pending[item.id]=true;
-      try{await show(item.title,item.body,options.key+'-'+item.id);sent[item.id]=true;message='Last notification sent '+new Date().toLocaleTimeString('en-AU')+'.';}
-      catch(e){message='Notification failed; will retry. '+e.message;}
-      finally{delete pending[item.id];update();}
-    }));
-  }
-  button.onclick=async function(){
-    if(enabled&&permitted()){enabled=false;try{localStorage.setItem(options.key,'false');}catch(e){}message='Notifications disabled.';update();return;}
-    try{
-      if(!('Notification' in window))throw Error('Notifications are not supported on this device.');
-      var permission=Notification.permission==='default'?await Notification.requestPermission():Notification.permission;
-      if(permission!=='granted')throw Error('Allow notifications for this site in your browser settings.');
-      await show('TOC alert test','Device alerts are working. Keep this dashboard open for environmental monitoring.',options.key+'-test');
-      enabled=true;sent={};localStorage.setItem(options.key,'true');message='Test notification sent.';await check();
-    }catch(e){message=e.message;}update();
-  };
-  update();setInterval(check,15000);document.addEventListener('visibilitychange',function(){if(!document.hidden)check();});check();
-  return {check:check};
-}
-function reading(id,name,value,limit,operator,unit){
-  var known=value!==''&&value!==null&&value!==undefined&&Number.isFinite(Number(value))&&limit!==null&&limit!==undefined&&Number.isFinite(Number(limit));
-  return {id:id,breach:known?(operator==='<'?Number(value)<Number(limit):operator==='>'?Number(value)>Number(limit):Number(value)>=Number(limit)):null,title:name+' ALERT',body:name+': '+value+' '+unit+'; alert threshold '+operator+' '+limit+' '+unit+'.'};
-}
-window.TOCAlerts={create:create,reading:reading};
-})();
+/* Background Web Push subscriber for public dashboards. Server evaluates thresholds. */
+(function(){'use strict';
+const API='https://gyzxsugnlobxlvqjevhh.supabase.co/functions/v1/environmental-push',KEY="sb_publishable_74VOuWi5OoiZDDh_nFUm1g_5BWzwljy",VAPID="BB3sjRwbE9VJu8pfKvd2uP7jTGHOWu0lErOZ5k1odW2nAIm7yyvqALnW2dFmY_PYYPH4w0gEntIogx3-NX_GcQ0";
+function bytes(s){const p=s.replace(/-/g,'+').replace(/_/g,'/');const b=atob(p+'='.repeat((4-p.length%4)%4));return Uint8Array.from(b,c=>c.charCodeAt(0));}
+function token(){let t=localStorage.getItem('toc-push-device-token');if(!/^[a-f0-9]{64}$/.test(t||'')){t=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');localStorage.setItem('toc-push-device-token',t)}return t;}
+async function call(action,topic,extra={}){const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json',apikey:KEY},body:JSON.stringify({action,topic,token:token(),...extra})});const v=await r.json();if(!r.ok)throw Error(v.error||'Push service failed');return v;}
+function create(options){const old=document.getElementById('notifyBtn');if(!old)return {check:()=>{}};const button=old.cloneNode(true);old.replaceWith(button);const note=document.createElement('p');note.className='hint';note.setAttribute('role','status');button.parentElement.appendChild(note);
+const topic=/boomer/i.test(options.scope)?'boomer':/pitt/i.test(options.scope)?'pittwater':'smithton';let enabled=false,busy=false;
+function update(msg){button.textContent=busy?'Connecting…':enabled?'Background alerts ON ✓':'Enable alerts';note.textContent=msg|| (enabled?'Background push enabled for '+topic+'. Alerts can arrive when this page is closed.':'Enable alerts to receive background notifications on this device.');}
+async function refresh(){try{const s=await call('status',topic);enabled=s.topics.includes(topic);update(s.lastError?'Last push error: '+s.lastError:undefined)}catch(e){update('Push service unavailable: '+e.message)}}
+button.onclick=async()=>{if(busy)return;busy=true;update();try{if(enabled){await call('disable',topic);enabled=false;update('Background alerts disabled for '+topic+'.');return}if(!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window))throw Error('This browser does not support background push. Install/open in Chrome.');const perm=await Notification.requestPermission();if(perm!=='granted')throw Error('Allow notifications in browser settings.');const reg=await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();if(sub&&JSON.stringify(sub.options?.applicationServerKey||'')==='impossible'){}if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:bytes(VAPID)});await call('subscribe',topic,{subscription:sub.toJSON()});enabled=true;const result=await call('test',topic);update(result.test==='sent'?'Background alerts ON — test notification sent.':'Background alerts ON — test recently sent.');}catch(e){update('Setup failed: '+e.message)}finally{busy=false;button.textContent=enabled?'Background alerts ON ✓':'Enable alerts'}};
+update();refresh();return {check:refresh};}
+function reading(id,name,value,limit,operator,unit){const known=value!==''&&value!==null&&value!==undefined&&Number.isFinite(Number(value))&&limit!==null&&limit!==undefined&&Number.isFinite(Number(limit));return {id,breach:known?(operator==='<'?Number(value)<Number(limit):operator==='>'?Number(value)>Number(limit):Number(value)>=Number(limit)):null,title:name+' ALERT',body:name+': '+value+' '+unit+'; threshold '+operator+' '+limit+' '+unit+'.'};}
+window.TOCAlerts={create,reading};})();
