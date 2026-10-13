@@ -721,6 +721,26 @@ async function weather(){
     explanation.textContent="Reason: "+e.message+". "+(typeof bom!=="undefined"&&bom&&bom.latest_date?"Last confirmed BOM reporting date: "+bom.latest_date+". ":"")+"Unknown readings are not zero rainfall. Duck Bay remains subject to its 40 mm / 7-day and 25 mm / 3-day limits.";
     alert.appendChild(explanation);
     box.appendChild(alert);
+    // Preserve historical measured rainfall separately; NEVER feed stale values to controls.
+    if(typeof bom!=="undefined"&&bom&&bom.daily&&/^\\d{4}-\\d{2}-\\d{2}$/.test(bom.latest_date||"")){
+      var anchor=new Date(bom.latest_date+"T12:00:00Z");
+      function historicalTotal(days){
+        var total=0;
+        for(var index=0;index<days;index++){
+          var day=new Date(anchor.getTime()-index*86400000).toISOString().slice(0,10);
+          var value=bom.daily[day];
+          if(typeof value!=="number"||!Number.isFinite(value)||value<0)return null;
+          total+=value;
+        }
+        return total;
+      }
+      var historic=document.createElement("div");historic.className="notice";historic.style.cssText="width:100%;background:#eef4f7;border:1px solid #a7bac4;margin-bottom:12px;padding:12px";
+      var historicHeading=document.createElement("strong");historicHeading.textContent="HISTORICAL BOM OBSERVATIONS — NOT CURRENT CLEARANCE";
+      var historicText=document.createElement("p");historicText.className="hint";historicText.style.margin="7px 0 0";
+      function historicalMm(x){return x===null?"Incomplete records":x.toFixed(1)+" mm";}
+      historicText.textContent="Last completed BOM reporting date in this file: "+bom.latest_date+" (to 9am). 24h: "+historicalMm(historicalTotal(1))+" · 3 days: "+historicalMm(historicalTotal(3))+" · 7 days: "+historicalMm(historicalTotal(7))+". These historical figures are not used for the live OPEN/CLOSED decision.";
+      historic.appendChild(historicHeading);historic.appendChild(historicText);box.appendChild(historic);
+    }
     if(forecastData&&forecastData.daily&&Array.isArray(forecastData.daily.time)){
       var notice=document.createElement("p");notice.textContent="Weather forecast remains available for planning only. Forecast amounts are not observed BOM rainfall and cannot verify environmental reopening conditions.";notice.className="hint";box.appendChild(notice);
       forecastData.daily.time.slice(0,8).forEach(function(stamp,i){
