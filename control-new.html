@@ -11,6 +11,10 @@
 <script src="./supabase-config.js"></script>
 <script src="./nre-status.js?v=20261013-sms2"></script>
 <script src="./environmental-alerts.js?v=20261013-push1"></script>
+<style>
+#environmentalMetrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:760px){#environmentalMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}#liveThreeDayRainfallMetric{grid-column:1 / -1}}
+</style>
 </head>
 <body>
 <div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite">CHECKING ENVIRONMENTAL CONTROLS</div>
@@ -41,11 +45,12 @@
 </section>
 <section class="status-grid"><article class="card hero">
   <div class="card-head"><div><span class="label">Environmental status</span><h2 id="statusText">Awaiting readings</h2></div><span id="statusDot" class="status-dot neutral"></span></div>
-  <div class="metric-row">
+  <div class="metric-row" id="environmentalMetrics">
     <div><span id="salinityLabel">Salinity</span><strong id="salinityValue">—</strong><small id="salinityUnit">ppt</small></div>
     <div><span id="rain24Label">Previous 24h rainfall</span><strong id="rain24Value">—</strong><small id="rain24Unit">mm</small></div>
-    <div><span id="rain3Label">Live 3-day rainfall</span><strong id="rain3Value">—</strong><small>mm</small></div>
+    <div id="liveThreeDayRainfallMetric"><span id="rain3Label">Live 3-day rainfall</span><strong id="rain3Value">—</strong><small>mm</small></div>
     <div><span id="rain7Label">Live 7-day rainfall</span><strong id="rainValue">—</strong><small>mm</small></div>
+    <div id="currentRiverFlowMetric"><span>Current flow</span><strong id="riverFlow">—</strong><small>m³/s</small></div>
   </div>
   <p id="lastUpdated" class="muted">No readings entered yet.</p>
   <div id="saveStatus" aria-live="polite"></div>
@@ -57,14 +62,13 @@
   <p class="hint" style="margin-bottom:0">This warning will remain visible for Duck Bay until the sensor is repaired and the offline flag is removed from the app. A missing reading must never be treated as a safe result.</p>
 </section>
 
-<section class="card">
+<section class="card" id="riverFlowSection">
 <div class="card-head"><div><h2>Duck River — Scotchtown</h2><p class="muted">NRE Tasmania station 14214 • Environmental control: 5 m³/s</p></div></div>
 <div class="river-history-wrap">
   <div class="river-history-head"><strong>River flow — last 3 days</strong><span id="riverTrendLabel">Portal graph</span></div>
   <div id="riverHistory" class="river-history"><div class="loading">Loading trend…</div></div>
 </div>
 <div class="metric-row" style="margin-top:14px">
-<div><span>Current flow</span><strong id="riverFlow">—</strong><small>m³/s</small></div>
 <div><span>Control limit</span><strong>5.0</strong><small>m³/s</small></div>
 </div>
 <div id="riverStatus" class="hint">Loading river flow…</div>
@@ -560,9 +564,10 @@ function render(){
   var dot=el("statusDot");if(dot)dot.className="status-dot "+(envReady?(envOk?"ok":"alert"):"neutral");
   el("statusText").textContent=!envReady?"Awaiting readings":(envOk?"ENVIRONMENTAL CONTROLS OK":"ENVIRONMENTAL CONTROL ALERT");
   el("bayCriteria").textContent=bayName()+" • NRE 7-day rainfall closure threshold: "+limit.toFixed(1)+" mm"+(bayName()==="Duck Bay"?" • NRE 3-day rainfall closure threshold: 25.0 mm":"")+(salRequired?" • Salinity ≥ "+(currentBay.salinity_min??"")+" ppt":" • Salinity not required")+(riverRequired?" • River flow <5.0 m³/s":" • River flow not required")+(isKemps?" • Meat test: passing result required fortnightly":"");
-  var riverSection=document.querySelector("#riverFlow")?.closest("section");
+  var riverSection=el("riverFlowSection");
   if(riverSection)riverSection.style.display=riverRequired?"":"none";
   var riverBox=document.querySelector("#riverFlow")?.parentElement;
+  if(riverBox)riverBox.style.display=riverRequired?"":"none";
   if(riverBox&&riverRequired){
     var rf=Number(window.riverCurrentFlow), good=rf<Number(currentBay.river_flow_limit);
     riverBox.className=isFinite(rf)?(good?"river-box good":"river-box bad"):"river-box neutral";
@@ -812,7 +817,8 @@ function renderRiverThresholdEvents(events){
   underEl.textContent=formatEvent(under);
 }
 async function riverFlow(){
-  var section=document.querySelector("#riverFlow")?.closest("section");
+  var section=el("riverFlowSection"),box=el("currentRiverFlowMetric");
+  if(box)box.style.display=bayUsesRiver()?"":"none";
   if(!bayUsesRiver()){if(section)section.style.display="none";window.riverCurrentFlow=0;updateBayBanner();return;}
   if(section)section.style.display="";
   var fallback=null;
