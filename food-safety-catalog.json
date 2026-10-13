@@ -1,0 +1,2847 @@
+[
+  {
+    "id": "food-safety-plan",
+    "title": "Food Safety Plan and annual review",
+    "category": "Governance",
+    "frequency": "Annual",
+    "evidence": [
+      "Current approved plan",
+      "Annual review record and signatures",
+      "Version and change history"
+    ],
+    "fields": [
+      {
+        "key": "version",
+        "label": "Document version",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approved_by",
+        "label": "Approved / signed by",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approval_date",
+        "label": "Approval date",
+        "type": "date",
+        "required": true
+      },
+      {
+        "key": "review_due",
+        "label": "Next review date",
+        "type": "date",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 1
+  },
+  {
+    "id": "quality-policy",
+    "title": "Signed quality and food safety policy",
+    "category": "Governance",
+    "frequency": "Annual",
+    "evidence": [
+      "Signed and dated policy",
+      "Review and staff access evidence"
+    ],
+    "fields": [
+      {
+        "key": "version",
+        "label": "Document version",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approved_by",
+        "label": "Approved / signed by",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approval_date",
+        "label": "Approval date",
+        "type": "date",
+        "required": true
+      },
+      {
+        "key": "review_due",
+        "label": "Next review date",
+        "type": "date",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 2
+  },
+  {
+    "id": "haccp-review",
+    "title": "HACCP risk assessment and CCP review",
+    "category": "Governance",
+    "frequency": "Annual / changes",
+    "evidence": [
+      "Hazard analysis and process flow",
+      "Critical limits, monitoring and verification",
+      "Working group review and approval"
+    ],
+    "fields": [
+      {
+        "key": "version",
+        "label": "Document version",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approved_by",
+        "label": "Approved / signed by",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approval_date",
+        "label": "Approval date",
+        "type": "date",
+        "required": true
+      },
+      {
+        "key": "review_due",
+        "label": "Next review date",
+        "type": "date",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 3
+  },
+  {
+    "id": "management-plans",
+    "title": "Harvest area management plans",
+    "category": "Governance",
+    "frequency": "Annual / changes",
+    "evidence": [
+      "Current plans for each operating harvest area",
+      "Lease scope and revision dates",
+      "Evidence staff can access them"
+    ],
+    "fields": [
+      {
+        "key": "area",
+        "label": "Harvest area / lease scope",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "version",
+        "label": "Document version",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approved_by",
+        "label": "Approved / signed by",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approval_date",
+        "label": "Approval date",
+        "type": "date",
+        "required": true
+      },
+      {
+        "key": "review_due",
+        "label": "Next review date",
+        "type": "date",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 4
+  },
+  {
+    "id": "critical-limits",
+    "title": "Approved critical limits register",
+    "category": "Governance",
+    "frequency": "Changes / annual review",
+    "evidence": [
+      "Approved limits and units",
+      "Source plan or authorisation",
+      "Approval and change record"
+    ],
+    "fields": [
+      {
+        "key": "control",
+        "label": "Control / process",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "limit",
+        "label": "Approved limit and units",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "source_document",
+        "label": "Approved source document and version",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approved_by",
+        "label": "Approved by",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approval_date",
+        "label": "Approval date",
+        "type": "date",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 5
+  },
+  {
+    "id": "authorisations",
+    "title": "Wet storage and depuration authorisations",
+    "category": "Governance",
+    "frequency": "Expiry / changes",
+    "evidence": [
+      "Current authorisations and accreditation",
+      "Approved business name and premises",
+      "Approved tanks, procedures and scope"
+    ],
+    "fields": [
+      {
+        "key": "authority",
+        "label": "Issuing authority",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "authorisation_number",
+        "label": "Authorisation / accreditation number",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "scope",
+        "label": "Approved process and tanks",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "expiry_date",
+        "label": "Expiry / review date",
+        "type": "date",
+        "required": false
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 6
+  },
+  {
+    "id": "document-control",
+    "title": "Document control and change history",
+    "category": "Governance",
+    "frequency": "Each change",
+    "evidence": [
+      "Controlled document register",
+      "Version, author, approval and effective date",
+      "Change description and staff notification"
+    ],
+    "fields": [
+      {
+        "key": "document_name",
+        "label": "Document name",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "version",
+        "label": "Version",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "change",
+        "label": "Change and reason",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "approved_by",
+        "label": "Approved by",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "effective_date",
+        "label": "Effective date",
+        "type": "date",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 7
+  },
+  {
+    "id": "nre-notices",
+    "title": "ShellMAP opening and closure notices",
+    "category": "Harvest status",
+    "frequency": "Each notice / harvest",
+    "evidence": [
+      "Official classification, text or email notice",
+      "Status, effective date and harvest area",
+      "Opening / closure register and lease references"
+    ],
+    "fields": [
+      {
+        "key": "area",
+        "label": "Harvest area / leases",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "reported_status",
+        "label": "Reported status",
+        "type": "select",
+        "required": true,
+        "options": [
+          "OPEN",
+          "CLOSED",
+          "CONDITIONAL",
+          "UNKNOWN"
+        ]
+      },
+      {
+        "key": "effective_at",
+        "label": "Status effective time",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "notice_number",
+        "label": "Notice / notification reference",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "conditions",
+        "label": "Conditions / restrictions",
+        "type": "textarea",
+        "required": false
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 8
+  },
+  {
+    "id": "environment-check",
+    "title": "Harvest environmental checks",
+    "category": "Harvest status",
+    "frequency": "Each harvest",
+    "evidence": [
+      "Salinity, rainfall and applicable river readings",
+      "Reading times, units and sources",
+      "Approved thresholds and decision record"
+    ],
+    "fields": [
+      {
+        "key": "area",
+        "label": "Harvest area / lease",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "observed_at",
+        "label": "Observation time",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "salinity",
+        "label": "Salinity (ppt)",
+        "type": "number",
+        "required": false
+      },
+      {
+        "key": "rain_24",
+        "label": "Previous 24h rainfall (mm)",
+        "type": "number",
+        "required": false
+      },
+      {
+        "key": "rain_3",
+        "label": "Live 3-day rainfall (mm)",
+        "type": "number",
+        "required": false
+      },
+      {
+        "key": "rain_7",
+        "label": "Live 7-day rainfall (mm)",
+        "type": "number",
+        "required": false
+      },
+      {
+        "key": "river_flow",
+        "label": "River flow (m\u00b3/s)",
+        "type": "number",
+        "required": false
+      },
+      {
+        "key": "decision",
+        "label": "Recorded harvest decision",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Hold / closed",
+          "Conditional process only",
+          "Approved to harvest",
+          "Awaiting verification"
+        ]
+      },
+      {
+        "key": "limits_source",
+        "label": "Approved limits / management plan reference",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 9
+  },
+  {
+    "id": "salinity-reopening",
+    "title": "T0 T24 T48 salinity reopening evidence",
+    "category": "Harvest status",
+    "frequency": "Each reopening",
+    "evidence": [
+      "Low tide times and salinity reading times",
+      "T0 T24 T48 results and operator",
+      "Submission to NRE and release advice"
+    ],
+    "fields": [
+      {
+        "key": "stage",
+        "label": "Reading stage",
+        "type": "select",
+        "required": true,
+        "options": [
+          "T0",
+          "T24",
+          "T48",
+          "Submitted to NRE",
+          "NRE response"
+        ]
+      },
+      {
+        "key": "salinity",
+        "label": "Salinity (ppt)",
+        "type": "number",
+        "required": false
+      },
+      {
+        "key": "reading_at",
+        "label": "Reading / submission time",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "low_tide_at",
+        "label": "Low tide time",
+        "type": "datetime-local",
+        "required": false
+      },
+      {
+        "key": "submission_reference",
+        "label": "NRE submission / response reference",
+        "type": "text",
+        "required": false
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 10
+  },
+  {
+    "id": "sewage-notices",
+    "title": "Sewage and other closure notifications",
+    "category": "Harvest status",
+    "frequency": "Each notification",
+    "evidence": [
+      "TasWater / ShellMAP notification",
+      "Affected leases, closure dates and action",
+      "Reopening / release communication"
+    ],
+    "fields": [
+      {
+        "key": "area",
+        "label": "Affected leases",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "effective_at",
+        "label": "Notification effective time",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "action",
+        "label": "Action taken",
+        "type": "textarea",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 11
+  },
+  {
+    "id": "harvest-record",
+    "title": "Harvest and batch record",
+    "category": "Traceability",
+    "frequency": "Each harvest",
+    "evidence": [
+      "Lease and batch identification",
+      "Harvest date/time, quantity, size and species",
+      "Water and air temperatures, salinity and destination"
+    ],
+    "fields": [
+      {
+        "key": "lease",
+        "label": "Harvest lease",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "species",
+        "label": "Species",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "harvest_at",
+        "label": "Harvest time",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "quantity",
+        "label": "Oyster count",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "size",
+        "label": "Size / grade",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "water_temp",
+        "label": "Water temperature (\u00b0C)",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "air_temp",
+        "label": "Air temperature (\u00b0C)",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "salinity",
+        "label": "Salinity (ppt)",
+        "type": "number",
+        "required": false
+      },
+      {
+        "key": "destination",
+        "label": "Tank / coolroom / destination",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 12
+  },
+  {
+    "id": "stock-movements",
+    "title": "Lease transfers and residence time",
+    "category": "Traceability",
+    "frequency": "Each transfer",
+    "evidence": [
+      "Origin and destination leases",
+      "Transfer dates and quantities",
+      "Closed-area origin and residence eligibility"
+    ],
+    "fields": [
+      {
+        "key": "origin",
+        "label": "Origin lease",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "destination",
+        "label": "Destination lease",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "transfer_at",
+        "label": "Transfer time",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "quantity",
+        "label": "Oyster count",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "origin_status",
+        "label": "Origin water status",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "eligible_on",
+        "label": "Earliest eligible harvest date",
+        "type": "date",
+        "required": true
+      },
+      {
+        "key": "permit_ref",
+        "label": "Permit / movement system reference",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 13
+  },
+  {
+    "id": "relay-permit",
+    "title": "Relaying permits",
+    "category": "Traceability",
+    "frequency": "Expiry / changes",
+    "evidence": [
+      "Current ShellMAP relay permit",
+      "Approved origin and destination leases",
+      "Scope, conditions and expiry"
+    ],
+    "fields": [
+      {
+        "key": "permit_number",
+        "label": "Permit number",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "scope",
+        "label": "Approved leases and conditions",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "expiry_date",
+        "label": "Expiry / review date",
+        "type": "date",
+        "required": false
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 14
+  },
+  {
+    "id": "relay-record",
+    "title": "Relaying operation records",
+    "category": "Traceability",
+    "frequency": "Each relay",
+    "evidence": [
+      "Permit, batch and quantity",
+      "Origin / destination, dates and status",
+      "Compliance with permit and retention period"
+    ],
+    "fields": [
+      {
+        "key": "permit_number",
+        "label": "Permit number",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "origin",
+        "label": "Origin lease",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "destination",
+        "label": "Destination lease",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "transfer_at",
+        "label": "Transfer time",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "quantity",
+        "label": "Oyster count",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "conditions_checked",
+        "label": "Permit conditions checked",
+        "type": "textarea",
+        "required": true
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 15
+  },
+  {
+    "id": "dispatch-label",
+    "title": "Dispatch and product labelling",
+    "category": "Traceability",
+    "frequency": "Each consignment",
+    "evidence": [
+      "Harvest area, lease, batch / bag number",
+      "Species, harvest time and consignor",
+      "Customer, dispatch time and sample label"
+    ],
+    "fields": [
+      {
+        "key": "customer",
+        "label": "Customer name and delivery address",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "dispatch_at",
+        "label": "Dispatch time",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "quantity",
+        "label": "Oyster count",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "bag_numbers",
+        "label": "Bag / pallet identifiers",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "carrier",
+        "label": "Carrier",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "product_temp",
+        "label": "Product temperature at dispatch (\u00b0C)",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "label_checked",
+        "label": "Label and packaging checked",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 16
+  },
+  {
+    "id": "stock-ledger",
+    "title": "Batch stock in out and mass balance",
+    "category": "Traceability",
+    "frequency": "Each stock movement",
+    "evidence": [
+      "Opening balance and incoming stock",
+      "Dispatches, losses and internal moves",
+      "Reconciled balance against stock held"
+    ],
+    "fields": [
+      {
+        "key": "movement",
+        "label": "Movement type",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Opening balance",
+          "Receipt",
+          "Dispatch",
+          "Loss / disposal",
+          "Internal transfer"
+        ]
+      },
+      {
+        "key": "quantity",
+        "label": "Oyster count (individual oysters)",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "from_location",
+        "label": "From location",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "to_location",
+        "label": "To location",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "transaction_ref",
+        "label": "Harvest / sale / transfer reference",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 17
+  },
+  {
+    "id": "cold-chain",
+    "title": "Harvest cooling and cold chain",
+    "category": "Temperature control",
+    "frequency": "Each harvest / consignment",
+    "evidence": [
+      "Harvest, cooling start and time below limit",
+      "Product and coolroom temperatures",
+      "Dispatch and delivery temperatures"
+    ],
+    "fields": [
+      {
+        "key": "harvest_at",
+        "label": "Harvest time",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "cooling_at",
+        "label": "Cooling started",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "below_limit_at",
+        "label": "Time product reached approved temperature",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "product_temp",
+        "label": "Measured product temperature (\u00b0C)",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "approved_limit",
+        "label": "Applicable temperature and time limit",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "delivery_at",
+        "label": "Delivery time",
+        "type": "datetime-local",
+        "required": false
+      },
+      {
+        "key": "delivery_temp",
+        "label": "Delivery temperature (\u00b0C)",
+        "type": "number",
+        "required": false
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 18
+  },
+  {
+    "id": "vibrio-control",
+    "title": "Vibrio control record",
+    "category": "Temperature control",
+    "frequency": "Each harvest",
+    "evidence": [
+      "Season and water / air temperatures",
+      "Applicable cooling deadline and method",
+      "Achieved cooling time and corrective action"
+    ],
+    "fields": [
+      {
+        "key": "harvest_at",
+        "label": "Harvest time",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "water_temp",
+        "label": "Water temperature (\u00b0C)",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "air_temp",
+        "label": "Air temperature (\u00b0C)",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "cooling_method",
+        "label": "Cooling method",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approved_limit",
+        "label": "Applicable approved Vibrio time / temperature limit",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "deadline",
+        "label": "Cooling deadline",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "achieved_at",
+        "label": "Time temperature limit achieved",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "product_temp",
+        "label": "Achieved product temperature (\u00b0C)",
+        "type": "number",
+        "required": true
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 19
+  },
+  {
+    "id": "coolroom-daily",
+    "title": "Daily coolroom monitoring",
+    "category": "Temperature control",
+    "frequency": "Each operating day",
+    "evidence": [
+      "Time, room and temperature",
+      "Operator and verification instrument",
+      "Deviation, product assessment and action"
+    ],
+    "fields": [
+      {
+        "key": "room",
+        "label": "Coolroom",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "checked_at",
+        "label": "Check time",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "temperature",
+        "label": "Temperature (\u00b0C)",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "instrument",
+        "label": "Instrument / display reference",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approved_limit",
+        "label": "Approved range",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 20
+  },
+  {
+    "id": "transport",
+    "title": "Transport checks and carrier approval",
+    "category": "Temperature control",
+    "frequency": "Each consignment / expiry",
+    "evidence": [
+      "Clean vehicle and temperature check",
+      "Carrier HACCP certificate / approval",
+      "Dispatch / delivery times and liners"
+    ],
+    "fields": [
+      {
+        "key": "carrier",
+        "label": "Carrier / vehicle",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "clean",
+        "label": "Vehicle clean and suitable",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "key": "temperature",
+        "label": "Transport temperature (\u00b0C)",
+        "type": "number",
+        "required": false
+      },
+      {
+        "key": "certificate_ref",
+        "label": "Carrier approval reference",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "expiry_date",
+        "label": "Certificate expiry",
+        "type": "date",
+        "required": false
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 21
+  },
+  {
+    "id": "tank-specifications",
+    "title": "Tank and disinfection plant specifications",
+    "category": "Depuration and wet storage",
+    "frequency": "Commissioning / changes",
+    "evidence": [
+      "Numbered tank plan, volumes and stock capacity",
+      "Approved water source and UV make / model",
+      "Flow rate, layout, clearance and approval"
+    ],
+    "fields": [
+      {
+        "key": "tank",
+        "label": "Tank identifier",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "process",
+        "label": "Process",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Depuration",
+          "Wet storage"
+        ]
+      },
+      {
+        "key": "water_volume",
+        "label": "Water volume (L)",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "stock_capacity",
+        "label": "Approved stock capacity and layout",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "water_source",
+        "label": "Approved water source",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "uv_model",
+        "label": "UV make / model",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approved_flow",
+        "label": "Approved flow rate and units",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approval_ref",
+        "label": "Validation / authorisation reference",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 22
+  },
+  {
+    "id": "depuration-run",
+    "title": "Depuration run record Form 20",
+    "category": "Depuration and wet storage",
+    "frequency": "Each run",
+    "evidence": [
+      "Run, tank and batch identifiers",
+      "Load quantity, start/end and approved duration",
+      "Operator, process checks and release decision"
+    ],
+    "fields": [
+      {
+        "key": "tank",
+        "label": "Tank",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "quantity",
+        "label": "Oyster count loaded",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "start_at",
+        "label": "Run started",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "end_at",
+        "label": "Run finished",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "required_duration",
+        "label": "Approved minimum duration (hours)",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "release",
+        "label": "Release decision",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Held",
+          "Released under approved procedure",
+          "Rejected / reprocessed"
+        ]
+      },
+      {
+        "key": "verification_ref",
+        "label": "Meat / water test and authorisation references",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 23
+  },
+  {
+    "id": "tank-check",
+    "title": "Tank operational checks",
+    "category": "Depuration and wet storage",
+    "frequency": "Start / 2\u20133 hours / midway / finish; wet storage daily",
+    "evidence": [
+      "Water temperature, salinity, flow and turbidity",
+      "UV operating check and hours",
+      "Covers, batch segregation and operator"
+    ],
+    "fields": [
+      {
+        "key": "tank",
+        "label": "Tank",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "stage",
+        "label": "Check stage",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Before start",
+          "2\u20133 hours after start",
+          "Mid-run",
+          "Finish",
+          "Wet storage daily"
+        ]
+      },
+      {
+        "key": "checked_at",
+        "label": "Check time",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "water_temp",
+        "label": "Water temperature (\u00b0C)",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "salinity",
+        "label": "Salinity (ppt)",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "flow",
+        "label": "Flow rate and units",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "uv_operating",
+        "label": "UV operating correctly",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "key": "uv_hours",
+        "label": "UV lamp hours",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "turbidity",
+        "label": "Turbidity reading / visual result",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "covers",
+        "label": "Covers and pest exclusion checked",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "key": "limits",
+        "label": "Approved process limits",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 24
+  },
+  {
+    "id": "tank-clean",
+    "title": "Tank covers and water system cleaning",
+    "category": "Depuration and wet storage",
+    "frequency": "Approved cleaning schedule",
+    "evidence": [
+      "Tank and cover cleaning / water changes",
+      "Number of runs since cleaning",
+      "Chemical, concentration, method and sign-off"
+    ],
+    "fields": [
+      {
+        "key": "tank",
+        "label": "Tank / cover / water system",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "runs_since_clean",
+        "label": "Runs since last clean",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "chemical",
+        "label": "Chemical and concentration",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "method",
+        "label": "Cleaning and water change method",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "checked_by",
+        "label": "Verification by",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 25
+  },
+  {
+    "id": "system-validation",
+    "title": "Plant commissioning and validation",
+    "category": "Depuration and wet storage",
+    "frequency": "New equipment / process change",
+    "evidence": [
+      "Validation trials and test results",
+      "Approved specifications and operating limits",
+      "NRE approval before commissioning"
+    ],
+    "fields": [
+      {
+        "key": "equipment",
+        "label": "Tank / equipment / process",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "change",
+        "label": "Change / commissioning scope",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "validation_ref",
+        "label": "Validation report reference",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approval_ref",
+        "label": "NRE approval reference",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "commissioned_on",
+        "label": "Commissioned date",
+        "type": "date",
+        "required": false
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 26
+  },
+  {
+    "id": "water-lab",
+    "title": "Wet storage and depuration water tests",
+    "category": "Laboratory verification",
+    "frequency": "Monthly / approved sampling plan",
+    "evidence": [
+      "Sample date, tank, run and sample ID",
+      "Accredited laboratory report with units",
+      "Result, approved criterion and follow-up"
+    ],
+    "fields": [
+      {
+        "key": "sample_id",
+        "label": "Sample ID",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "tank",
+        "label": "Tank / water source",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "sample_at",
+        "label": "Sample taken",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "laboratory",
+        "label": "Laboratory",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "analyte",
+        "label": "Analyte",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "result",
+        "label": "Result including less-than notation",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "units",
+        "label": "Units",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approved_criterion",
+        "label": "Approved criterion",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "report_ref",
+        "label": "Lab report reference",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 27
+  },
+  {
+    "id": "meat-lab",
+    "title": "Depuration pre and post meat tests",
+    "category": "Laboratory verification",
+    "frequency": "Approved verification program",
+    "evidence": [
+      "Pre/post sample and run identification",
+      "Laboratory result, units and approved criterion",
+      "Release / hold assessment and follow-up"
+    ],
+    "fields": [
+      {
+        "key": "sample_id",
+        "label": "Sample ID",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "stage",
+        "label": "Sample stage",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Pre-depuration",
+          "Post-depuration",
+          "Other verification"
+        ]
+      },
+      {
+        "key": "sample_at",
+        "label": "Sample taken",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "laboratory",
+        "label": "Laboratory",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "analyte",
+        "label": "Analyte",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "result",
+        "label": "Result including less-than notation",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "units",
+        "label": "Units",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approved_criterion",
+        "label": "Approved criterion",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "report_ref",
+        "label": "Lab report reference",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 28
+  },
+  {
+    "id": "shellmap-lab",
+    "title": "Harvest area meat biotoxin and microbial tests",
+    "category": "Laboratory verification",
+    "frequency": "Management plan schedule",
+    "evidence": [
+      "Area, lease, sampling date and laboratory report",
+      "Result, limits and next sample due",
+      "ShellMAP advice and release / closure action"
+    ],
+    "fields": [
+      {
+        "key": "area",
+        "label": "Harvest area / lease",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "sample_id",
+        "label": "Sample ID",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "sample_at",
+        "label": "Sample taken",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "test",
+        "label": "Test / analyte",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "result",
+        "label": "Result and units",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approved_criterion",
+        "label": "Approved criterion",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "next_sample",
+        "label": "Next required sample date",
+        "type": "date",
+        "required": true
+      },
+      {
+        "key": "report_ref",
+        "label": "Lab report / ShellMAP reference",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 29
+  },
+  {
+    "id": "sample-custody",
+    "title": "Sample collection and chain of custody",
+    "category": "Laboratory verification",
+    "frequency": "Each sample",
+    "evidence": [
+      "Sample container and seal check",
+      "Collection, storage and transport times",
+      "Laboratory submission and receipt"
+    ],
+    "fields": [
+      {
+        "key": "sample_id",
+        "label": "Sample ID",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "container",
+        "label": "Container / seal checked",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Acceptable",
+          "Compromised"
+        ]
+      },
+      {
+        "key": "collected_at",
+        "label": "Collected at",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "submitted_at",
+        "label": "Submitted at",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "transport",
+        "label": "Storage / transport conditions",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "laboratory",
+        "label": "Receiving laboratory",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 30
+  },
+  {
+    "id": "potable-water",
+    "title": "Potable wash water verification",
+    "category": "Water and sanitation",
+    "frequency": "Annual / supply notifications",
+    "evidence": [
+      "Current TasWater potability certificate",
+      "Water source and covered period",
+      "Warnings, restrictions and response"
+    ],
+    "fields": [
+      {
+        "key": "source",
+        "label": "Water supply / source",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "period_start",
+        "label": "Certificate period start",
+        "type": "date",
+        "required": true
+      },
+      {
+        "key": "period_end",
+        "label": "Certificate period end",
+        "type": "date",
+        "required": true
+      },
+      {
+        "key": "certificate_ref",
+        "label": "Certificate reference",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 31
+  },
+  {
+    "id": "cleaning-daily",
+    "title": "Daily cleaning and pre-operation checks",
+    "category": "Water and sanitation",
+    "frequency": "Each operating day",
+    "evidence": [
+      "Areas, equipment and food contact surfaces",
+      "Cleaning agent, concentration and method",
+      "Completion and independent check / sign-off"
+    ],
+    "fields": [
+      {
+        "key": "areas",
+        "label": "Areas / equipment cleaned",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "chemical",
+        "label": "Chemical and concentration",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "method",
+        "label": "Method / procedure reference",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "checked_by",
+        "label": "Checked by",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 32
+  },
+  {
+    "id": "cleaning-weekly",
+    "title": "Weekly cleaning",
+    "category": "Water and sanitation",
+    "frequency": "Weekly during operations",
+    "evidence": [
+      "Areas, equipment and food contact surfaces",
+      "Cleaning agent, concentration and method",
+      "Completion and independent check / sign-off"
+    ],
+    "fields": [
+      {
+        "key": "areas",
+        "label": "Areas / equipment cleaned",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "chemical",
+        "label": "Chemical and concentration",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "method",
+        "label": "Method / procedure reference",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "checked_by",
+        "label": "Checked by",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 33
+  },
+  {
+    "id": "cleaning-monthly",
+    "title": "Monthly cleaning",
+    "category": "Water and sanitation",
+    "frequency": "Monthly during operations",
+    "evidence": [
+      "Areas, equipment and food contact surfaces",
+      "Cleaning agent, concentration and method",
+      "Completion and independent check / sign-off"
+    ],
+    "fields": [
+      {
+        "key": "areas",
+        "label": "Areas / equipment cleaned",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "chemical",
+        "label": "Chemical and concentration",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "method",
+        "label": "Method / procedure reference",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "checked_by",
+        "label": "Checked by",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 34
+  },
+  {
+    "id": "gutter-clean",
+    "title": "Roof gutter and contractor cleaning",
+    "category": "Water and sanitation",
+    "frequency": "Annual",
+    "evidence": [
+      "Contractor service report",
+      "Date, scope, result and follow-up"
+    ],
+    "fields": [
+      {
+        "key": "contractor",
+        "label": "Contractor",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "scope",
+        "label": "Work completed",
+        "type": "textarea",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 35
+  },
+  {
+    "id": "chemical-register",
+    "title": "Food grade chemicals and SDS register",
+    "category": "Water and sanitation",
+    "frequency": "Changes / annual review",
+    "evidence": [
+      "Approved chemicals and food grade suitability",
+      "Current SDS and usage instructions",
+      "Storage segregation checks"
+    ],
+    "fields": [
+      {
+        "key": "chemical",
+        "label": "Chemical / lubricant",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "food_grade",
+        "label": "Suitable for approved food use",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Yes",
+          "No",
+          "Not applicable"
+        ]
+      },
+      {
+        "key": "sds_revision",
+        "label": "SDS revision date",
+        "type": "date",
+        "required": true
+      },
+      {
+        "key": "storage",
+        "label": "Storage location",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "instructions",
+        "label": "Approved use / dilution instructions",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 36
+  },
+  {
+    "id": "calibration",
+    "title": "Equipment calibration Form 7",
+    "category": "Equipment and premises",
+    "frequency": "Approved schedule / each applicable harvest",
+    "evidence": [
+      "Instrument identity and method",
+      "Reference standard, results and tolerance",
+      "Calibration date, operator and next due"
+    ],
+    "fields": [
+      {
+        "key": "equipment",
+        "label": "Equipment / serial number",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "method",
+        "label": "Calibration method and reference",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "reading",
+        "label": "Observed reading and units",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "reference",
+        "label": "Reference value and units",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "tolerance",
+        "label": "Approved tolerance",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "next_calibration",
+        "label": "Next calibration due",
+        "type": "date",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 37
+  },
+  {
+    "id": "uv-lamps",
+    "title": "UV lamp hours changes and checks",
+    "category": "Equipment and premises",
+    "frequency": "Each operation / replacement",
+    "evidence": [
+      "Lamp and tank identifier",
+      "Hours, operating checks and replacement",
+      "Manufacturer interval and service evidence"
+    ],
+    "fields": [
+      {
+        "key": "tank",
+        "label": "Tank",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "lamp_id",
+        "label": "Lamp identifier",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "hours",
+        "label": "Lamp hours",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "replacement_hours",
+        "label": "Manufacturer replacement hours",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "illumination",
+        "label": "UV illumination / operation",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Normal",
+          "Fault / dull",
+          "Not operating"
+        ]
+      },
+      {
+        "key": "replaced_on",
+        "label": "Replacement date",
+        "type": "date",
+        "required": false
+      },
+      {
+        "key": "service_ref",
+        "label": "Service / replacement reference",
+        "type": "text",
+        "required": false
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 38
+  },
+  {
+    "id": "maintenance",
+    "title": "Preventative maintenance Form 17",
+    "category": "Equipment and premises",
+    "frequency": "Monthly / manufacturer schedule",
+    "evidence": [
+      "Asset-specific maintenance checklist",
+      "Services, faults and replacements",
+      "Completion, next due and verification"
+    ],
+    "fields": [
+      {
+        "key": "equipment",
+        "label": "Equipment / asset",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "work",
+        "label": "Checks / maintenance performed",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "contractor",
+        "label": "Staff / contractor",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "next_service",
+        "label": "Next service due",
+        "type": "date",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 39
+  },
+  {
+    "id": "vessel-preharvest",
+    "title": "Vessel and equipment pre-harvest checks",
+    "category": "Equipment and premises",
+    "frequency": "Each harvest",
+    "evidence": [
+      "Deck drainage and bilge exclusion",
+      "Fuel, hydraulic leaks and equipment condition",
+      "Cleaning and operator sign-off"
+    ],
+    "fields": [
+      {
+        "key": "vessel",
+        "label": "Vessel / barge",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "drainage",
+        "label": "Deck drainage acceptable",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "key": "leaks",
+        "label": "No fuel / hydraulic leaks",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "key": "condition",
+        "label": "Clean and serviceable",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 40
+  },
+  {
+    "id": "premises-gmp",
+    "title": "Premises hygiene and GMP inspections",
+    "category": "Equipment and premises",
+    "frequency": "Monthly / pre-operation",
+    "evidence": [
+      "Floors, walls, equipment and loading areas",
+      "Covered lights, glass/wood controls and packaging",
+      "Amenities, waste, first aid, PPE and animal exclusion"
+    ],
+    "fields": [
+      {
+        "key": "areas",
+        "label": "Areas inspected",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "checks",
+        "label": "Inspection results / deviations",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "verified_by",
+        "label": "Verified by",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 41
+  },
+  {
+    "id": "packaging",
+    "title": "Packaging and pallet contamination checks",
+    "category": "Equipment and premises",
+    "frequency": "Each use / delivery",
+    "evidence": [
+      "Clean dry protected packaging",
+      "No second-hand packaging",
+      "Pallet condition and protective liner"
+    ],
+    "fields": [
+      {
+        "key": "packaging",
+        "label": "Packaging / pallet type",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "condition",
+        "label": "Clean dry and protected",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "key": "new_packaging",
+        "label": "New approved packaging",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "key": "liner",
+        "label": "Protective liner applied",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Yes",
+          "No",
+          "Not applicable"
+        ]
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 42
+  },
+  {
+    "id": "staff-training",
+    "title": "Induction and training matrix Form 14",
+    "category": "People and training",
+    "frequency": "Each induction / role change",
+    "evidence": [
+      "Signed induction and work instructions",
+      "CCPs, hygiene, harvesting, packing and calibration",
+      "Competency checks and staff matrix"
+    ],
+    "fields": [
+      {
+        "key": "staff",
+        "label": "Staff member",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "role",
+        "label": "Role",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "topics",
+        "label": "Training / work instructions covered",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "trainer",
+        "label": "Trainer / assessor",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "competency",
+        "label": "Competency confirmed",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Yes",
+          "No",
+          "Pending"
+        ]
+      },
+      {
+        "key": "staff_signoff",
+        "label": "Staff acknowledgement / sign-off reference",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 43
+  },
+  {
+    "id": "refresher-training",
+    "title": "Refresher training and toolbox talks",
+    "category": "People and training",
+    "frequency": "Six-monthly / deviations",
+    "evidence": [
+      "Food safety refresher and equipment deviation training",
+      "Attendance and staff acknowledgements",
+      "Competency follow-up"
+    ],
+    "fields": [
+      {
+        "key": "topic",
+        "label": "Training / deviation topic",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "attendees",
+        "label": "Attendees",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "trainer",
+        "label": "Trainer",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "followup",
+        "label": "Competency follow-up",
+        "type": "textarea",
+        "required": false
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 44
+  },
+  {
+    "id": "hygiene",
+    "title": "Personal hygiene and illness awareness",
+    "category": "People and training",
+    "frequency": "Induction / operational checks",
+    "evidence": [
+      "Hand washing and illness reporting instruction",
+      "Clean PPE and hygiene observations",
+      "Acknowledgement and corrective action"
+    ],
+    "fields": [
+      {
+        "key": "staff",
+        "label": "Staff / crew",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "checks",
+        "label": "Hygiene checks and acknowledgements",
+        "type": "textarea",
+        "required": true
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 45
+  },
+  {
+    "id": "visitors",
+    "title": "Visitor sign-in and hygiene acknowledgement",
+    "category": "People and training",
+    "frequency": "Each visit",
+    "evidence": [
+      "Visitor, organisation and date/time",
+      "Purpose, host and hygiene acknowledgement"
+    ],
+    "fields": [
+      {
+        "key": "visitor",
+        "label": "Visitor and organisation",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "arrived_at",
+        "label": "Arrival time",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "departed_at",
+        "label": "Departure time",
+        "type": "datetime-local",
+        "required": false
+      },
+      {
+        "key": "host",
+        "label": "Host",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "acknowledged",
+        "label": "Site hygiene acknowledged",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 46
+  },
+  {
+    "id": "pest-internal",
+    "title": "Internal pest monitoring",
+    "category": "Pest control",
+    "frequency": "Monthly",
+    "evidence": [
+      "Numbered bait station map",
+      "Station observations and pest activity",
+      "Actions and operator sign-off"
+    ],
+    "fields": [
+      {
+        "key": "stations",
+        "label": "Stations / areas checked",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "activity",
+        "label": "Pest activity / results",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "action",
+        "label": "Actions taken",
+        "type": "textarea",
+        "required": false
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 47
+  },
+  {
+    "id": "pest-contractor",
+    "title": "Pest contractor service reports",
+    "category": "Pest control",
+    "frequency": "Quarterly",
+    "evidence": [
+      "Contractor inspection report and station map",
+      "Activity, treatments and follow-up",
+      "Next service date"
+    ],
+    "fields": [
+      {
+        "key": "contractor",
+        "label": "Pest contractor",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "service_on",
+        "label": "Service date",
+        "type": "date",
+        "required": true
+      },
+      {
+        "key": "report_ref",
+        "label": "Service report reference",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "next_service",
+        "label": "Next service date",
+        "type": "date",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 48
+  },
+  {
+    "id": "approved-suppliers",
+    "title": "Approved suppliers and purchasing policy",
+    "category": "Suppliers and goods receipt",
+    "frequency": "Annual / supplier changes",
+    "evidence": [
+      "Approved supplier list and approval criteria",
+      "Current carrier / supplier certificates",
+      "Review and approval record"
+    ],
+    "fields": [
+      {
+        "key": "supplier",
+        "label": "Supplier",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "goods",
+        "label": "Approved goods / service",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approval_ref",
+        "label": "Approval / certificate reference",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "expiry_date",
+        "label": "Expiry / review date",
+        "type": "date",
+        "required": false
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 49
+  },
+  {
+    "id": "goods-receipt",
+    "title": "Goods receival and inward delivery records",
+    "category": "Suppliers and goods receipt",
+    "frequency": "Each delivery",
+    "evidence": [
+      "Supplier, lot and delivery reference",
+      "Product / packaging condition and quantity",
+      "Acceptance / rejection and traceability"
+    ],
+    "fields": [
+      {
+        "key": "supplier",
+        "label": "Supplier",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "lot",
+        "label": "Supplier lot / batch",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "goods",
+        "label": "Goods received",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "quantity",
+        "label": "Quantity and units",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "delivery_ref",
+        "label": "Inward delivery reference",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "condition",
+        "label": "Delivery condition",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Accepted",
+          "Rejected",
+          "Held for review"
+        ]
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 50
+  },
+  {
+    "id": "internal-audit",
+    "title": "Internal food safety audit",
+    "category": "Verification and improvement",
+    "frequency": "Annual",
+    "evidence": [
+      "Completed checklist and evidence references",
+      "Responsible reviewer and date",
+      "Actions and verified close-out"
+    ],
+    "fields": [
+      {
+        "key": "scope",
+        "label": "Audit scope",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "reviewer",
+        "label": "Internal auditor",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "actions",
+        "label": "Actions / evidence references",
+        "type": "textarea",
+        "required": false
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 51
+  },
+  {
+    "id": "corrective-action",
+    "title": "Deviations complaints and corrective actions",
+    "category": "Verification and improvement",
+    "frequency": "Each event",
+    "evidence": [
+      "Event and affected product / equipment",
+      "Immediate action and root cause",
+      "Long-term action, retraining and closure verification"
+    ],
+    "fields": [
+      {
+        "key": "event",
+        "label": "Deviation / complaint / equipment fault",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "affected",
+        "label": "Affected stock / equipment",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "immediate",
+        "label": "Immediate action",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "root_cause",
+        "label": "Root cause",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "preventive",
+        "label": "Preventive action / retraining",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "owner",
+        "label": "Action owner",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "target_date",
+        "label": "Target date",
+        "type": "date",
+        "required": true
+      },
+      {
+        "key": "verified_by",
+        "label": "Closure verified by",
+        "type": "text",
+        "required": false
+      },
+      {
+        "key": "closed_on",
+        "label": "Closed date",
+        "type": "date",
+        "required": false
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 52
+  },
+  {
+    "id": "recall-procedure",
+    "title": "Recall procedure and contact list",
+    "category": "Verification and improvement",
+    "frequency": "Annual / changes",
+    "evidence": [
+      "Current recall procedure and FSANZ protocol",
+      "Current regulator and customer contacts",
+      "Responsible roles and document version"
+    ],
+    "fields": [
+      {
+        "key": "version",
+        "label": "Document version",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approved_by",
+        "label": "Approved / signed by",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "approval_date",
+        "label": "Approval date",
+        "type": "date",
+        "required": true
+      },
+      {
+        "key": "review_due",
+        "label": "Next review date",
+        "type": "date",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 53
+  },
+  {
+    "id": "recall-exercise",
+    "title": "Recall exercise or actual recall evidence",
+    "category": "Verification and improvement",
+    "frequency": "Each exercise / recall",
+    "evidence": [
+      "Batch tracing, customer list and mass balance",
+      "Notifications, timings and disposition",
+      "Review and improvement actions"
+    ],
+    "fields": [
+      {
+        "key": "type",
+        "label": "Exercise / actual recall",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Mock recall",
+          "Actual recall"
+        ]
+      },
+      {
+        "key": "initiated_at",
+        "label": "Initiated time",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "scope",
+        "label": "Products / batches / customers",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "balance",
+        "label": "Mass balance and traceability outcome",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "completed_at",
+        "label": "Completed time",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "review",
+        "label": "Review and actions",
+        "type": "textarea",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 54
+  },
+  {
+    "id": "retail-licence",
+    "title": "Retail and further processing approval",
+    "category": "Retail and further processing",
+    "frequency": "Annual / expiry",
+    "evidence": [
+      "Council food business licence",
+      "Approved further processing scope",
+      "Council inspection and food safety plan"
+    ],
+    "fields": [
+      {
+        "key": "licence",
+        "label": "Licence / approval number",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "scope",
+        "label": "Approved activity",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "expiry_date",
+        "label": "Expiry / review date",
+        "type": "date",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 55
+  },
+  {
+    "id": "retail-daily",
+    "title": "Retail processing hygiene and temperature checks",
+    "category": "Retail and further processing",
+    "frequency": "Each operating day",
+    "evidence": [
+      "Potable washing water and sanitation",
+      "Equipment, temperature and staff training checks",
+      "Harvest batch to outgoing delivery traceability"
+    ],
+    "fields": [
+      {
+        "key": "process",
+        "label": "Processing / splitting activity",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "water",
+        "label": "Approved wash water source",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "cleaning",
+        "label": "Cleaning and sanitation checks",
+        "type": "textarea",
+        "required": true
+      },
+      {
+        "key": "product_temp",
+        "label": "Product temperature (\u00b0C)",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "delivery_ref",
+        "label": "Outgoing delivery / batch reference",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": false,
+    "sort_order": 56
+  },
+  {
+    "id": "retail-verification",
+    "title": "Retail product verification and council records",
+    "category": "Retail and further processing",
+    "frequency": "Approved program / inspections",
+    "evidence": [
+      "Product verification laboratory reports",
+      "Council inspections and corrective actions",
+      "Calibration, supplier and traceability evidence"
+    ],
+    "fields": [
+      {
+        "key": "verification",
+        "label": "Test / inspection / verification",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "report_ref",
+        "label": "Report reference",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "result",
+        "label": "Result and applicable criterion",
+        "type": "text",
+        "required": true
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 57
+  },
+  {
+    "id": "harvest-hold",
+    "title": "Harvest and hold consignment controls",
+    "category": "Harvest and hold",
+    "frequency": "Each hold / release",
+    "evidence": [
+      "H&H approval and consignment identification",
+      "Required hold labels and temperature records",
+      "Tests, ShellMAP release, return or destruction"
+    ],
+    "fields": [
+      {
+        "key": "approval",
+        "label": "H&H approval reference",
+        "type": "text",
+        "required": true
+      },
+      {
+        "key": "quantity",
+        "label": "Oyster count held",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "hold_at",
+        "label": "Hold started",
+        "type": "datetime-local",
+        "required": true
+      },
+      {
+        "key": "temperature",
+        "label": "Holding temperature (\u00b0C)",
+        "type": "number",
+        "required": true
+      },
+      {
+        "key": "labels",
+        "label": "Required hold labels applied",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "key": "disposition",
+        "label": "Disposition",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Still held",
+          "Released by ShellMAP",
+          "Returned to lease",
+          "Destroyed"
+        ]
+      },
+      {
+        "key": "release_ref",
+        "label": "Official release / disposition reference",
+        "type": "text",
+        "required": false
+      }
+    ],
+    "attachment_required": true,
+    "sort_order": 58
+  }
+]
