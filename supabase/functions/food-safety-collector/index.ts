@@ -39,13 +39,13 @@ async function collect(){
  const now=new Date().toISOString();
  const lock=check(await sb.from('fs_auto_collection_status').update({lock_until:new Date(Date.now()+140000).toISOString(),last_started_at:now}).eq('id',1).lt('lock_until',now).select('id'));
  if(!lock.length)return {busy:true};
- const summary:any={imported:0,existing:0,filesAdded:0,queueProcessed:0,queueSkipped:0,errors:0,unavailableSources:[]};
+ const summary:any={imported:0,existing:0,filesAdded:0,queueProcessed:0,queueSkipped:0,queueDeferred:0,errors:0,unavailableSources:[],unavailableDetails:[]};
  try{
   const cycles=check(await sb.from('fs_audit_cycles').select('*').order('start_date',{ascending:false}));
-  const queue=check(await sb.from('fs_app_evidence_queue').select('*').is('processed_at',null).order('captured_at').order('id').limit(30));
+  const queue=check(await sb.from('fs_app_evidence_queue').select('*').is('processed_at',null).order('last_error',{ascending:true,nullsFirst:true}).order('captured_at').order('id').limit(30));
   for(const q of queue){try{
    const item=queuedRecord(q,cycles);
-   if(!item){check(await sb.from('fs_app_evidence_queue').update({processed_at:new Date().toISOString(),last_error:'Outside the configured Smithton audit cycles or unsupported source'}).eq('id',q.id));summary.queueSkipped++;continue;}
+   if(!item){check(await sb.from('fs_app_evidence_queue').update({last_error:'Audit cycle or source date needs review; evidence retained for retry.'}).eq('id',q.id));summary.queueDeferred++;summary.errors++;continue;}
    const record=await importOne(item);summary[record.inserted?'imported':'existing']++;
    const text=q.source_table==='toc_nre_sms_events'?q.source_data.message:'TOC app source evidence\n\n'+jsonText(record.source_payload);
    if(await archiveFile(record,q.source_table==='toc_nre_sms_events'?'ShellMAP_SMS.txt':'App_source_record.txt',text,'text/plain'))summary.filesAdded++;
@@ -57,7 +57,7 @@ async function collect(){
    json('https://raw.githubusercontent.com/TOCsmithton-web/TOCsmithton-web/main/nre-classification.json'),pdf()
   ]);
   const names=['Smithton observed rainfall','Duck River readings','NRE classification data','Official NRE PDF'];
-  sources.forEach((r,i)=>{if(r.status==='rejected')summary.unavailableSources.push(names[i]);});
+  sources.forEach((r,i)=>{if(r.status==='rejected'){summary.unavailableSources.push(names[i]);summary.unavailableDetails.push({source:names[i],reason:r.reason instanceof Error?r.reason.message:'Source unavailable'});}});
   const value=(i:number)=>sources[i].status==='fulfilled'?(sources[i] as PromiseFulfilledResult<any>).value:null;
   const bays=check(await sb.from('bay_settings').select('bay_name,salinity_min,salinity_max,rainfall_7d_limit,river_flow_limit').in('bay_name',['Duck Bay','Kemps Bay']).eq('active',true));
   const manuals=check(await sb.from('manual_control_readings').select('id,zone,salinity,reading_time,updated_by').eq('location','Smithton').order('reading_time',{ascending:false,nullsFirst:false}));

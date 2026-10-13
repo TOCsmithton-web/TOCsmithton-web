@@ -27,6 +27,7 @@ alter table public.fs_app_evidence_queue enable row level security;
 alter table public.fs_auto_collection_status enable row level security;
 revoke all on public.fs_app_evidence_queue,public.fs_auto_collection_status from public,anon,authenticated;
 grant all on public.fs_app_evidence_queue,public.fs_auto_collection_status to service_role;
+create policy fs_evidence_queue_service_only on public.fs_app_evidence_queue for all to service_role using(true) with check(true);
 grant select on public.fs_auto_collection_status to authenticated;
 create policy fs_auto_collection_admin_read on public.fs_auto_collection_status for select to authenticated using(exists(select 1 from public.admin_users where user_id=(select auth.uid())));
 create schema if not exists fs_internal;
