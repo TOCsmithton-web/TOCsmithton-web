@@ -17,7 +17,7 @@
 </style>
 </head>
 <body>
-<div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite">CHECKING ENVIRONMENTAL CONTROLS</div>
+<div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite">CHECKING OFFICIAL HARVEST STATUS</div><div id="reopeningBanner" role="status" aria-live="polite" hidden style="padding:13px 18px;text-align:center;background:#fff0cf;color:#744800;border-bottom:3px solid #d99511;font-weight:800"><strong id="reopeningBannerTitle">REOPENING STATUS</strong><div id="reopeningBannerDetail" style="font-size:13px;margin-top:5px;font-weight:600"></div></div>
 <header class="topbar" style="background:#000">
   <div style="display:flex;align-items:center;gap:12px">
     <img src="./assets/toc-logo.svg" alt="Tasmanian Oyster Company" style="width:76px;height:76px;display:block;flex:0 0 auto">
@@ -45,7 +45,7 @@
   <p id="bayCriteria" class="hint"></p>
 </section>
 <section class="status-grid"><article class="card hero">
-  <div class="card-head"><div><span class="label">Environmental status</span><h2 id="statusText">Awaiting readings</h2></div><span id="statusDot" class="status-dot neutral"></span></div>
+  <div class="card-head"><div><span class="label">Environmental controls — separate from official harvest authorisation</span><h2 id="statusText">Awaiting readings</h2><p id="reopeningControlNote" class="hint" style="margin-top:5px">Passing environmental readings do not authorise harvesting.</p></div><span id="statusDot" class="status-dot neutral"></span></div>
   <div class="metric-row" id="environmentalMetrics">
     <div><span id="salinityLabel">Salinity</span><strong id="salinityValue">—</strong><small id="salinityUnit">ppt</small></div>
     <div><span id="rain24Label">Previous 24h rainfall</span><strong id="rain24Value">—</strong><small id="rain24Unit">mm</small></div>
@@ -403,6 +403,17 @@ function updateBayBanner(){
   var nreOk=bayName().trim().toLowerCase()!=="duck bay" || nreVerification.verified;
   var open=salOk&&rain3Ok&&rain7Ok&&riverOk&&meatOk&&meatDueOk&&nreOk;
   var b=el("bayBanner"); if(!b)return;
+   var amber=el("reopeningBanner"),heading=el("reopeningBannerTitle"),detail=el("reopeningBannerDetail"),note=el("reopeningControlNote");
+   var duck=bayName().trim().toLowerCase()==="duck bay";
+   var environmentReady=state.salinity!==""&&isFinite(sal)&&salOk&&isFinite(previous24Total)&&rain24Ok&&isFinite(previous3Total)&&rain3Ok&&isFinite(previous7Total)&&rain7Ok&&isFinite(Number(window.riverCurrentFlow))&&riverOk;
+   if(note)note.textContent=duck?(environmentReady?"Environmental readings currently within limits — this does NOT mean harvesting is open.":"Check environmental readings and all reopening requirements before starting T48."):"Environmental readings alone do not prove harvest authorisation.";
+   if(amber){
+     amber.hidden=!duck||open;
+     if(!amber.hidden){
+       heading.textContent=!environmentReady?"CLOSED — REOPENING CRITERIA NOT YET MET":reopenProgress.completed?"T48 SUBMITTED — AWAITING NRE REOPENING":reopenProgress.started?"T48 IN PROGRESS — HARVESTING PROHIBITED":nreResolved.status==="UNVERIFIED"?"REOPENING READINESS — NRE STATUS UNVERIFIED":"ENVIRONMENTAL CONTROLS MET — T48 CAN COMMENCE";
+       detail.textContent=!environmentReady?"Review failed or missing environmental inputs before progressing reopening.":reopenProgress.completed?"T48 completion is not harvest permission; obtain NRE authorisation.":reopenProgress.started?"Continue new T0, T24 and T48 checks. Do not harvest until the official classification permits it.":"Duck Bay remains CLOSED. Review management plan reopening requirements and begin the new 48-hour salinity record as applicable.";
+     }
+   }
   b.className="bay-banner "+(open?"open":"closed");
   b.innerHTML=bayName().toUpperCase()+" "+(open?"OPEN":"CLOSED")+"<a href=\"https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas\" target=\"_blank\" rel=\"noopener\" style=\"display:block;color:#fff;text-decoration:underline;font-size:.72em;margin-top:4px;font-weight:700\">CHECK NRE CLASSIFICATION BEFORE HARVESTING</a>";
   if(window.bayFlashTimer){clearInterval(window.bayFlashTimer);window.bayFlashTimer=null;}
@@ -412,6 +423,7 @@ function updateBayBanner(){
   b.style.boxShadow="none";
 }
 
+var reopenProgress={status:"UNAVAILABLE",started:false,completed:false};
 var publicReopenCacheAt=0;
 var publicReopenLoading=false;
 async function renderPublicReopen(){
@@ -466,25 +478,29 @@ async function renderPublicReopen(){
 
     var status=String(statusRow&&statusRow.result||"IN PROGRESS").toUpperCase();
     var completed=status==="COMPLETED AND SUBMITTED TO NRE";
-    var started=!!(t0||t24||t48||statusRow);
+    var started=!!(t0||t24||t48||(statusRow&&status!=="RESET AFTER CLOSURE"));
+     reopenProgress={status:status,started:started,completed:completed};
     var ready=isFinite(previous7Total)&&(bayName()==="Duck Bay"?isFinite(previous3Total):true)&&(state.salinity!==""&&isFinite(Number(state.salinity)))&&(!bayUsesRiver()||isFinite(Number(window.riverCurrentFlow)));
     if(status==="RESET AFTER CLOSURE"){
       badge.textContent="WAITING";badge.style.background="#f4f7f8";badge.style.color="#52636d";
-      statusEl.textContent="The previous 48-hour salinity check was reset after closure. Waiting for a new check to be started.";
+      statusEl.textContent="Previous T48 readings are historical and cannot be reused. A new check may begin once all applicable reopening requirements are met. Harvest remains CLOSED until NRE authorises it.";
     }else if(completed){
       badge.textContent="COMPLETED";badge.style.background="#bff3cc";badge.style.color="#176b3b";
-      statusEl.textContent="48-hour salinity check completed and submitted to NRE. T0, T24 and T48 readings are shown above.";
+      statusEl.textContent="T48 marked completed and submitted; awaiting official NRE reopening authorisation. Harvest remains CLOSED until NRE confirms.";
     }else if(started){
       badge.textContent="IN PROGRESS";badge.style.background="#fff0df";badge.style.color="#a35a00";
       statusEl.textContent="48-hour salinity check is in progress. T0, T24 and T48 readings are shown above.";
     }else{
       badge.textContent=ready?"READY TO START":"WAITING";
       badge.style.background=ready?"#bff3cc":"#f4f7f8";badge.style.color=ready?"#176b3b":"#52636d";
-      statusEl.textContent=ready?"All available environmental readings are within the required range. The 48-hour salinity check can be commenced and recorded at T0, T24 and T48.":"Waiting for all required environmental readings before the 48-hour check starts.";
+      statusEl.textContent=ready?"Review all approved reopening criteria and begin a NEW T0 / T24 / T48 salinity check if applicable. Environmental readings alone do not authorise harvesting.":"Waiting for all required environmental readings before the new 48-hour check starts.";
     }
     publicReopenCacheAt=Date.now();
+    updateBayBanner();
   }catch(e){
     console.warn("Central salinity reopening record unavailable",e);
+    reopenProgress={status:"UNAVAILABLE",started:false,completed:false};
+    updateBayBanner();
     badge.textContent="UNAVAILABLE";badge.style.background="#fff0df";badge.style.color="#a35a00";
     statusEl.textContent="Central 48-hour salinity record could not be loaded. Refresh to try again.";
   }finally{
@@ -563,7 +579,7 @@ function render(){
     boxes[3].style.border="2px solid "+(rainfallCombinedAlert?"#c62828":"#31a354");
   }
   var dot=el("statusDot");if(dot)dot.className="status-dot "+(envReady?(envOk?"ok":"alert"):"neutral");
-  el("statusText").textContent=!envReady?"Awaiting readings":(envOk?"ENVIRONMENTAL CONTROLS OK":"ENVIRONMENTAL CONTROL ALERT");
+  el("statusText").textContent=!envReady?"Awaiting readings":(envOk?"ENVIRONMENTAL CONTROLS WITHIN LIMITS — NOT HARVEST AUTHORISATION":"ENVIRONMENTAL CONTROL ALERT");
   el("bayCriteria").textContent=bayName()+" • NRE 7-day rainfall closure threshold: "+limit.toFixed(1)+" mm"+(bayName()==="Duck Bay"?" • NRE 3-day rainfall closure threshold: 25.0 mm":"")+(salRequired?" • Salinity ≥ "+(currentBay.salinity_min??"")+" ppt":" • Salinity not required")+(riverRequired?" • River flow <5.0 m³/s":" • River flow not required")+(isKemps?" • Meat test: passing result required fortnightly":"");
   var riverSection=el("riverFlowSection");
   if(riverSection)riverSection.style.display=riverRequired?"":"none";
@@ -674,7 +690,7 @@ async function weather(){
           else if(sevenDay>=11){rainfallColour="#90ee90";rainfallText="#123d18";}
           else {rainfallColour="#39ff14";rainfallText="#073b00";}
         }else{
-          if(sevenDay>=40){rainfallColour="#c62828";rainfallText="#fff";}
+          if(sevenDay>=bayRainLimit()){rainfallColour="#c62828";rainfallText="#fff";}
           else if(sevenDay>=31){rainfallColour="#ffb3b3";rainfallText="#6b0000";}
           else if(sevenDay>=21){rainfallColour="#ff9800";rainfallText="#4a2500";}
           else if(sevenDay>=11){rainfallColour="#90ee90";rainfallText="#123d18";}
