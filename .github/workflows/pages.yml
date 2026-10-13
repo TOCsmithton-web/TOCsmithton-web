@@ -48,6 +48,9 @@ jobs:
           PLANNER_AI_MODEL: ${{ secrets.PLANNER_AI_MODEL }}
         run: python3 scripts/build-boomer-planner.py
 
+      - name: Validate BOM Smithton rainfall recovery
+        run: python3 -m unittest discover -s tests -p 'test_smithton_rainfall.py' -v
+
       - name: Fetch confirmed BOM Smithton rainfall
         run: |
           python3 scripts/fetch-smithton-rainfall.py
