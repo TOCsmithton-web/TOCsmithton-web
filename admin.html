@@ -308,23 +308,13 @@ function buildReopenPDF(){
 }
 function reopenWatch(){
   if($("adminLocation")&&$("adminLocation").value!=="smithton")return;
-  var sal=Number($("smithtonSalinity").value), min=Number($("salinityMin").value||32.5), rain24=Number($("rain24").value), rain7=Number($("rain7").value);
-  fetch("./river.json?ts="+Date.now(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(async function(d){
-    var river=Number(d&&d.flow), ok=isFinite(sal)&&sal>=min&&isFinite(rain24)&&rain24<=25&&isFinite(rain7)&&rain7<=40&&isFinite(river)&&river<=5;
-    $("reopenEditor").style.display="block";
-    $("reopenStatus").textContent=ok?"ALL ENVIRONMENTAL CONTROLS WITHIN LIMITS — 48-hour check can be progressed.":"HARVEST AREA CLOSED — 48-hour salinity table will reset for a new reopening check.";
-    $("reopenStatus").style.color=ok?"#176b3b":"#9d2727";
-    if(!ok){
-      var session=(await supabase.auth.getSession()).data.session;
-      if(session)await resetReopenForClosure(session);
-    }
-    loadReopenAdmin();
-  }).catch(function(){
-    $("reopenEditor").style.display="block";
-    $("reopenStatus").textContent="Environmental control status unavailable — record remains editable.";
-    $("reopenStatus").style.color="#9d2727";
-    loadReopenAdmin();
-  });
+  // Public monitor uses 40 mm/7 days and 25 mm/3 days for Duck Bay.
+  // Keep admin T48 records editable; never reset a signed evidence record merely because
+  // a network request fails, a reading is missing or an older value is shown.
+  $("reopenEditor").style.display="block";
+  $("reopenStatus").textContent="Duck Bay NRE status and environmental criteria must be checked on Smithton Control. A new T48 may be started only when applicable reopening requirements are met. An official NRE closure prohibits harvesting throughout the process.";
+  $("reopenStatus").style.color="#8b5600";
+  loadReopenAdmin();
 }
 
 
