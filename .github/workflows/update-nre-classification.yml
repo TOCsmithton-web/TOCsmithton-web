@@ -2,6 +2,10 @@ name: Update NRE Duck Bay Classification
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/update-nre-classification.yml"
+      - "scripts/extract-nre-classification.py"
   schedule:
     - cron: "*/10 * * * *"
 
@@ -31,13 +35,14 @@ jobs:
 
       - name: Extract Duck Bay status and notice number
         run: |
-          python3 scripts/extract-nre-classification.py /tmp/shellmap-current.txt nre-classification.json
+          python3 scripts/extract-nre-classification.py /tmp/shellmap-current.txt nre-classification.json /tmp/shellmap-current.pdf
+          cp /tmp/shellmap-current.pdf nre-current-classification.pdf
 
       - name: Commit changed classification
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add nre-classification.json
+          git add nre-classification.json nre-current-classification.pdf
           if git diff --cached --quiet; then
             echo "No NRE classification change."
             exit 0

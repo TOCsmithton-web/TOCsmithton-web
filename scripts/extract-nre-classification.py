@@ -1,5 +1,6 @@
 """Extract only Duck Bay's classification and effective date from ShellMAP text."""
 import json
+import hashlib
 import re
 import sys
 from datetime import datetime, timezone
@@ -44,5 +45,8 @@ def extract(text, checked_at=None):
 
 if __name__ == "__main__":
     data = extract(Path(sys.argv[1]).read_text(encoding="utf-8", errors="ignore"))
+    if len(sys.argv)>3:
+        data['documentSha256']=hashlib.sha256(Path(sys.argv[3]).read_bytes()).hexdigest()
+        data['documentArchiveUrl']='https://raw.githubusercontent.com/TOCsmithton-web/TOCsmithton-web/main/nre-current-classification.pdf'
     Path(sys.argv[2]).write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(data, indent=2))
