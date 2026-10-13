@@ -156,10 +156,31 @@ async function exportPack(){
  }catch(e){message('Audit pack could not be exported: '+e.message,true);}finally{$('export').disabled=false;}}
 
 function renderCollection(result){
- if(result.error){$('autoStatus').textContent='Collection status unavailable. Saved evidence is still available.';return;}
- const c=result.data;if(!c){$('autoStatus').textContent='Automatic collector is being configured.';return;}
+ const el=$('autoStatus');
+ if(result.error){el.classList.add('fs-collector-warning');el.textContent='Collection status unavailable. Saved evidence is still available.';return;}
+ const c=result.data;
+ if(!c){el.classList.add('fs-collector-warning');el.textContent='Automatic collector has not reported its first run.';return;}
  const r=c.last_result||{};
- $('autoStatus').textContent=(c.last_finished_at?'Last collection: '+stamp(c.last_finished_at)+' · Pending source entries: '+(r.pending??'—'):'First collection is pending.')+(c.last_error?' · '+c.last_error:' · Background checks every 10 minutes.');
+ const last=c.last_finished_at?Date.parse(c.last_finished_at):NaN;
+ const stale=!Number.isFinite(last)||Date.now()-last>25*60*1000;
+ const failures=Number(r.errors)||0;
+ const sources=Array.isArray(r.unavailableSources)?r.unavailableSources:[];
+ const warning=Boolean(c.last_error)||stale||failures>0||sources.length>0;
+ el.classList.toggle('fs-collector-warning',warning);
+ const next=new Date((Math.floor(Date.now()/600000)+1)*600000);
+ const currentRecords=records.filter(x=>x.origin==='app_import').length;
+ const currentFiles=attachments.filter(x=>x.origin==='app_import').length;
+ const officialPdfs=attachments.filter(x=>x.file_name==='Official_NRE_classification.pdf').length;
+ const items=[
+  (warning?'ATTENTION':'RUNNING')+' · '+(c.last_finished_at?'Last completed '+stamp(c.last_finished_at):'No completed collection yet')+' · Every 10 minutes · Next scheduled check about '+stamp(next.toISOString()),
+  'Selected audit cycle: '+currentRecords+' automatic records · '+currentFiles+' saved source files · '+officialPdfs+' official NRE PDF'+(officialPdfs===1?'':'s'),
+  'Last run: '+(r.imported??'—')+' new records · '+(r.existing??'—')+' previously archived · '+(r.filesAdded??'—')+' new files · '+(r.pending??'—')+' pending entries'
+ ];
+ if(stale)items.push('The collector is overdue. Check the Supabase scheduled job.');
+ if(failures)items.push(failures+' source processing error'+(failures===1?'':'s')+'; retry is automatic.');
+ if(sources.length)items.push('Unavailable: '+sources.join(', ')+'.');
+ if(c.last_error)items.push('Latest warning: '+c.last_error);
+ el.textContent=items.join('\n');
 }
 async function collectNow(){
  $('collectNow').disabled=true;message('Archiving app evidence…');
