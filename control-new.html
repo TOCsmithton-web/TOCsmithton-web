@@ -196,9 +196,9 @@
 "use strict";
 var KEY="toc-smithton-control-v6";
 var state={salinity:"",salinityMin:"32.5",salinityMax:"",rainThreshold:"25",rain7Threshold:"40",forecast:[],lastAlerts:{salinity:false,rain24:false,rain3:false,rain7:false},alertEnabled:false};
-var previous24Total=0;
-var previous3Total=0;
-var previous7Total=0;
+var previous24Total=NaN;
+var previous3Total=NaN;
+var previous7Total=NaN;
 var DUCK_RAIN3_LIMIT=25;
 var bays=[];
 var currentBay=null;
@@ -480,7 +480,7 @@ async function renderPublicReopen(){
     var completed=status==="COMPLETED AND SUBMITTED TO NRE";
     var started=!!(t0||t24||t48||(statusRow&&status!=="RESET AFTER CLOSURE"));
      reopenProgress={status:status,started:started,completed:completed};
-    var ready=isFinite(previous7Total)&&(bayName()==="Duck Bay"?isFinite(previous3Total):true)&&(state.salinity!==""&&isFinite(Number(state.salinity)))&&(!bayUsesRiver()||isFinite(Number(window.riverCurrentFlow)));
+    var ready=isFinite(previous24Total)&&previous24Total<Number(state.rainThreshold||25)&&isFinite(previous7Total)&&previous7Total<bayRainLimit()&&isFinite(previous3Total)&&previous3Total<DUCK_RAIN3_LIMIT&&(state.salinity!==""&&isFinite(Number(state.salinity))&&Number(state.salinity)>=32.5)&&(!bayUsesRiver()||(isFinite(Number(window.riverCurrentFlow))&&Number(window.riverCurrentFlow)<Number(currentBay.river_flow_limit)));
     if(status==="RESET AFTER CLOSURE"){
       badge.textContent="WAITING";badge.style.background="#f4f7f8";badge.style.color="#52636d";
       statusEl.textContent="Previous T48 readings are historical and cannot be reused. A new check may begin once all applicable reopening requirements are met. Harvest remains CLOSED until NRE authorises it.";
@@ -541,8 +541,8 @@ function render(){
     mainMetricBoxes[3].style.border="2px solid "+(rain7Ok?"#31a354":"#c62828");
   }
   el("rainValue").textContent=isFinite(previous7Total)?previous7Total.toFixed(1):"—";
-  el("rain24Value").textContent=previous24Total.toFixed(1);
-  el("rain3Value").textContent=bayName()==="Duck Bay"?previous3Total.toFixed(1):"N/A";
+  el("rain24Value").textContent=isFinite(previous24Total)?previous24Total.toFixed(1):"—";
+  el("rain3Value").textContent=bayName()==="Duck Bay"?(isFinite(previous3Total)?previous3Total.toFixed(1):"—"):"N/A";
   el("salinityLabel").textContent=salRequired?"Salinity":"Salinity (not required)";
   el("rain24Label").textContent="Previous 24h rainfall";
   el("rain3Label").textContent=bayName()==="Duck Bay"?"Live 3-day rainfall":"3-day rainfall (not required)";
