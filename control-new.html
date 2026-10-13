@@ -722,7 +722,7 @@ async function weather(){
     alert.appendChild(explanation);
     box.appendChild(alert);
     // Preserve historical measured rainfall separately; NEVER feed stale values to controls.
-    if(typeof bom!=="undefined"&&bom&&bom.daily&&/^\\d{4}-\\d{2}-\\d{2}$/.test(bom.latest_date||"")){
+    if(typeof bom!=="undefined"&&bom&&bom.daily&&/^\d{4}-\d{2}-\d{2}$/.test(bom.latest_date||"")){
       var anchor=new Date(bom.latest_date+"T12:00:00Z");
       function historicalTotal(days){
         var total=0;
