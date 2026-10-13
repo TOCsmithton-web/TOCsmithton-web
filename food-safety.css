@@ -3,3 +3,7 @@
 @media print{.topbar nav,.fs-tabs,.fs-filters,.fs-actions,#message,dialog{display:none!important}.fs-wrap{max-width:none}.fs-evidence-grid{grid-template-columns:1fr}.card{box-shadow:none;break-inside:avoid}.fs-summary{grid-template-columns:repeat(4,1fr)}}
 
 .fs-auto{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px}.fs-auto>div{max-width:850px}.fs-auto .hint{margin-top:8px}.fs-auto button{flex-shrink:0}@media(max-width:760px){.fs-auto{align-items:flex-start;flex-direction:column}}
+
+/* Automatic collection operational status and retry warnings. */
+.fs-auto #autoStatus{white-space:pre-line;line-height:1.65}
+.fs-auto #autoStatus.fs-collector-warning{color:#9d2727;font-weight:650}
