@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./supabase-config.js"></script>
+<script src="./nre-status.js?v=20261013-sms2"></script>
 <script src="./environmental-alerts.js?v=20261013-push1"></script>
 </head>
 <body>
@@ -103,11 +104,11 @@
 
 
 <section class="card" id="nreVerificationCard">
-  <div class="card-head"><div><h2>Duck Bay — NRE classification verification</h2><p class="muted">NRE verification is a separate regulatory check and does not replace the environmental controls.</p></div><span id="publicNreBadge" class="badge">NOT VERIFIED</span></div>
+  <div class="card-head"><div><h2>Duck Bay — NRE status verification</h2><p class="muted">The latest ShellMAP text report takes priority while its classification update is pending. Environmental controls still apply.</p></div><span id="publicNreBadge" class="badge">NOT VERIFIED</span></div>
   <div class="notice" id="publicNreNotice">
     <strong>NRE VERIFICATION REQUIRED — CHECK NRE WEBSITE</strong>
-    <p class="hint" style="margin:6px 0 0">Classification notice: <strong id="publicNreNoticeNumber">—</strong></p>
-    <p class="hint" style="margin:6px 0 0">Classification effective from: <span id="publicNreVerifiedAt">—</span></p>
+    <p class="hint" style="margin:6px 0 0">Latest classification notice: <strong id="publicNreNoticeNumber">—</strong></p>
+    <p class="hint" style="margin:6px 0 0">Reported status effective from: <span id="publicNreVerifiedAt">—</span></p>
   </div>
   <p id="publicNreFreshness" class="hint" aria-live="polite">Awaiting current NRE check.</p>
   <p class="hint">Automatic checks scheduled every 10 minutes, 24/7. This page refreshes every minute. Delayed checks expire after 30 minutes.</p>
@@ -115,31 +116,10 @@
 </section>
 
 <section class="card" id="nreSmsCard">
-  <div class="card-head"><div><h2>Duck Bay — latest ShellMAP SMS report</h2><p class="muted">Separate from official NRE verification and environmental controls.</p></div><span id="nreSmsBadge" class="badge">LOADING</span></div>
+  <div class="card-head"><div><h2>Duck Bay — latest ShellMAP SMS report</h2><p class="muted">Both cards use the same reported status and effective time.</p></div><span id="nreSmsBadge" class="badge">LOADING</span></div>
   <div id="nreSmsContent" class="notice">Checking the latest SMS report…</div>
 </section>
-<script>
-(async function(){
- const badge=document.getElementById('nreSmsBadge'), box=document.getElementById('nreSmsContent');
- async function refreshSms(){
-  try {
-   const response=await fetch('https://gyzxsugnlobxlvqjevhh.supabase.co/functions/v1/nre-sms-public',{cache:'no-store'});
-   if(!response.ok)throw Error('Unavailable');
-   const data=await response.json(), item=data.latest;
-   if(!item){badge.textContent='NO SMS REPORT';box.textContent='No SMS reports have been received.';return;}
-   const status=item.reported_status==='CONDITIONAL'?'CONDITIONALLY OPEN — DEPURATION ONLY':item.reported_status==='OPEN'?'OPEN (SMS REPORTED)':item.reported_status==='CLOSED'?'CLOSED (SMS REPORTED)':'UNKNOWN (SMS REPORTED)';
-   const date=item.effective_at?new Date(item.effective_at).toLocaleString('en-AU',{timeZone:'Australia/Hobart',dateStyle:'medium',timeStyle:'short'}):'Not supplied';
-   badge.textContent='SMS REPORTED — UNVERIFIED';
-   badge.style.background='#fff4d7';badge.style.color='#8b5600';
-   box.replaceChildren();
-   const title=document.createElement('strong');title.textContent=status;box.appendChild(title);
-   const p=document.createElement('p');p.textContent='Effective: '+date;box.appendChild(p);
-   const note=document.createElement('p');note.className='hint';note.textContent='Source: '+(item.source==='historical_user_screenshot_test'?'Historical user-provided SMS test':'Forwarded SMS report')+'. Not independently verified. Check the official NRE classification and environmental controls before harvesting.';box.appendChild(note);
-  }catch(e){badge.textContent='SMS STATUS UNAVAILABLE';box.textContent='Unable to load SMS report. Check the official NRE notice.';}
- }
- await refreshSms();setInterval(refreshSms,60000);
-})();
-</script>
+
 <section class="card" id="salinityReopenTable">
   <div class="card-head">
     <div><h2>Duck Bay — 48-hour salinity reopening check</h2>
@@ -244,35 +224,22 @@ function bayRainLimit(){return currentBay&&currentBay.rainfall_7d_limit!=null?Nu
 function bayName(){return currentBay?currentBay.bay_name:"Duck Bay";}
 var NRE_MAX_AGE_MS=30*60*1000;
 var nreRequestInFlight=false;
-function nreIsFresh(){
- var checked=Date.parse(nreAutoVerification.checkedAt||"");
- var age=Date.now()-checked;
- return nreAutoVerification.available&&isFinite(checked)&&age>=0&&age<NRE_MAX_AGE_MS;
-}
+var nreSmsReport=null,nreSmsAvailable=false;
+var nreResolved={status:"UNVERIFIED",label:"UNVERIFIED",canHarvest:false};
 function syncNreVerification(){
- nreVerification={verified:nreIsFresh()&&nreAutoVerification.verified===true,
-  noticeNumber:nreAutoVerification.noticeNumber||"",verifiedAt:nreAutoVerification.openFrom||""};
+ nreResolved=TOCNre.resolve({classification:nreAutoVerification,sms:nreSmsReport,smsAvailable:nreSmsAvailable});
+ nreVerification={verified:nreResolved.canHarvest,noticeNumber:nreResolved.noticeNumber,verifiedAt:nreResolved.effectiveAt};
 }
 async function loadNreAuto(){
  if(nreRequestInFlight)return;
  nreRequestInFlight=true;
- var controller=new AbortController(),timeout=setTimeout(function(){controller.abort();},15000);
  try{
-  // Read the checker's latest commit directly, without waiting for a Pages rebuild.
-  var r=await fetch("https://raw.githubusercontent.com/TOCsmithton-web/TOCsmithton-web/main/nre-classification.json?ts="+Date.now(),{cache:"no-store",signal:controller.signal});
-  if(!r.ok)throw new Error("NRE status unavailable");
-  var d=await r.json();
-  if(!d||d.area!=="Duck Bay Harvest Area"||!/^\d{4}\/\d+$/.test(d.classificationNotice||"")||
-     !["OPEN","CLOSED","OPEN (CONDITIONAL)"].includes(d.statusLabel)||!isFinite(Date.parse(d.checkedAt)))throw new Error("Invalid NRE verification");
-  nreAutoVerification={available:true,verified:d.status==="OPEN"&&d.statusLabel==="OPEN"&&d.conditional===false,
-   noticeNumber:d.classificationNotice,openFrom:d.effectiveFrom||"",checkedAt:d.checkedAt,statusLabel:d.statusLabel};
- }catch(e){
-  nreAutoVerification.available=false;
-  nreAutoVerification.verified=false;
- }finally{
-  clearTimeout(timeout);nreRequestInFlight=false;
-  syncNreVerification();updateNreVerificationDisplay();updateBayBanner();
- }
+  var data=await TOCNre.load();
+  nreAutoVerification=data.classification;
+  nreSmsAvailable=data.smsAvailable;
+  if(data.smsAvailable)nreSmsReport=data.sms;
+ }catch(e){nreAutoVerification.available=false;nreSmsAvailable=false;}
+ finally{nreRequestInFlight=false;syncNreVerification();updateNreVerificationDisplay();updateBayBanner();}
 }
 async function loadMeatTests(){
  try{
@@ -367,35 +334,46 @@ async function loadCentral(){
   }
  }catch(e){status("CENTRAL CONTROL UNAVAILABLE",false);}
 }
-function el(id){return document.getElementById(id);}function formatNreOpenFrom(value){
-  if(!value)return "—";
-  var m=String(value).match(/(\d{3,4})hrs\s+(\d{2})\/(\d{2})\/(\d{4})/i);
-  if(m){
-    var raw=m[1].padStart(4,"0");
-    return m[2]+"/"+m[3]+"/"+m[4]+" "+raw.slice(0,2)+":"+raw.slice(2);
-  }
-  var d=new Date(value);
-  return isFinite(d.getTime())?d.toLocaleString("en-AU"):"—";
+function el(id){return document.getElementById(id);}
+function formatNreOpenFrom(value){
+ var time=TOCNre.effectiveTime(value);
+ return isFinite(time)?new Date(time).toLocaleString("en-AU",{timeZone:"Australia/Hobart",dateStyle:"medium",timeStyle:"short"}):"—";
 }
 function updateNreVerificationDisplay(){
- var card=el("nreVerificationCard"),badge=el("publicNreBadge"),notice=el("publicNreNotice");
+ var card=el("nreVerificationCard"),badge=el("publicNreBadge"),notice=el("publicNreNotice"),smsCard=el("nreSmsCard");
  if(!card||!badge||!notice)return;
- card.style.display=bayName().trim().toLowerCase()==="duck bay"?"":"none";
- if(bayName().trim().toLowerCase()!=="duck bay")return;
- syncNreVerification();
- var checked=Date.parse(nreAutoVerification.checkedAt||""),fresh=nreIsFresh();
- var stamp=isFinite(checked)?new Date(checked).toLocaleString("en-AU",{timeZone:"Australia/Hobart"}):"No successful check";
- var label=fresh&&["OPEN","OPEN (CONDITIONAL)","CLOSED"].includes(nreAutoVerification.statusLabel)?nreAutoVerification.statusLabel:"UNVERIFIED";
- var color=label==="OPEN"?"#176b3b":label==="OPEN (CONDITIONAL)"?"#8b5600":"#9d2727";
- var bg=label==="OPEN"?"#effaf2":label==="OPEN (CONDITIONAL)"?"#fff4d7":"#fff0f0";
- var border=label==="OPEN"?"#31a354":label==="OPEN (CONDITIONAL)"?"#d79b20":"#c62828";
- badge.textContent=label==="UNVERIFIED"?"NRE UNVERIFIED":("NRE VERIFIED — "+label);
- badge.style.background=bg;badge.style.color=color;
+ var duck=bayName().trim().toLowerCase()==="duck bay";
+ card.style.display=duck?"":"none";if(smsCard)smsCard.style.display=duck?"":"none";
+ if(!duck)return;
+ syncNreVerification();var n=nreResolved;
+ var green=n.status==="OPEN"&&(n.basis==="classification"||n.basis==="both")&&nreSmsAvailable;
+ var color=green?"#176b3b":n.status==="CONDITIONAL"?"#8b5600":"#9d2727";
+ var bg=green?"#effaf2":n.status==="CONDITIONAL"?"#fff4d7":"#fff0f0";
+ var border=green?"#31a354":n.status==="CONDITIONAL"?"#d79b20":"#c62828";
+ badge.textContent=n.label;badge.style.background=bg;badge.style.color=color;
  notice.style.background=bg;notice.style.border="2px solid "+border;
- notice.querySelector("strong").textContent=label==="UNVERIFIED"?"NRE STATUS UNVERIFIED — CHECK LATEST OFFICIAL NOTICE":"NRE VERIFIED — Duck Bay "+label;
- el("publicNreNoticeNumber").textContent=nreAutoVerification.noticeNumber||"—";
- el("publicNreVerifiedAt").textContent=formatNreOpenFrom(nreAutoVerification.openFrom||"");
- el("publicNreFreshness").textContent="Last successful NRE check: "+stamp+" (Tasmania time). "+(fresh?"Latest reported classification: "+label+".":"Check unavailable or older than 30 minutes. Verify the official NRE notice before harvesting.")+(label==="OPEN (CONDITIONAL)"?" Review all conditions in the classification notice before harvesting.":"");
+ notice.querySelector("strong").textContent="Duck Bay "+n.label+" — "+n.confirmation;
+ el("publicNreNoticeNumber").textContent=n.noticeNumber||"—";
+ el("publicNreVerifiedAt").textContent=formatNreOpenFrom(n.effectiveAt);
+ var detail="Last classification check: "+formatNreOpenFrom(n.checkedAt)+" (Tasmania time). Published classification: "+n.classificationStatus+", effective "+formatNreOpenFrom(n.classificationEffective)+".";
+ if(n.basis==="sms")detail+=" The text report takes priority; the published notice has not yet confirmed its status and effective date.";
+ if(!n.classificationFresh)detail+=" Classification unavailable or older than 30 minutes.";
+ if(!nreSmsAvailable)detail+=" Latest SMS check unavailable; retrying every minute.";
+ if(n.status==="CONDITIONAL")detail+=" Conditional status does not mean unrestricted harvesting.";
+ el("publicNreFreshness").textContent=detail;
+ var smsBadge=el("nreSmsBadge"),box=el("nreSmsContent");
+ if(!smsBadge||!box)return;
+ smsBadge.textContent=n.sms?n.label:nreSmsAvailable?"NO SMS REPORT":"SMS CHECK UNAVAILABLE";
+ smsBadge.style.background=bg;smsBadge.style.color=color;
+ box.replaceChildren();
+ if(!n.sms){box.textContent=nreSmsAvailable?"No forwarded ShellMAP SMS report has been received.":"Checking the latest SMS report. Harvest status cannot be confirmed until the check succeeds.";return;}
+ var title=document.createElement("strong");title.textContent="Duck Bay "+n.label+" — "+n.confirmation;box.appendChild(title);
+ var effective=document.createElement("p");effective.textContent="SMS effective: "+formatNreOpenFrom(n.sms.effective_at)+" • Received: "+formatNreOpenFrom(n.sms.received_at)+" (Tasmania time).";box.appendChild(effective);
+ if(n.sms.message){
+  var text=document.createElement("blockquote");text.textContent=n.sms.message;
+  text.style.cssText="white-space:pre-wrap;overflow-wrap:anywhere;margin:12px 0;padding:12px;border-left:4px solid "+border+";background:"+bg;box.appendChild(text);
+ }
+ var note=document.createElement("p");note.className="hint";note.textContent="Source: forwarded ShellMAP SMS. "+(n.basis==="both"?"Now verified by text and classification • Notice "+n.noticeNumber:"Awaiting classification confirmation. All environmental controls still apply.");box.appendChild(note);
 }
 
 function updateBayBanner(){

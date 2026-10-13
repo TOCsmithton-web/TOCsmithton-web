@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./supabase-config.js"></script>
+<script src="./nre-status.js?v=20261013-sms2"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
 body{background:#eef4f7}.admin-wrap{max-width:760px;margin:0 auto;padding:18px}
@@ -166,18 +167,18 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 
 <div id="nreVerificationEditor" class="admin-card" style="display:none">
 <h2>Duck Bay — NRE classification verification</h2>
-<p class="small">Check the current NRE ShellMAP classification notice before harvesting. Open the NRE website/notice, confirm that <b>Duck Bay Harvest Area</b> is OPEN, then tick the verification box and record the classification notice number.</p>
+<p class="small">Status follows the latest forwarded ShellMAP SMS while classification confirmation is pending. It refreshes every minute; environmental controls still apply.</p>
 <div class="notice" style="background:#eef7fb">
 <label style="display:flex;align-items:center;gap:10px;font-weight:800">
-<input id="nreVerified" type="checkbox" style="width:22px;height:22px">
-NRE VERIFIED — Duck Bay is OPEN
+<input id="nreVerified" type="checkbox" style="width:22px;height:22px" disabled>
+Duck Bay confirmed OPEN without conditions
 </label>
 </div>
 <div class="grid2">
-<label>Classification notice number<input id="nreNoticeNumber" type="text" value="2026/055" placeholder="e.g. 2026/055"></label>
+<label>Latest classification notice<input id="nreNoticeNumber" type="text" value="" disabled></label>
 <label>NRE open from (as stated in classification notice)<input id="nreVerifiedAt" type="text" disabled></label>
 </div>
-<button id="saveNreVerificationBtn" class="button" type="button">Save NRE verification</button>
+<button id="saveNreVerificationBtn" class="button" type="button" hidden disabled>Automatic NRE verification</button>
 <p id="nreVerificationMsg" class="small"></p>
 <a class="button secondary" href="https://nre.tas.gov.au/SiteAssets/ShellMAP%20Current%20Harvest%20Status.pdf" target="_blank" rel="noopener">Open current NRE Classification Notice</a>
 </div>
@@ -349,26 +350,12 @@ function formatNreOpenFrom(value){
 }
 async function loadNreVerification(){
   try{
-    var ar=await fetch("./nre.json?ts="+Date.now(),{cache:"no-store"});
-    if(ar.ok){
-      var ad=await ar.json();
-      if(ad&&ad.duck_bay_open===true){
-        $("nreVerified").checked=true;
-        $("nreNoticeNumber").value=ad.notice_number||"";
-        $("nreVerifiedAt").value=formatNreOpenFrom(ad.duck_bay_open_from);
-        msg("nreVerificationMsg","AUTO-VERIFIED FROM CURRENT NRE CLASSIFICATION NOTICE ✓ — OPEN FROM "+formatNreOpenFrom(ad.duck_bay_open_from),true);
-        return;
-      }
-    }
-  }catch(e){}
-
-  var r=await supabase.from("meat_test_results").select("bay_name,test_date,result,notes,created_at").eq("bay_name","Duck Bay NRE Classification").order("created_at",{ascending:false}).limit(1);
-  if(r.error){msg("nreVerificationMsg","Could not load NRE verification: "+r.error.message,false);return;}
-  var x=r.data&&r.data[0];
-  var meta={};try{meta=x&&x.notes?JSON.parse(x.notes):{};}catch(e){}
-  $("nreVerified").checked=!!(x&&String(x.result||"").toUpperCase()==="VERIFIED");
-  $("nreNoticeNumber").value=meta.noticeNumber||"";
-  $("nreVerifiedAt").value=meta.verifiedAt?new Date(meta.verifiedAt).toLocaleString("en-AU"):"";
+    var data=await TOCNre.load(),n=TOCNre.resolve(data);
+    $("nreVerified").checked=n.canHarvest;
+    $("nreNoticeNumber").value=n.noticeNumber||"";
+    $("nreVerifiedAt").value=formatNreOpenFrom(n.effectiveAt);
+    msg("nreVerificationMsg","Duck Bay "+n.label+" — "+n.confirmation,n.canHarvest);
+  }catch(e){$("nreVerified").checked=false;msg("nreVerificationMsg","NRE status unavailable — check the latest ShellMAP advice.",false);}
 }
 async function saveNreVerification(){
   var session=(await supabase.auth.getSession()).data.session;
@@ -713,6 +700,7 @@ $("meatDate").value=new Date().toISOString().slice(0,10);
 loadMeatList();
 supabase.auth.getSession().then(function(r){showSession(r.data.session);});
 setInterval(reopenWatch,300000);
+setInterval(loadNreVerification,60000);
 supabase.auth.onAuthStateChange(function(event,session){showSession(session);});
 })();
 </script>
