@@ -15,6 +15,11 @@
 #environmentalMetrics{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media(max-width:760px){#environmentalMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}#liveThreeDayRainfallMetric{grid-column:1 / -1}}
 </style>
+<style>
+#forecast > .notice, #forecast > .hint, #forecast > .loading {grid-column:1 / -1;min-width:0;}
+#forecast {align-items:start;}
+@media(max-width:760px){#forecast {grid-template-columns:repeat(2,minmax(0,1fr));}}
+</style>
 </head>
 <body>
 <div id="bayBanner" class="bay-banner waiting" role="status" aria-live="polite">CHECKING OFFICIAL HARVEST STATUS</div><div id="reopeningBanner" role="status" aria-live="polite" hidden style="padding:13px 18px;text-align:center;background:#fff0cf;color:#744800;border-bottom:3px solid #d99511;font-weight:800"><strong id="reopeningBannerTitle">REOPENING STATUS</strong><div id="reopeningBannerDetail" style="font-size:13px;margin-top:5px;font-weight:600"></div></div>
@@ -628,7 +633,8 @@ async function weather(){
     var live=bom.live;
     if(!live||!validRain(live.rain_since_9am))throw new Error("BOM observed rain since 9am not available"+(bom.live_error?": "+bom.live_error:""));
     var observedAt=Date.parse(live.observed_at),periodEnd=Date.parse(live.period_end);
-    if(!isFinite(observedAt)||Date.now()<observedAt||Date.now()-observedAt>90*60000||Date.now()>periodEnd+30*60000)throw new Error("BOM live rainfall is out of date");
+    if(!isFinite(observedAt)||!isFinite(periodEnd)||Date.now()<observedAt||Date.now()-observedAt>90*60000)throw new Error("BOM live rainfall is out of date");
+    if(Date.now()>periodEnd)throw new Error("Waiting for a post-9am BOM reading for the new rainfall period");
     var latest=live.period_start.slice(0,10);
     function recordedTotal(days){
       var total=0;
@@ -721,10 +727,13 @@ async function weather(){
     render();
     box.replaceChildren();
     var alert=document.createElement("div");alert.className="notice";alert.style.cssText="width:100%;background:#fff0df;border:2px solid #c47e14;color:#613d00;padding:14px;margin-bottom:12px";
-    var bold=document.createElement("strong");bold.textContent="OBSERVED RAINFALL UNAVAILABLE — REOPENING READINESS CANNOT BE CONFIRMED";
+    var bold=document.createElement("strong");bold.textContent="LIVE RAINFALL PENDING — REOPENING READINESS CANNOT BE CONFIRMED";
     alert.appendChild(bold);
     var explanation=document.createElement("p");explanation.style.margin="8px 0";
     explanation.textContent="Reason: "+e.message+". "+(typeof bom!=="undefined"&&bom&&bom.latest_date?"Last confirmed BOM reporting date: "+bom.latest_date+". ":"")+"Unknown readings are not zero rainfall. Duck Bay remains subject to its 40 mm / 7-day and 25 mm / 3-day limits.";
+    if(typeof bom!=="undefined"&&bom&&bom.live&&bom.live.observed_at){
+      explanation.textContent+=" Last live BOM observation: "+new Date(bom.live.observed_at).toLocaleString("en-AU",{timeZone:"Australia/Hobart"})+". Automatically rechecked every 5 minutes.";
+    }
     alert.appendChild(explanation);
     box.appendChild(alert);
     // Preserve historical measured rainfall separately; NEVER feed stale values to controls.
@@ -741,17 +750,21 @@ async function weather(){
         return total;
       }
       var historic=document.createElement("div");historic.className="notice";historic.style.cssText="width:100%;background:#eef4f7;border:1px solid #a7bac4;margin-bottom:12px;padding:12px";
-      var historicHeading=document.createElement("strong");historicHeading.textContent="HISTORICAL BOM OBSERVATIONS — NOT CURRENT CLEARANCE";
+      var historicHeading=document.createElement("strong");historicHeading.textContent="COMPLETED BOM RAINFALL — TO 9AM";
       var historicText=document.createElement("p");historicText.className="hint";historicText.style.margin="7px 0 0";
       function historicalMm(x){return x===null?"Incomplete records":x.toFixed(1)+" mm";}
-      historicText.textContent="Last completed BOM reporting date in this file: "+bom.latest_date+" (to 9am). 24h: "+historicalMm(historicalTotal(1))+" · 3 days: "+historicalMm(historicalTotal(3))+" · 7 days: "+historicalMm(historicalTotal(7))+". These historical figures are not used for the live OPEN/CLOSED decision.";
+      historicText.textContent="Last completed BOM reporting date in this file: "+bom.latest_date+" (to 9am). 24h: "+historicalMm(historicalTotal(1))+" · 3 days: "+historicalMm(historicalTotal(3))+" · 7 days: "+historicalMm(historicalTotal(7))+". These completed totals do not include rainfall since that 9am cutoff. Live reopening readiness awaits a fresh observation.";
       historic.appendChild(historicHeading);historic.appendChild(historicText);box.appendChild(historic);
     }
     if(forecastData&&forecastData.daily&&Array.isArray(forecastData.daily.time)){
       var notice=document.createElement("p");notice.textContent="Weather forecast remains available for planning only. Forecast amounts are not observed BOM rainfall and cannot verify environmental reopening conditions.";notice.className="hint";box.appendChild(notice);
-      forecastData.daily.time.slice(0,8).forEach(function(stamp,i){
+      var forecastCount=0;
+      var dateFormatter=new Intl.DateTimeFormat("en-CA",{timeZone:"Australia/Hobart",year:"numeric",month:"2-digit",day:"2-digit"});
+      var currentLocalDate=dateFormatter.format(new Date());
+      forecastData.daily.time.forEach(function(stamp,i){
         var day=new Date(Number(stamp)*1000);
-        if(!Number.isFinite(day.getTime()))return;
+        if(!Number.isFinite(day.getTime())||dateFormatter.format(day)<currentLocalDate||forecastCount>=7)return;
+        forecastCount++;
         var amount=forecastData.daily.precipitation_sum&&forecastData.daily.precipitation_sum[i];
         var tile=document.createElement("div");tile.className="day forecast-day";tile.style.cssText="background:#eef4f7;border:1px solid #cbd6db";
         var title=document.createElement("div");title.className="date";title.textContent=day.toLocaleDateString("en-AU",{timeZone:"Australia/Hobart",weekday:"short",day:"numeric",month:"short"});
