@@ -249,34 +249,86 @@ Duck Bay confirmed OPEN without conditions
 var supabase=window.supabase.createClient(window.TOC_SUPABASE_URL,window.TOC_SUPABASE_PUBLISHABLE_KEY);
 var $=function(id){return document.getElementById(id);};
 var REOPEN_STATUS="Duck Bay Salinity Reopening Status";
-async function loadReopenAdmin(){
-  var names=["Duck Bay Salinity T0","Duck Bay Salinity T24","Duck Bay Salinity T48",REOPEN_STATUS];
-  var r=await supabase.from("meat_test_results").select("bay_name,test_date,result,notes,created_at").in("bay_name",names).order("created_at",{ascending:false}).limit(50);
-  if(r.error){msg("reopenSaveMsg","Could not load the central reopening record: "+r.error.message,false);return;}
-  var latest={};
-  (r.data||[]).forEach(function(x){if(!latest[x.bay_name])latest[x.bay_name]=x;});
-  var resetAt=0;
-  if(latest[REOPEN_STATUS]&&String(latest[REOPEN_STATUS].result||"").toUpperCase()==="RESET AFTER CLOSURE"){
-    try{resetAt=new Date(JSON.parse(latest[REOPEN_STATUS].notes||"{}").resetAt||latest[REOPEN_STATUS].created_at).getTime()||0;}catch(e){resetAt=new Date(latest[REOPEN_STATUS].created_at).getTime()||0;}
-  }
-  var map=[
-    ["Duck Bay Salinity T0","reopenT0Time","reopenT0Sal","reopenT0LowTide"],
-    ["Duck Bay Salinity T24","reopenT24Time","reopenT24Sal","reopenT24LowTide"],
-    ["Duck Bay Salinity T48","reopenT48Time","reopenT48Sal","reopenT48LowTide"]
-  ];
-  map.forEach(function(m){
-    var x=latest[m[0]];
-    if(x&&resetAt&&new Date(x.created_at).getTime()<=resetAt)x=null;
-    var meta={};try{meta=x&&x.notes?JSON.parse(x.notes):{};}catch(e){}
-    $(m[1]).value=x?(meta.salinityTime||x.notes||x.test_date||""):"";
-    $(m[2]).value=x&&x.result!=null?x.result:"";
-    $(m[3]).value=meta.lowTideTime||"";
+var reopenDraftDirty=false;
+var reopenSaving=false;
+var reopenLoadGeneration=0;
+var reopenBaseline={};
+var reopenInputs=[
+  "reopenT0Time","reopenT0Sal","reopenT0LowTide",
+  "reopenT24Time","reopenT24Sal","reopenT24LowTide",
+  "reopenT48Time","reopenT48Sal","reopenT48LowTide"
+];
+var reopenStages=[
+  {label:"T0",name:"Duck Bay Salinity T0",time:"reopenT0Time",sal:"reopenT0Sal",low:"reopenT0LowTide"},
+  {label:"T24",name:"Duck Bay Salinity T24",time:"reopenT24Time",sal:"reopenT24Sal",low:"reopenT24LowTide"},
+  {label:"T48",name:"Duck Bay Salinity T48",time:"reopenT48Time",sal:"reopenT48Sal",low:"reopenT48LowTide"}
+];
+function readReopenForm(){
+  return reopenStages.map(function(s){
+    return {label:s.label,name:s.name,time:$(s.time).value,sal:$(s.sal).value,lowTide:$(s.low).value};
   });
-  var status=latest[REOPEN_STATUS]&&String(latest[REOPEN_STATUS].result||"IN PROGRESS").toUpperCase();
-  var completed=status==="COMPLETED AND SUBMITTED TO NRE";
-  $("reopenRecordStatus").textContent=completed?"STATUS: COMPLETED AND SUBMITTED TO NRE — PDF copy saved/downloaded.":status==="RESET AFTER CLOSURE"?"STATUS: RESET — harvest area closed; new 48-hour check required.":"STATUS: IN PROGRESS — saved data is published live and remains editable.";
-  $("reopenRecordStatus").style.background=completed?"#dff5e8":status==="RESET AFTER CLOSURE"?"#ffd0d0":"#eef4f7";
-  $("reopenRecordStatus").style.color=completed?"#176b3b":status==="RESET AFTER CLOSURE"?"#9d2727":"#52636d";
+}
+function markReopenDirty(){
+  if(reopenSaving)return;
+  reopenDraftDirty=true;
+  $("reopenSaveMsg").textContent="Unsaved T48 entries — press Save & Publish Progress. Automatic refresh will not overwrite these fields.";
+  $("reopenSaveMsg").style.color="#8b5600";
+}
+async function loadReopenAdmin(force){
+  if((reopenDraftDirty||reopenSaving)&&!force)return false;
+  var generation=++reopenLoadGeneration;
+  var names=reopenStages.map(function(x){return x.name;}).concat(REOPEN_STATUS);
+  try{
+    // The most recent closure reset must remain the boundary even after IN PROGRESS is saved.
+    var responses=await Promise.all([
+      supabase.from("meat_test_results").select("id,bay_name,test_date,result,notes,created_at").in("bay_name",names).order("created_at",{ascending:false}).limit(150),
+      supabase.from("meat_test_results").select("notes,created_at").eq("bay_name",REOPEN_STATUS).eq("result","RESET AFTER CLOSURE").order("created_at",{ascending:false}).limit(1)
+    ]);
+    if(responses[0].error)throw responses[0].error;
+    if(responses[1].error)throw responses[1].error;
+    if(generation!==reopenLoadGeneration||((reopenDraftDirty||reopenSaving)&&!force))return false;
+    var latest={};
+    (responses[0].data||[]).forEach(function(x){if(!latest[x.bay_name])latest[x.bay_name]=x;});
+    var reset=responses[1].data&&responses[1].data[0],resetAt=0;
+    if(reset){
+      try{
+        var meta=JSON.parse(reset.notes||"{}");
+        resetAt=Date.parse(meta.resetAt||reset.created_at)||Date.parse(reset.created_at)||0;
+      }catch(e){resetAt=Date.parse(reset.created_at)||0;}
+    }
+    var baseline={};
+    reopenStages.forEach(function(stage){
+      var x=latest[stage.name];
+      if(x&&resetAt&&Date.parse(x.created_at)<=resetAt)x=null;
+      var meta={};
+      try{meta=x&&x.notes?JSON.parse(x.notes):{};}catch(e){}
+      var values={
+        time:x?(meta.salinityTime||x.test_date||""):"",
+        sal:x&&x.result!=null?String(x.result):"",
+        lowTide:x?(meta.lowTideTime||""):""
+      };
+      $(stage.time).value=values.time;
+      $(stage.sal).value=values.sal;
+      $(stage.low).value=values.lowTide;
+      baseline[stage.label]=values;
+    });
+    reopenBaseline=baseline;
+    var current=latest[REOPEN_STATUS];
+    var status=current?String(current.result||"").toUpperCase():"NOT STARTED";
+    var completed=status==="COMPLETED AND SUBMITTED TO NRE";
+    var isReset=status==="RESET AFTER CLOSURE";
+    $("reopenRecordStatus").textContent=completed?
+      "STATUS: COMPLETED AND MARKED SUBMITTED TO NRE — official reopening still required.":
+      isReset?"STATUS: RESET AFTER CLOSURE — enter a NEW T0 to start the reopening record.":
+      status==="IN PROGRESS"?"STATUS: IN PROGRESS — saved data is published live and remains editable.":
+      "STATUS: NOT STARTED — enter T0 and save progress.";
+    $("reopenRecordStatus").style.background=completed?"#dff5e8":isReset?"#fff0df":"#eef4f7";
+    $("reopenRecordStatus").style.color=completed?"#176b3b":isReset?"#8b5600":"#52636d";
+    return true;
+  }catch(e){
+    msg("reopenSaveMsg","Could not refresh T48 records: "+(e.message||String(e))+". Any unsaved entries have been retained.",false);
+    return false;
+  }
 }
 async function resetReopenForClosure(session){
   var latest=await supabase.from("meat_test_results").select("result,notes,created_at").eq("bay_name",REOPEN_STATUS).order("created_at",{ascending:false}).limit(1);
