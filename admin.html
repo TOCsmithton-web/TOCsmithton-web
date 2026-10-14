@@ -477,7 +477,10 @@ async function saveReopenChecks(){
     });
     // Insert the stage readings and IN PROGRESS status together in one statement:
     // either all are stored, or the server rejects the complete write.
-    rows.push({bay_name:REOPEN_STATUS,test_date:new Date().toLocaleDateString("en-CA",{timeZone:"Australia/Hobart"}),
+    var todayParts={};
+    new Intl.DateTimeFormat("en-GB",{timeZone:"Australia/Hobart",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date()).forEach(function(part){todayParts[part.type]=part.value;});
+    var localDay=todayParts.year+"-"+todayParts.month+"-"+todayParts.day;
+    rows.push({bay_name:REOPEN_STATUS,test_date:localDay,
       result:"IN PROGRESS",notes:"Saved and published "+new Date().toISOString(),entered_by:session.user.id});
     var response=await supabase.from("meat_test_results").insert(rows)
       .select("id,bay_name,test_date,result,notes,created_at");
