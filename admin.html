@@ -437,30 +437,74 @@ async function loadBiotoxinList(){
   $("biotoxinList").innerHTML=r.data.map(function(x){var pass=String(x.result).toUpperCase()==="PASS";return "<div style='padding:10px 0;border-bottom:1px solid #dce6eb'><b>"+new Date(x.test_date+"T00:00:00").toLocaleDateString("en-AU")+"</b> — <b style='color:"+(pass?"#176b3b":"#9d2727")+"'>"+String(x.result).replace(/</g,"&lt;")+"</b>"+(x.notes?"<br><span class='small'>"+String(x.notes).replace(/</g,"&lt;")+"</span>":"")+"</div>";}).join("");
 }
 async function saveReopenChecks(){
-  var session=(await supabase.auth.getSession()).data.session;
-  if(!session){msg("reopenSaveMsg","You must be signed in.",false);return;}
-  var checks=[
-    {label:"T0",time:$("reopenT0Time").value,sal:$("reopenT0Sal").value,lowTide:$("reopenT0LowTide").value,name:"Duck Bay Salinity T0"},
-    {label:"T24",time:$("reopenT24Time").value,sal:$("reopenT24Sal").value,lowTide:$("reopenT24LowTide").value,name:"Duck Bay Salinity T24"},
-    {label:"T48",time:$("reopenT48Time").value,sal:$("reopenT48Sal").value,lowTide:$("reopenT48LowTide").value,name:"Duck Bay Salinity T48"}
-  ];
-  var entered=checks.filter(function(x){return x.time&&x.sal!==""&&x.lowTide;});
-  if(!entered.length){msg("reopenSaveMsg","Enter at least one salinity date/time, salinity reading and low tide time.",false);return;}
-  for(var i=0;i<entered.length;i++){
-    var x=entered[i];
-    var r=await supabase.from("meat_test_results").insert({bay_name:x.name,test_date:x.time.slice(0,10),result:Number(x.sal),notes:JSON.stringify({salinityTime:x.time,lowTideTime:x.lowTide}),entered_by:session.user.id});
-    if(r.error){msg("reopenSaveMsg","SAVE BLOCKED at "+x.label+": "+r.error.message,false);return;}
+  if(reopenSaving)return;
+  var btn=$("saveReopenBtn");
+  reopenSaving=true;btn.disabled=true;btn.textContent="Saving T48 evidence…";
+  try{
+    var auth=await supabase.auth.getSession();
+    if(auth.error)throw auth.error;
+    var session=auth.data.session;
+    if(!session){msg("reopenSaveMsg","SAVE BLOCKED: Your admin session has expired. Sign in with GitHub again. Entries have been retained.",false);return;}
+    var checks=readReopenForm();
+    var entered=checks.filter(function(x){return x.time||x.sal!==""||x.lowTide;});
+    if(!entered.length){
+      msg("reopenSaveMsg","Enter T0 date/time, salinity and low tide time to begin the new 48-hour record.",false);return;
+    }
+    for(var i=0;i<entered.length;i++){
+      var x=entered[i];
+      var fields=[];
+      if(!x.time||!Number.isFinite(Date.parse(x.time)))fields.push("date and time");
+      if(x.sal===""||!Number.isFinite(Number(x.sal))||Number(x.sal)<0)fields.push("valid salinity");
+      if(!x.lowTide)fields.push("low tide time");
+      if(fields.length){
+        msg("reopenSaveMsg","SAVE BLOCKED: "+x.label+" needs "+fields.join(", ")+". Fill all three fields for each started stage. Your entries have not been cleared.",false);
+        return;
+      }
+    }
+    // Only archive changed stages. All previous entries remain as immutable history.
+    var changed=entered.filter(function(x){
+      var old=reopenBaseline[x.label]||{time:"",sal:"",lowTide:""};
+      return x.time!==old.time||Number(x.sal)!==Number(old.sal)||x.lowTide!==old.lowTide;
+    });
+    if(!changed.length){
+      reopenDraftDirty=false;
+      msg("reopenSaveMsg","No new changes to save. Existing T48 entries are already recorded.",true);
+      return;
+    }
+    var rows=changed.map(function(x){
+      return {bay_name:x.name,test_date:x.time.slice(0,10),result:String(Number(x.sal)),
+        notes:JSON.stringify({salinityTime:x.time,lowTideTime:x.lowTide}),entered_by:session.user.id};
+    });
+    // Insert the stage readings and IN PROGRESS status together in one statement:
+    // either all are stored, or the server rejects the complete write.
+    rows.push({bay_name:REOPEN_STATUS,test_date:new Date().toLocaleDateString("en-CA",{timeZone:"Australia/Hobart"}),
+      result:"IN PROGRESS",notes:"Saved and published "+new Date().toISOString(),entered_by:session.user.id});
+    var response=await supabase.from("meat_test_results").insert(rows)
+      .select("id,bay_name,test_date,result,notes,created_at");
+    if(response.error){
+      msg("reopenSaveMsg","SAVE BLOCKED: "+response.error.message+". Your entries remain in the form. Admin access and network connection may need checking.",false);
+      return;
+    }
+    if(!response.data||response.data.length!==rows.length){
+      msg("reopenSaveMsg","The server did not confirm every saved record. Check the T48 history before trying again; your entries remain visible.",false);
+      return;
+    }
+    reopenDraftDirty=false;
+    var refreshed=await loadReopenAdmin(true);
+    msg("reopenSaveMsg",
+      "SAVED TO SUPABASE ✓ "+changed.map(function(x){return x.label;}).join(", ")+
+      " recorded ("+response.data.length+" entries including progress status). "+
+      (refreshed?"Public page can now load these entries.":"Refresh of the displayed record is pending.")+
+      " Duck Bay remains officially CLOSED until NRE approves reopening.",true);
+  }catch(e){
+    msg("reopenSaveMsg","Save could not be completed: "+(e&&e.message?e.message:String(e))+". Your entries have been retained.",false);
+  }finally{
+    reopenSaving=false;
+    btn.disabled=false;btn.textContent="Save & Publish Progress";
   }
-  var existing=await supabase.from("meat_test_results").select("result").eq("bay_name",REOPEN_STATUS).order("created_at",{ascending:false}).limit(1);
-  var current=existing.data&&existing.data[0]?String(existing.data[0].result).toUpperCase():"";
-  if(current!=="COMPLETED AND SUBMITTED TO NRE"){
-    var sr=await supabase.from("meat_test_results").insert({bay_name:REOPEN_STATUS,test_date:new Date().toISOString().slice(0,10),result:"IN PROGRESS",notes:"Saved and published "+new Date().toISOString(),entered_by:session.user.id});
-    if(sr.error){msg("reopenSaveMsg","Readings saved, but status could not be updated: "+sr.error.message,false);return;}
-  }
-  await loadReopenAdmin();
-  msg("reopenSaveMsg","SAVED & PUBLISHED ✓ — you can add T24/T48 data later without losing the saved record.",true);
 }
 async function completeReopen(){
+  if(reopenDraftDirty||reopenSaving){msg("reopenSaveMsg","Save & Publish the current T48 readings before marking the check complete. Unsaved fields cannot be submitted.",false);return;}
   var session=(await supabase.auth.getSession()).data.session;
   if(!session){msg("reopenSaveMsg","You must be signed in.",false);return;}
   var vals=["reopenT0Time","reopenT24Time","reopenT48Time","reopenT0Sal","reopenT24Sal","reopenT48Sal","reopenT0LowTide","reopenT24LowTide","reopenT48LowTide"];
@@ -737,6 +781,7 @@ $("biotoxinSaveBtn").onclick=saveBiotoxin;
 $("biotoxinDate").value=new Date().toISOString().slice(0,10);
 loadBiotoxinList();
 $("meatSaveBtn").onclick=saveMeatTest;
+reopenInputs.forEach(function(id){$(id).addEventListener("input",markReopenDirty);$(id).addEventListener("change",markReopenDirty);});
 $("saveReopenBtn").onclick=saveReopenChecks;
 $("completeReopenBtn").onclick=completeReopen;
 $("meatDate").value=new Date().toISOString().slice(0,10);
