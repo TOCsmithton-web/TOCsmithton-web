@@ -434,19 +434,25 @@ async function renderPublicReopen(){
   publicReopenLoading=true;
   try{
     var names=["Duck Bay Salinity T0","Duck Bay Salinity T24","Duck Bay Salinity T48","Duck Bay Salinity Reopening Status"];
-    var r=await supabase.from("meat_test_results").select("bay_name,test_date,result,notes,created_at").in("bay_name",names).order("created_at",{ascending:false}).limit(50);
+    var queryResult=await Promise.all([
+      supabase.from("meat_test_results").select("bay_name,test_date,result,notes,created_at").in("bay_name",names).order("created_at",{ascending:false}).limit(150),
+      supabase.from("meat_test_results").select("notes,created_at").eq("bay_name","Duck Bay Salinity Reopening Status").eq("result","RESET AFTER CLOSURE").order("created_at",{ascending:false}).limit(1)
+    ]);
+    var r=queryResult[0],resetResult=queryResult[1];
     if(r.error)throw r.error;
+    if(resetResult.error)throw resetResult.error;
     var latest={};
     (r.data||[]).forEach(function(x){if(!latest[x.bay_name])latest[x.bay_name]=x;});
-    var resetAt=0;
-    var statusRow=latest["Duck Bay Salinity Reopening Status"];
-    if(statusRow && String(statusRow.result||"").toUpperCase()==="RESET AFTER CLOSURE"){
+    // Keep the latest closure as the boundary even after a new IN PROGRESS is saved.
+    var resetAt=0,reset=resetResult.data&&resetResult.data[0];
+    if(reset){
       try{
-        resetAt=new Date(JSON.parse(statusRow.notes||"{}").resetAt||statusRow.created_at).getTime()||0;
+        resetAt=new Date(JSON.parse(reset.notes||"{}").resetAt||reset.created_at).getTime()||0;
       }catch(e){
-        resetAt=new Date(statusRow.created_at).getTime()||0;
+        resetAt=new Date(reset.created_at).getTime()||0;
       }
     }
+    var statusRow=latest["Duck Bay Salinity Reopening Status"];
     function activeRow(name){
       var x=latest[name];
       if(x&&resetAt&&new Date(x.created_at).getTime()<=resetAt)return null;
