@@ -49,7 +49,9 @@ jobs:
         run: python3 scripts/build-boomer-planner.py
 
       - name: Validate BOM Smithton rainfall recovery
-        run: python3 -m unittest discover -s tests -p 'test_smithton_rainfall.py' -v
+        run: |
+          python3 -m unittest discover -s tests -p 'test_smithton_rainfall.py' -v
+          node --test tests/smithton-live-rainfall.test.mjs
 
       - name: Fetch confirmed BOM Smithton rainfall
         run: |

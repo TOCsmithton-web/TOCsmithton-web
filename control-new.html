@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./supabase-config.js"></script>
+<script src="./smithton-rainfall-live.js?v=20261016-live1"></script>
 <script src="./nre-status.js?v=20261013-sms2"></script>
 <script src="./environmental-alerts.js?v=20261013-push1"></script>
 <style>
@@ -629,6 +630,7 @@ async function weather(){
     var bomResponse=await fetch("./smithton-rainfall.json?ts="+Date.now(),{cache:"no-store"});
     if(!bomResponse.ok)throw new Error("BOM recorded rainfall unavailable");
     var bom=await bomResponse.json();
+    if(window.TOCSmithtonRainfall)bom=await window.TOCSmithtonRainfall.refreshLive(bom);
     var observedByDate=bom.daily||{};
     var live=bom.live;
     if(!live||!validRain(live.rain_since_9am))throw new Error("BOM observed rain since 9am not available"+(bom.live_error?": "+bom.live_error:""));
