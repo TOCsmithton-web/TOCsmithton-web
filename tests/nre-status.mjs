@@ -15,6 +15,7 @@ assert.equal(resolve({...matched,details:'Other conditions apply'}).basis,'sms')
 assert.equal(resolve({...matched,checkedAt:new Date(now-31*60000).toISOString()}).basis,'sms');
 assert.equal(resolve(classification,{...sms,reported_status:'CLOSED'}).status,'CLOSED');
 assert.equal(resolve(classification,{...sms,reported_status:'OPEN'}).basis,'sms');
+assert.equal(resolve(classification,{...sms,reported_status:'OPEN'}).canHarvest,true);
 assert.equal(resolve(classification,{...sms,reported_status:'UNKNOWN'}).status,'UNVERIFIED');
 assert.equal(resolve(classification,null).basis,'classification');
 assert.equal(resolve(classification,null,false).canHarvest,false);
@@ -22,6 +23,10 @@ assert.equal(resolve(classification,{...sms,source:'historical_user_screenshot_t
 assert.equal(resolve(matched,sms,false).canHarvest,false);
 const openSms={...sms,reported_status:'OPEN',message:'ShellMAP Advice: Duck Bay - Duck Bay is OPEN.'};
 assert.equal(resolve({...classification,effectiveFrom:'0615hrs 13/10/2026'},openSms).canHarvest,true);
+const laterClosure={...classification,statusLabel:'CLOSED',effectiveFrom:'0800hrs 13/10/2026'};
+assert.equal(resolve(laterClosure,openSms).status,'CLOSED');assert.equal(resolve(laterClosure,openSms).canHarvest,false);
+const laterCondition={...laterClosure,statusLabel:'OPEN (CONDITIONAL)',details:'Depuration only.'};
+assert.equal(resolve(laterCondition,openSms).status,'CONDITIONAL');assert.equal(resolve(laterCondition,openSms).canHarvest,false);
 assert.equal(TOCNre.effectiveTime('0615hrs 13/10/2026'),Date.parse(sms.effective_at));
 assert.equal(TOCNre.effectiveTime('0615hrs 13/07/2026'),Date.parse('2026-07-12T20:15:00Z'));
 // Run the actual public-card rendering with a minimal DOM; message strings must never become HTML.
@@ -40,6 +45,51 @@ window.configure(classification,{...sms,message:'<img src=x onerror=alert(1)>\n'
 assert.equal(elements.publicNreBadge.textContent,elements.nreSmsBadge.textContent);
 const quote=elements.nreSmsContent.children.find(x=>x.tag==='blockquote');assert.ok(quote.textContent.startsWith('<img'));assert.equal(quote.children.length,0);
 window.configure({...matched,checkedAt:new Date().toISOString()},sms);assert.ok(elements.publicNreNotice.querySelector('strong').textContent.includes('Now verified by text and classification'));
+// Exercise the actual banner, both NRE cards and completed T48 text together.
+vm.runInContext(definitions+`window.configureBanner=function(c,s,values){
+ currentBay={bay_name:'Duck Bay',salinity_min:32.5,salinity_max:null,rainfall_7d_limit:40,river_flow_limit:5};
+ state.salinity='33.7';state.rainThreshold=25;
+ previous24Total=0;previous3Total=0;previous7Total=19.2;window.riverCurrentFlow=0.7;
+ reopenProgress={status:'COMPLETED AND SUBMITTED TO NRE',started:true,completed:true};
+ nreAutoVerification=c;nreSmsReport=s;nreSmsAvailable=true;
+ if(values){
+  if('rain7' in values)previous7Total=values.rain7;
+  if('rain3' in values)previous3Total=values.rain3;
+  if('salinity' in values)state.salinity=values.salinity;
+  if('river' in values)window.riverCurrentFlow=values.river;
+  if('smsAvailable' in values)nreSmsAvailable=values.smsAvailable;
+ }
+ updateBayBanner();updateNreVerificationDisplay();
+};})();`,context);
+const currentNow=Date.now();
+const currentSms={...openSms,effective_at:new Date(currentNow-3600000).toISOString(),received_at:new Date(currentNow-60000).toISOString()};
+const olderCondition={...matched,effectiveFrom:new Date(currentNow-2*3600000).toISOString(),checkedAt:new Date(currentNow-60000).toISOString()};
+window.configureBanner(olderCondition,currentSms);
+assert.equal(elements.bayBanner.className,'bay-banner open');
+assert.match(elements.bayBanner.innerHTML,/DUCK BAY OPEN/);
+assert.match(elements.bayBanner.innerHTML,/SHELLMAP SMS — AWAITING MATCHING CLASSIFICATION/);
+assert.equal(elements.publicNreBadge.textContent,'OPEN');assert.equal(elements.nreSmsBadge.textContent,'OPEN');
+assert.equal(elements.publicNreBadge.style.background,'#fff4d7');
+assert.match(elements.publicReopenStatus.textContent,/reopening reported by ShellMAP SMS/);
+const currentMatched={...olderCondition,statusLabel:'OPEN',effectiveFrom:currentSms.effective_at,details:'Open without conditions.'};
+window.configureBanner(currentMatched,currentSms);
+assert.equal(elements.bayBanner.className,'bay-banner open');
+assert.ok(!elements.bayBanner.innerHTML.includes('AWAITING MATCHING'));
+assert.equal(elements.publicNreBadge.style.background,'#effaf2');
+assert.match(elements.publicReopenStatus.textContent,/verified by text and classification/);
+for(const values of [{rain7:40},{rain7:NaN},{rain3:25},{salinity:'32.4'},{salinity:''},{river:5},{smsAvailable:false}]){
+ window.configureBanner(olderCondition,currentSms,values);
+ assert.equal(elements.bayBanner.className,'bay-banner closed',JSON.stringify(values));
+}
+window.configureBanner(currentMatched,{...currentSms,reported_status:'CLOSED'});
+assert.equal(elements.bayBanner.className,'bay-banner closed');
+assert.match(elements.publicReopenStatus.textContent,/awaiting official NRE reopening/);
+window.configureBanner(currentMatched,{...currentSms,reported_status:'CONDITIONAL',depuration_only:true});
+assert.equal(elements.bayBanner.className,'bay-banner closed');
+window.configureBanner({...currentMatched,statusLabel:'CLOSED',effectiveFrom:new Date(currentNow-1800000).toISOString()},currentSms);
+assert.equal(elements.bayBanner.className,'bay-banner closed');
+window.configureBanner({available:false},{...currentSms,effective_at:new Date(currentNow+3600000).toISOString()});
+assert.equal(elements.bayBanner.className,'bay-banner closed');
 // Validate the API's public projection and failure behaviour without sending SMS.
 let handler,requested;
 const apiContext=vm.createContext({Deno:{env:{get:key=>key==='SUPABASE_URL'?'https://local.invalid':'server-only'},serve:h=>handler=h},URL,Response,AbortSignal,Date,fetch:async(url)=>{requested=new URL(url);return Response.json([sms]);}});
@@ -48,4 +98,4 @@ vm.runInContext(api,apiContext);
 const response=await handler({method:'GET'});assert.equal(response.status,200);const publicReport=(await response.json()).latest;assert.equal(publicReport.message,undefined);assert.equal(publicReport.sender,undefined);assert.equal(publicReport.depuration_only,true);
 assert.equal(requested.searchParams.get('source'),'eq.forwarded_sms');assert.ok(requested.searchParams.get('select').includes('message'));assert.ok(!requested.searchParams.get('select').includes('sender'));
 assert.equal((await handler({method:'POST'})).status,405);
-console.log('NRE tests passed: SMS priority, classification match/date/conditions, stale and missing sources, DST, both-card rendering, safe text rendering, public API excludes message and sender.');
+console.log('NRE tests passed: opening SMS controls the banner, both cards and T48 completion text; matched classification clears pending qualifier; later restrictions, exceeded/missing environmental inputs and failed SMS checks remain closed; DST, safe rendering and API privacy checks pass.');

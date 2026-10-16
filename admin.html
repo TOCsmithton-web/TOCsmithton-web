@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./supabase-config.js"></script>
-<script src="./nre-status.js?v=20261013-sms2"></script>
+<script src="./nre-status.js?v=20261016-sms3"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
 body{background:#eef4f7}.admin-wrap{max-width:760px;margin:0 auto;padding:18px}
@@ -171,12 +171,12 @@ label{display:block;font-weight:700;margin:12px 0}input{width:100%;box-sizing:bo
 <div class="notice" style="background:#eef7fb">
 <label style="display:flex;align-items:center;gap:10px;font-weight:800">
 <input id="nreVerified" type="checkbox" style="width:22px;height:22px" disabled>
-Duck Bay confirmed OPEN without conditions
+Duck Bay reported OPEN without conditions by NRE
 </label>
 </div>
 <div class="grid2">
 <label>Latest classification notice<input id="nreNoticeNumber" type="text" value="" disabled></label>
-<label>NRE open from (as stated in classification notice)<input id="nreVerifiedAt" type="text" disabled></label>
+<label>NRE open from (latest effective report)<input id="nreVerifiedAt" type="text" disabled></label>
 </div>
 <button id="saveNreVerificationBtn" class="button" type="button" hidden disabled>Automatic NRE verification</button>
 <p id="nreVerificationMsg" class="small"></p>

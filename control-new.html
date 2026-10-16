@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./supabase-config.js"></script>
 <script src="./smithton-rainfall-live.js?v=20261016-live1"></script>
-<script src="./nre-status.js?v=20261013-sms2"></script>
+<script src="./nre-status.js?v=20261016-sms3"></script>
 <script src="./environmental-alerts.js?v=20261013-push1"></script>
 <style>
 #environmentalMetrics{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -358,9 +358,11 @@ function updateNreVerificationDisplay(){
  if(!duck)return;
  syncNreVerification();var n=nreResolved;
  var green=n.status==="OPEN"&&(n.basis==="classification"||n.basis==="both")&&nreSmsAvailable;
- var color=green?"#176b3b":n.status==="CONDITIONAL"?"#8b5600":"#9d2727";
- var bg=green?"#effaf2":n.status==="CONDITIONAL"?"#fff4d7":"#fff0f0";
- var border=green?"#31a354":n.status==="CONDITIONAL"?"#d79b20":"#c62828";
+ var pendingOpen=n.status==="OPEN"&&n.basis==="sms"&&nreSmsAvailable;
+ var amber=n.status==="CONDITIONAL"||pendingOpen;
+ var color=green?"#176b3b":amber?"#8b5600":"#9d2727";
+ var bg=green?"#effaf2":amber?"#fff4d7":"#fff0f0";
+ var border=green?"#31a354":amber?"#d79b20":"#c62828";
  badge.textContent=n.label;badge.style.background=bg;badge.style.color=color;
  notice.style.background=bg;notice.style.border="2px solid "+border;
  notice.querySelector("strong").textContent="Duck Bay "+n.label+" — "+n.confirmation;
@@ -387,6 +389,12 @@ function updateNreVerificationDisplay(){
  var note=document.createElement("p");note.className="hint";note.textContent="Source: forwarded ShellMAP SMS. "+(n.basis==="both"?"Now verified by text and classification • Notice "+n.noticeNumber:"Awaiting classification confirmation. All environmental controls still apply.");box.appendChild(note);
 }
 
+function completedReopenMessage(){
+ if(nreResolved.canHarvest)return nreResolved.basis==="sms"
+   ?"T48 marked completed and submitted. NRE reopening reported by ShellMAP SMS; awaiting matching classification. All environmental controls still apply."
+   :"T48 marked completed and submitted. NRE reopening verified by "+(nreResolved.basis==="both"?"text and classification":"classification")+". All environmental controls still apply.";
+ return "T48 marked completed and submitted; awaiting official NRE reopening authorisation. Harvest remains CLOSED until NRE confirms.";
+}
 function updateBayBanner(){
   syncNreVerification();
   var sal=Number(state.salinity), min=currentBay&&currentBay.salinity_min!=null?Number(currentBay.salinity_min):null, max=currentBay&&currentBay.salinity_max!=null?Number(currentBay.salinity_max):null;
@@ -409,6 +417,7 @@ function updateBayBanner(){
   var nreOk=bayName().trim().toLowerCase()!=="duck bay" || nreVerification.verified;
   var open=salOk&&rain3Ok&&rain7Ok&&riverOk&&meatOk&&meatDueOk&&nreOk;
   var b=el("bayBanner"); if(!b)return;
+  if(reopenProgress.completed&&el("publicReopenStatus"))el("publicReopenStatus").textContent=completedReopenMessage();
    var amber=el("reopeningBanner"),heading=el("reopeningBannerTitle"),detail=el("reopeningBannerDetail"),note=el("reopeningControlNote");
    var duck=bayName().trim().toLowerCase()==="duck bay";
    var environmentReady=state.salinity!==""&&isFinite(sal)&&salOk&&isFinite(previous24Total)&&rain24Ok&&isFinite(previous3Total)&&rain3Ok&&isFinite(previous7Total)&&rain7Ok&&isFinite(Number(window.riverCurrentFlow))&&riverOk;
@@ -421,7 +430,8 @@ function updateBayBanner(){
      }
    }
   b.className="bay-banner "+(open?"open":"closed");
-  b.innerHTML=bayName().toUpperCase()+" "+(open?"OPEN":"CLOSED")+"<a href=\"https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas\" target=\"_blank\" rel=\"noopener\" style=\"display:block;color:#fff;text-decoration:underline;font-size:.72em;margin-top:4px;font-weight:700\">CHECK NRE CLASSIFICATION BEFORE HARVESTING</a>";
+  var sourceNote=open&&duck&&nreResolved.basis==="sms"?"<div style=\"font-size:.65em;margin-top:4px;font-weight:700\">SHELLMAP SMS — AWAITING MATCHING CLASSIFICATION</div>":"";
+  b.innerHTML=bayName().toUpperCase()+" "+(open?"OPEN":"CLOSED")+sourceNote+"<a href=\"https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas\" target=\"_blank\" rel=\"noopener\" style=\"display:block;color:#fff;text-decoration:underline;font-size:.72em;margin-top:4px;font-weight:700\">CHECK NRE CLASSIFICATION BEFORE HARVESTING</a>";
   if(window.bayFlashTimer){clearInterval(window.bayFlashTimer);window.bayFlashTimer=null;}
   b.style.backgroundColor=open?"#16823b":"#c62828";
   b.style.color="#fff";
@@ -498,7 +508,7 @@ async function renderPublicReopen(){
       statusEl.textContent="Previous T48 readings are historical and cannot be reused. A new check may begin once all applicable reopening requirements are met. Harvest remains CLOSED until NRE authorises it.";
     }else if(completed){
       badge.textContent="COMPLETED";badge.style.background="#bff3cc";badge.style.color="#176b3b";
-      statusEl.textContent="T48 marked completed and submitted; awaiting official NRE reopening authorisation. Harvest remains CLOSED until NRE confirms.";
+      statusEl.textContent=completedReopenMessage();
     }else if(started){
       badge.textContent="IN PROGRESS";badge.style.background="#fff0df";badge.style.color="#a35a00";
       statusEl.textContent="48-hour salinity check is in progress. T0, T24 and T48 readings are shown above.";

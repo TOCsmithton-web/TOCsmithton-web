@@ -38,12 +38,17 @@
         // A repeated check of an older notice never cancels a newer SMS report.
         state.basis='sms';state.confirmation='Text report takes priority — awaiting matching classification';
       }
+      // A later official restriction must still supersede an earlier opening SMS.
+      if (fresh && Number.isFinite(ct) && ct>st && ct<=now && (cs==='CLOSED'||cs==='CONDITIONAL')) {
+        state.status=cs;state.label=label(cs,/depuration/i.test(c.details||''));state.effectiveAt=c.effectiveFrom;
+        state.basis='classification';state.confirmation='Newer classification takes priority over the earlier text report';
+      }
     } else if (fresh && input.smsAvailable === true) {
       state.status=cs;state.label=label(cs,/depuration/i.test(c.details||''));state.effectiveAt=c.effectiveFrom||'';
       state.basis='classification';state.confirmation='Verified by classification';
     }
-    state.canHarvest=state.status==='OPEN' && input.smsAvailable===true && (state.basis==='classification'||state.basis==='both');
-    // SMS-only OPEN remains a report until classification confirms it; restrictive SMS applies immediately.
+    state.canHarvest=state.status==='OPEN' && input.smsAvailable===true && ['classification','both','sms'].includes(state.basis);
+    // The live forwarded ShellMAP SMS controls status while an older classification catches up.
     if(input.smsAvailable!==true)state.confirmation+=' • latest SMS check unavailable';
     return state;
   }
