@@ -6,37 +6,35 @@ on:
     paths:
       - ".github/workflows/update-nre-classification.yml"
       - "scripts/extract-nre-classification.py"
+      - "scripts/fetch-nre-classification.py"
+      - "tests/test_nre_classification.py"
+      - "tests/test_nre_collection.py"
   schedule:
     - cron: "*/10 * * * *"
 
 permissions:
   contents: write
 
+concurrency:
+  group: nre-classification
+  cancel-in-progress: false
+
 jobs:
   update-classification:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download current NRE ShellMAP classification notice
+      - name: Validate NRE notice collection
         run: |
-          curl -fL --retry 3 --retry-delay 5 \
-            "https://nre.tas.gov.au/SiteAssets/ShellMAP%20Current%20Harvest%20Status.pdf" \
-            -o /tmp/shellmap-current.pdf
-          python -m pip install --disable-pip-version-check -q pypdf
-          python - <<'PY'
-          from pathlib import Path
-          from pypdf import PdfReader
-          reader = PdfReader("/tmp/shellmap-current.pdf")
-          text = "\n".join((page.extract_text() or "") for page in reader.pages)
-          Path("/tmp/shellmap-current.txt").write_text(text, encoding="utf-8")
-          PY
+          python -m pip install --disable-pip-version-check -q pypdf==6.10.0
+          python3 -m unittest discover -s tests -p 'test_nre_*.py' -v
 
-      - name: Extract Duck Bay status and notice number
+      - name: Discover and fetch a fresh NRE classification notice
         run: |
-          python3 scripts/extract-nre-classification.py /tmp/shellmap-current.txt nre-classification.json /tmp/shellmap-current.pdf
-          cp /tmp/shellmap-current.pdf nre-current-classification.pdf
+          python3 scripts/fetch-nre-classification.py
 
       - name: Commit changed classification
         run: |
