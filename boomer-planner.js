@@ -5,6 +5,10 @@ const valid=x=>typeof x==='number'&&Number.isFinite(x);
 const dateKey=t=>new Intl.DateTimeFormat('en-CA',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(t*1000));
 const clock=t=>new Intl.DateTimeFormat('en-AU',{timeZone:TZ,hour:'numeric',minute:'2-digit'}).format(new Date(t*1000));
 const direction=x=>valid(x)?['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(x/22.5)%16]+' '+Math.round(x)+'°':'Unavailable';
+function windKmh(data,value,field='wind_speed_10m'){
+ const unit=data.weather?.hourly_units?.[field],factor=unit==='kn'?1.852:unit==='km/h'?1:unit==='m/s'?3.6:null;
+ return valid(value)&&factor!==null?value*factor:null;
+}
 function lowTides(data){
  if(data.tides&&Array.isArray(data.tides.extremes))return data.tides.extremes.filter(x=>x.type==='Low'&&valid(x.dt)&&valid(x.height)).map(x=>({t:x.dt,h:x.height,local:!(data.tides.station&&data.tides.station.reference_only),reference:!!(data.tides.station&&data.tides.station.reference_only)}));
  if(data.tide_mode==='bom')return [];
@@ -30,20 +34,20 @@ function forecast(data,now=Date.now()/1000){
    const indices=w.time.map((t,i)=>({t,i})).filter(x=>x.t>=Math.floor(start/HOUR)*HOUR&&x.t<=Math.ceil(end/HOUR)*HOUR);
    if(!indices.length||indices[0].t>start||indices[indices.length-1].t<end)return null;
    const complete=indices.every(x=>['wind_speed_10m','wind_gusts_10m','pressure_msl','wind_direction_10m'].every(k=>valid(w[k][x.i])));
-   if(!complete)return {low,start,end,missing:true,score:Infinity};
+   if(!complete||windKmh(data,0)===null||windKmh(data,0,'wind_gusts_10m')===null)return {low,start,end,missing:true,score:Infinity};
    const near=indices.reduce((a,b)=>Math.abs(a.t-low.t)<Math.abs(b.t-low.t)?a:b).i;
-   const wind=Math.max(...indices.map(x=>w.wind_speed_10m[x.i])),gust=Math.max(...indices.map(x=>w.wind_gusts_10m[x.i]));
+   const wind=Math.max(...indices.map(x=>windKmh(data,w.wind_speed_10m[x.i]))),gust=Math.max(...indices.map(x=>windKmh(data,w.wind_gusts_10m[x.i],'wind_gusts_10m')));
    const pressure=w.pressure_msl[near],prev=w.pressure_msl[near-3],trend=valid(prev)?pressure-prev:null;
    // Pressure carries substantial weight following the farm's experience.
    // 1013.25 hPa is the reference; bands below are provisional planning bands.
    const pPenalty=Math.max(-12,Math.min(30,(1013.25-pressure)*1.5));
-   const score=wind*2+gust+pPenalty+(valid(trend)?Math.max(0,-trend)*3:0);
-   return {low,start,end,wind,gust,pressure,trend,direction:w.wind_direction_10m[near],score,poor:wind>15||gust>20,lowPressure:pressure<1005,falling:valid(trend)&&trend<=-2};
+   const score=(wind*2+gust)/1.852+pPenalty+(valid(trend)?Math.max(0,-trend)*3:0);
+   return {low,start,end,wind,gust,pressure,trend,direction:w.wind_direction_10m[near],score,poor:wind>27.78||gust>37.04,lowPressure:pressure<1005,falling:valid(trend)&&trend<=-2};
   }).filter(Boolean).sort((a,b)=>(Number(!!a.missing)-Number(!!b.missing))||(Number(!!a.poor)-Number(!!b.poor))||(a.score-b.score));
   return {...day,index:dayIndex,allLows:lows.filter(x=>dateKey(x.t)===day.date),allTides:data.tides?(data.tides.extremes||[]).filter(x=>dateKey(x.dt)===day.date):[],candidates,best:candidates[0]||null};
  });
 }
-if(typeof module!=='undefined'&&module.exports)module.exports={forecast,lowTides,dateKey,direction};
+if(typeof module!=='undefined'&&module.exports)module.exports={forecast,lowTides,dateKey,direction,windKmh};
 if(typeof document==='undefined')return;
 const el=id=>document.getElementById(id),escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const metric=(label,value)=>'<div><small>'+label+'</small><strong>'+value+'</strong></div>';
@@ -73,7 +77,7 @@ function render(data){
  el('updated').textContent='Forecast retrieved '+new Date(data.updated_at).toLocaleString('en-AU',{timeZone:TZ})+' • Page checks every 15 minutes • '+(stale?'OUTDATED — refresh required':'Forecast refreshes with app deployment, normally every 15 minutes');
  el('tideSource').textContent=data.tides?'Tides: '+data.tides.source+' • Heights in metres above '+data.tides.datum+'. Published BOM tables provide the daily tide predictions. '+data.tides.station.name+' is the reference port; lease times and heights may differ. Wind and pressure effects are not included in these tide heights.':'BOM reference tide feed unavailable. Work windows are unconfirmed; no other tide source is substituted.';
  if(data.tides&&data.tides.time_adjustment_minutes)el('tideSource').textContent+=' Smithton times = BOM Burnie +1 hour, as specified by the farm. Heights remain Burnie predictions.';
- if(data.tides&&data.tides.using_stored_tables)el('tideSource').textContent+=' Using verified BOM tables downloaded '+new Date(data.tides.source_downloaded_at).toLocaleString('en-AU',{timeZone:TZ})+'. Latest live download unavailable; published astronomical times and heights are retained.';
+ if(data.tides&&data.tides.using_stored_tables)el('tideSource').textContent+=' Using published BOM tables downloaded '+new Date(data.tides.source_downloaded_at).toLocaleString('en-AU',{timeZone:TZ})+'. '+(data.tides.complete_14_days?'All 14 forecast days have tide coverage.':'Tide coverage is incomplete; unavailable dates are identified below.');
  const usable=days.filter(x=>x.best&&!x.best.missing&&!x.best.poor);
  const best=usable.slice().sort((a,b)=>a.best.score-b.best.score)[0];
  el('assessment').textContent=stale?'Forecast is outdated. Work recommendations are withheld until fresh data is available.':best?'Most promising BOM reference window: '+best.date+' '+clock(best.best.start)+'–'+clock(best.best.end)+'. Ranked using calmer wind and higher or steadier pressure. Confirm lease water level before relying on it.':'No complete, suitable daylight low-tide window can currently be identified from the available data.';
@@ -88,13 +92,13 @@ function render(data){
   const w=data.weather.hourly,dayIndices=w.time.map((t,i)=>({t,i})).filter(x=>dateKey(x.t)===day.date&&x.t>=day.sunrise&&x.t<=day.sunset);
   const ref=dayIndices.length?dayIndices[Math.floor(dayIndices.length/2)].i:-1;
   const maximum=k=>{const values=dayIndices.map(x=>w[k][x.i]).filter(valid);return values.length?Math.max(...values):null;};
-  const weatherDisplay=display||(!stale&&ref>=0?{wind:maximum('wind_speed_10m'),gust:maximum('wind_gusts_10m'),pressure:w.pressure_msl[ref],direction:w.wind_direction_10m[ref],trend:valid(w.pressure_msl[ref])&&valid(w.pressure_msl[ref-3])?w.pressure_msl[ref]-w.pressure_msl[ref-3]:null}:null);
+  const weatherDisplay=display||(!stale&&ref>=0?{wind:windKmh(data,maximum('wind_speed_10m')),gust:windKmh(data,maximum('wind_gusts_10m'),'wind_gusts_10m'),pressure:w.pressure_msl[ref],direction:w.wind_direction_10m[ref],trend:valid(w.pressure_msl[ref])&&valid(w.pressure_msl[ref-3])?w.pressure_msl[ref]-w.pressure_msl[ref-3]:null}:null);
   const noon=day.sunrise;
   return '<article class="day-card '+(unknown?'unknown':bad?'poor':'')+'"><h3>'+escape(new Intl.DateTimeFormat('en-AU',{timeZone:TZ,weekday:'long',day:'numeric',month:'short'}).format(new Date(noon*1000)))+'</h3><span class="pill">'+tag+'</span><div class="window">'+(display?clock(display.start)+'–'+clock(display.end):'No confirmed work time')+'</div><p class="forecast-meta">'+(day.index>=7?'Week 2 • tentative forecast':'Week 1 • recheck each day')+'</p><div class="metrics">'+
   metric('Low tide'+(display&&display.low.reference?' • '+escape(data.tides.station.name)+(data.tides.time_adjustment_minutes?' +1 h':''):display&&!display.low.local?' (estimated)':''),display?clock(display.low.t):'Unavailable')+
   metric('Low height • '+(data.tides?escape(data.tides.datum):'MSL'),display?display.low.h.toFixed(2)+' m':'Unavailable')+
-  metric(display?'Max wind in window':'Max daylight wind',weatherDisplay&&valid(weatherDisplay.wind)?weatherDisplay.wind.toFixed(1)+' kn':'Unavailable')+
-  metric(display?'Max gust in window':'Max daylight gust',weatherDisplay&&valid(weatherDisplay.gust)?weatherDisplay.gust.toFixed(1)+' kn':'Unavailable')+
+  metric(display?'Max wind in window':'Max daylight wind',weatherDisplay&&valid(weatherDisplay.wind)?weatherDisplay.wind.toFixed(1)+' km/h':'Unavailable')+
+  metric(display?'Max gust in window':'Max daylight gust',weatherDisplay&&valid(weatherDisplay.gust)?weatherDisplay.gust.toFixed(1)+' km/h':'Unavailable')+
   metric(display?'Wind from at low tide':'Wind from near midday',weatherDisplay?direction(weatherDisplay.direction):'Unavailable')+
   metric(display?'Pressure at low tide':'Pressure near midday',weatherDisplay&&valid(weatherDisplay.pressure)?weatherDisplay.pressure.toFixed(0)+' hPa':'Unavailable')+
   metric('Pressure change / 3 h',weatherDisplay&&valid(weatherDisplay.trend)?(weatherDisplay.trend>0?'+':'')+weatherDisplay.trend.toFixed(1)+' hPa':'Unavailable')+
@@ -107,37 +111,23 @@ function renderSmithton(data,now,stale){
  const model=root.SmithtonTides.model(data),daily=data.weather.daily;
  el('updated').textContent='Forecast retrieved '+new Date(data.updated_at).toLocaleString('en-AU',{timeZone:TZ})+' • Checks every 15 minutes'+(stale?' • OUTDATED':'');
  el('tideSource').textContent='BOM Burnie tide times +1 hour. Dashed line: interpolated Burnie heights. Blue line: estimated Duck Bay height after local wind and pressure adjustments; same reference datum, not measured lease depth.';
- el('assessment').textContent='Smithton: each low tide has its own four-hour planning window and numbered green band. Starts match the weather-adjusted falling tide to the normal height four hours before that low tide. Easterly/northerly wind delays access; southerly/westerly wind brings it forward, with pressure also included. The preferred low tide between 4 am and 8 pm is green and detailed below; the other window is red. Work never starts before 4 am; earlier estimated starts move to 4 am and retain four hours. Ranking compares wind, gusts, water retention and daylight, favouring morning lows over lows after 5 pm when conditions are similar. Windows may include darkness; daylight and strong-wind flags are shown separately.';
+ if(data.tides?.using_stored_tables)el('tideSource').textContent+=' Published BOM tables cover '+data.tides.coverage_start+' to '+data.tides.coverage_end+'. '+(data.tides.complete_14_days?'All 14 forecast days have tide coverage.':'Tide coverage is incomplete; unavailable dates are identified below.');
+ el('assessment').textContent='Smithton: low tides at every hour are included, with no earliest start or evening cutoff. Each low tide is checked for a four-hour planning window. Starts match the weather-adjusted falling tide to the normal height four hours before that low tide. Easterly/northerly wind delays access; southerly/westerly wind brings it forward, with pressure also included. The preferred available window is green; the alternative is red. Ranking compares wind, gusts, water retention and daylight. Daylight and strong-wind flags remain visible.';
  el('ai').textContent='Farm-calibrated estimate using Daniel’s wind examples, not a trained AI tide model. N/E at 35 km/h adds about 0.4 m; S/W subtracts about 0.4 m. Pressure uses a provisional 1013.25 hPa baseline and 0.01 m per hPa. Week 2 is tentative. No measured Duck Bay calibration is available yet.';
- el('days').innerHTML=daily.time.map((start,i)=>({start,end:daily.time[i+1]||start+86400,i,date:dateKey(start)})).filter(d=>d.date>=dateKey(now)).slice(0,14).map(day=>{
+ el('days').innerHTML=daily.time.map((start,i)=>({start,end:daily.time[i+1]||start+86400,i,date:dateKey(start)})).filter(d=>d.date>=dateKey(now)).slice(0,14).map((day,forecastIndex)=>{
   const lows=model.tides.filter(t=>t.type==='Low'&&dateKey(t.dt)===day.date);
-  const earliestStart=day.start+4*H;
-  const entries=lows.map((low,i)=>{
-   let p=stale?null:model.plan(low);
-   if(p&&p.start<earliestStart){
-    if(earliestStart>=low.dt)p=null;
-    else{
-     const start=earliestStart,end=start+4*H,points=[];
-     for(let t=start;t<=end;t+=300)points.push(model.point(t));
-     if(points.some(v=>v.adjusted===null||!v.c))p=null;
-     else p={...p,start,end,shift:(start-(low.dt-4*H))/60,startLimited:true,maxWind:Math.max(...points.map(v=>v.c.speed)),maxGust:Math.max(...points.map(v=>v.c.gust))};
-    }
-   }
-   return {low,number:i+1,p};
-  });
+  const entries=lows.map((low,i)=>({low,number:i+1,p:stale?null:model.plan(low)}));
   const plans=entries.map(e=>e.p).filter(Boolean);
   const overlap=p=>Math.max(0,Math.min(p.end,daily.sunset[day.i])-Math.max(p.start,daily.sunrise[day.i]));
-  const localHour=t=>Number(new Intl.DateTimeFormat('en-GB',{timeZone:TZ,hour:'2-digit',hourCycle:'h23'}).format(new Date(t*1000)))+Number(new Intl.DateTimeFormat('en-GB',{timeZone:TZ,minute:'2-digit'}).format(new Date(t*1000)))/60;
-  const eligible=entries.filter(e=>e.p&&localHour(e.low.dt)>=4&&localHour(e.low.dt)<=20);
+  const eligible=entries.filter(e=>e.p);
   const strong=p=>p.maxWind>27.78||p.maxGust>37.04;
   const rank=e=>{
-   const p=e.p,h=localHour(e.low.dt),effects=[];
+   const p=e.p,effects=[];
    for(let t=p.start;t<=p.end;t+=900){const c=model.point(t).c;if(c)effects.push(c.total);}
    const retained=Math.max(0,...effects);
-   // Provisional comparative score: weather first, morning preference for similar conditions.
-   return p.maxWind+p.maxGust*.5+retained*30+(4-overlap(p)/H)*2+(h>17?15:h>=12?5:0);
+   return p.maxWind+p.maxGust*.5+retained*30+(4-overlap(p)/H)*2;
   };
-  eligible.sort((a,b)=>Number(strong(a.p))-Number(strong(b.p))||rank(a)-rank(b)||a.low.dt-b.low.dt);
+  eligible.sort((a,b)=>Number(a.p.end<=now)-Number(b.p.end<=now)||Number(strong(a.p))-Number(strong(b.p))||rank(a)-rank(b)||a.low.dt-b.low.dt);
   const preferred=eligible[0]||null;
   const windowTime=t=>clock(t)+(dateKey(t)!==day.date?' ('+new Intl.DateTimeFormat('en-AU',{timeZone:TZ,day:'numeric',month:'short'}).format(new Date(t*1000))+')':'');
   const start=Math.min(day.start,...plans.map(p=>Math.floor(p.start/HOUR)*HOUR)),end=Math.max(day.end,...plans.map(p=>Math.ceil(p.end/HOUR)*HOUR));
@@ -154,15 +144,15 @@ function renderSmithton(data,now,stale){
   const windIndex=hourly.time.reduce((best,t,i)=>Math.abs(t-windTarget)<Math.abs(hourly.time[best]-windTarget)?i:best,0);
   const windFrom=!stale&&Math.abs(hourly.time[windIndex]-windTarget)<=H/2?hourly.wind_direction_10m[windIndex]:null;
   const windMetric='<div class="metrics">'+metric(eligible.length?'Wind from near selected low tide':'Wind from near midday',direction(windFrom))+'</div>';
-  const windows=eligible.slice(0,1).map(({low,p,number})=>{
+  const windows=entries.map(({low,p,number})=>{
    const daylight=p&&overlap(p)>=4*H-1,strong=p&&(p.maxWind>27.78||p.maxGust>37.04),ended=p&&p.end<=now;
    const status=stale?'OUTDATED':!p?'INSUFFICIENT DATA / NO CROSSING':ended?'WINDOW FINISHED':strong?'STRONG WIND — REVIEW':!daylight?'INCLUDES DARKNESS':'ESTIMATED LEASE WINDOW';
-   return '<section class="low-window" style="border-top:1px solid #cbd6db;margin-top:18px;padding-top:16px"><h4>Low tide '+number+' · '+clock(low.dt)+'</h4><span class="pill">'+status+'</span><div class="window">'+(p?windowTime(p.start)+'–'+windowTime(p.end):'No confirmed work time')+'</div>'+(p?'<div class="metrics">'+metric('BOM low time +1 h',clock(p.low.dt))+metric('Burnie low height',p.low.height.toFixed(2)+' m')+metric('Estimated height at low',p.atLow.adjusted.toFixed(2)+' m')+metric('Adjustment from normal −4 h',Math.abs(p.shift).toFixed(0)+' min '+(p.shift<0?'earlier':'later'))+metric('Wind height effect',(p.atLow.c.wind>=0?'+':'')+p.atLow.c.wind.toFixed(2)+' m')+metric('Pressure height effect',(p.atLow.c.pressure>=0?'+':'')+p.atLow.c.pressure.toFixed(2)+' m')+metric('Max wind / gust',p.maxWind.toFixed(0)+' / '+p.maxGust.toFixed(0)+' km/h')+metric('Daylight',clock(daily.sunrise[day.i])+'–'+clock(daily.sunset[day.i]))+'</div><p class="reason">'+(!daylight?'Part of this four-hour window is outside daylight. ':'')+(strong?'Wind exceeds the existing provisional screening settings. ':'')+(p.startLimited?'Start moved to 4 am to meet the earliest working time; the four-hour window may extend beyond low tide. ':'')+'Start is an estimated water-level crossing, rounded for display; the BOM low-tide time is not shifted by weather. Green identifies the requested work period, not a safety clearance.</p>':'<p>Fresh weather, bounding high/low tides and a falling-tide crossing are required. No window is invented when coverage is missing.</p>')+'</section>';
+   return '<section class="low-window" style="border-top:1px solid #cbd6db;margin-top:18px;padding-top:16px"><h4>Low tide '+number+' · '+clock(low.dt)+(preferred?.number===number?' · preferred':'')+'</h4><span class="pill">'+status+'</span><div class="window">'+(p?windowTime(p.start)+'–'+windowTime(p.end):'No confirmed work time')+'</div>'+(p?'<div class="metrics">'+metric('BOM low time +1 h',clock(p.low.dt))+metric('Burnie low height',p.low.height.toFixed(2)+' m')+metric('Estimated height at low',p.atLow.adjusted.toFixed(2)+' m')+metric('Adjustment from normal −4 h',Math.abs(p.shift).toFixed(0)+' min '+(p.shift<0?'earlier':'later'))+metric('Wind height effect',(p.atLow.c.wind>=0?'+':'')+p.atLow.c.wind.toFixed(2)+' m')+metric('Pressure height effect',(p.atLow.c.pressure>=0?'+':'')+p.atLow.c.pressure.toFixed(2)+' m')+metric('Max wind / gust',p.maxWind.toFixed(0)+' / '+p.maxGust.toFixed(0)+' km/h')+metric('Daylight',clock(daily.sunrise[day.i])+'–'+clock(daily.sunset[day.i]))+'</div><p class="reason">'+(!daylight?'Part of this four-hour window is outside daylight. ':'')+(strong?'Wind exceeds the existing provisional screening settings. ':'')+'Start is an estimated water-level crossing, rounded for display; the BOM low-tide time is not shifted by weather. Green identifies the preferred work period, not a safety clearance.</p>':'<p>BOM low height: '+low.height.toFixed(2)+' m. '+(stale?'The weather forecast is outdated.':'A complete weather-adjusted falling-tide crossing is unavailable.')+' The published low-tide time remains shown.</p>')+'</section>';
   }).join('');
-  return '<article class="day-card '+(!preferred?'unknown':strong(preferred.p)?'poor':'')+'"><h3>'+escape(new Intl.DateTimeFormat('en-AU',{timeZone:TZ,weekday:'long',day:'numeric',month:'short'}).format(new Date(day.start*1000)))+'</h3><p>'+ (day.i>=7?'Week 2 • tentative':'Recheck before departure')+' · '+lows.length+' low tide'+(lows.length===1?'':'s')+'</p>'+graph+windMetric+(windows||'<p>No complete weather-adjusted window is available for a low tide between 4 am and 8 pm.</p>')+'<details><summary>Daily weather</summary>'+hourlyTable(data,{date:day.date})+'</details></article>';
+  return '<article class="day-card '+(!preferred?'unknown':strong(preferred.p)?'poor':'')+'"><h3>'+escape(new Intl.DateTimeFormat('en-AU',{timeZone:TZ,weekday:'long',day:'numeric',month:'short'}).format(new Date(day.start*1000)))+'</h3><p>'+ (forecastIndex>=7?'Week 2 • tentative':'Recheck before departure')+' · '+(lows.length?lows.length+' low tide'+(lows.length===1?'':'s'):'Tide data unavailable')+'</p>'+graph+windMetric+(windows||'<p>BOM tide predictions are missing for this date. A low-tide time cannot be confirmed.</p>')+'<details><summary>Daily weather</summary>'+hourlyTable(data,{date:day.date})+'</details></article>';
  }).join('');
 }
-function hourlyTable(data,day){const w=data.weather.hourly;let rows='';w.time.forEach((t,i)=>{if(dateKey(t)!==day.date||i%3!==0)return;rows+='<tr><td>'+clock(t)+'</td><td>'+direction(w.wind_direction_10m[i])+'</td><td>'+(valid(w.wind_speed_10m[i])?w.wind_speed_10m[i].toFixed(0):'—')+' kn</td><td>'+(valid(w.pressure_msl[i])?w.pressure_msl[i].toFixed(0):'—')+' hPa</td></tr>';});return '<table><thead><tr><th>Time</th><th>Wind from</th><th>Wind</th><th>Pressure</th></tr></thead><tbody>'+rows+'</tbody></table>';}
+function hourlyTable(data,day){const w=data.weather.hourly;let rows='';w.time.forEach((t,i)=>{if(dateKey(t)!==day.date||i%3!==0)return;const speed=windKmh(data,w.wind_speed_10m[i]);rows+='<tr><td>'+clock(t)+'</td><td>'+direction(w.wind_direction_10m[i])+'</td><td>'+(valid(speed)?speed.toFixed(0):'—')+' km/h</td><td>'+(valid(w.pressure_msl[i])?w.pressure_msl[i].toFixed(0):'—')+' hPa</td></tr>';});return '<table><thead><tr><th>Time</th><th>Wind from</th><th>Wind</th><th>Pressure</th></tr></thead><tbody>'+rows+'</tbody></table>';}
 const locations={
  smithton:{name:'Smithton / Duck Bay',port:'Burnie',aac:'TAS_TP001',offset:60,controls:'control-new.html'},
  boomer:{name:'Boomer Bay',port:'Pirates Bay',aac:'TAS_TP025',controls:'boomer-control.html'},

@@ -49,8 +49,8 @@ def fetch_week(start,station=STATION):
     return parse_table(html,start,station)
 
 def fetch_bom_tides(start,station=STATION):
-    starts=[start,start+timedelta(days=7)]
-    if station.get('time_offset_minutes'):starts.insert(0,start-timedelta(days=7))
+    # Keep bounding extrema on both sides of the 14 displayed days.
+    starts=[start-timedelta(days=1),start+timedelta(days=6),start+timedelta(days=13)]
     with ThreadPoolExecutor(max_workers=3) as pool:weeks=list(pool.map(lambda day: fetch_week(day,station),starts))
     events=sorted([event for week in weeks for event in week],key=lambda e:e['dt'])
     if len({e['dt'] for e in events})!=len(events):raise ValueError('Duplicate BOM events')
@@ -62,9 +62,32 @@ def cached_bom_tides(start,station=STATION):
     from pathlib import Path
     cache=json.loads((Path(__file__).resolve().parents[1]/('bom-'+station['aac']+'-tides.json' if station['aac']!=STATION['aac'] else 'bom-pirates-tides.json')).read_text())
     end=start+timedelta(days=13)
-    events=[{'dt':int(t),'type':'Low' if kind=='L' else 'High','height':float(h)} for t,kind,h in cache['events'] if start-timedelta(days=1 if station.get('time_offset_minutes') else 0)<=datetime.fromtimestamp(t,TZ).date()<=end]
-    dates={datetime.fromtimestamp(e['dt'],TZ).date() for e in events}
+    offset=timedelta(minutes=station.get('time_offset_minutes',0))
+    events=[{'dt':int(t),'type':'Low' if kind=='L' else 'High','height':float(h)} for t,kind,h in cache['events'] if start-timedelta(days=1)<= (datetime.fromtimestamp(t,TZ)+offset).date() <=end+timedelta(days=1)]
+    dates={(datetime.fromtimestamp(e['dt'],TZ)+offset).date() for e in events}
     expected={start+timedelta(days=i) for i in range(14)}
     # Retain only actual BOM events. When the cache ends, unsupported days stay blank.
     if not events:raise ValueError('BOM cache has no dates in requested period')
-    return {'source':'Bureau of Meteorology — '+station['name']+' (reference)','source_url':BASE+'?aac='+station['aac'],'station':station,'datum':'BOM prediction datum','extremes':events,'coverage_start':min(dates).isoformat(),'coverage_end':max(dates).isoformat(),'weather_adjusted':False,'copyright':'© Commonwealth of Australia, Bureau of Meteorology','notice':'Reference port predictions; lease times and heights may differ. Weather effects are excluded.','using_stored_tables':True,'source_downloaded_at':cache['downloaded_at'],'complete_14_days':dates==expected}
+    missing=sorted(expected-dates)
+    return {'source':'Bureau of Meteorology — '+station['name']+' (reference)','source_url':BASE+'?aac='+station['aac'],'station':station,'datum':cache.get('datum','BOM prediction datum'),'extremes':events,'coverage_start':min(dates).isoformat(),'coverage_end':max(dates).isoformat(),'weather_adjusted':False,'copyright':'© Commonwealth of Australia, Bureau of Meteorology','notice':'Reference port predictions; lease times and heights may differ. Weather effects are excluded.','using_stored_tables':True,'source_downloaded_at':cache['downloaded_at'],'complete_14_days':not missing,'missing_dates':[d.isoformat() for d in missing]}
+
+def load_bom_tides(start,station=STATION):
+    """Published astronomical tables remain valid; renew before coverage runs out."""
+    cached=None
+    try:
+        cached=cached_bom_tides(start,station)
+        if cached['complete_14_days']:return cached
+    except (OSError,ValueError,KeyError):pass
+    try:
+        from annual_bom_tides import refresh_annual_cache
+        refresh_annual_cache(start,station)
+        cached=cached_bom_tides(start,station)
+        if cached['complete_14_days']:return cached
+    except Exception as exc:
+        print('BOM annual renewal unavailable:',station['name'],type(exc).__name__)
+    try:
+        return fetch_bom_tides(start,station)
+    except Exception as exc:
+        print('BOM live retrieval unavailable:',station['name'],type(exc).__name__)
+        if cached:return cached
+        raise

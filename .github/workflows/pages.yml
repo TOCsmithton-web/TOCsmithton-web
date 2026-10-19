@@ -46,7 +46,11 @@ jobs:
           PLANNER_AI_ENDPOINT: ${{ secrets.PLANNER_AI_ENDPOINT }}
           PLANNER_AI_API_KEY: ${{ secrets.PLANNER_AI_API_KEY }}
           PLANNER_AI_MODEL: ${{ secrets.PLANNER_AI_MODEL }}
-        run: python3 scripts/build-boomer-planner.py
+        run: |
+          python3 -m pip install pypdf==6.10.0
+          python3 -m unittest discover -s tests -p 'test_bom_tides.py' -v
+          node --test tests/tide-planner.test.cjs
+          python3 scripts/build-boomer-planner.py
 
       - name: Validate BOM Smithton rainfall recovery
         run: |
