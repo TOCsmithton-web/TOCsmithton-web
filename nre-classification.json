@@ -8,7 +8,12 @@
   "classificationNotice": "2026/058",
   "effectiveFrom": "0615hrs 13/10/2026",
   "details": "Duck Bay Harvest Area is OPEN for the taking of all regulated fish from 0615hrs 13/10/2026 subject to the condition that the fish must be transferred to an approved wet storage facility for depuration in accordance with a wet storage authorisation, before being supplied for human consumption.",
-  "checkedAt": "2026-10-19T19:38:42.548609Z",
+  "checkedAt": "2026-10-19T19:39:31.297517Z",
+  "noticeEffectiveFrom": "1213hrs 15 October 2026",
+  "sourcePageUrl": "https://nre.tas.gov.au/aquaculture/shellmap/growing-and-harvest-areas",
+  "cacheBypass": true,
   "documentSha256": "1a469efdb2919c1f9adac2048b7192ec2ed0f3c1ed0ee289f9ce26162bead6f5",
-  "documentArchiveUrl": "https://raw.githubusercontent.com/TOCsmithton-web/TOCsmithton-web/main/nre-current-classification.pdf"
+  "documentArchiveUrl": "https://raw.githubusercontent.com/TOCsmithton-web/TOCsmithton-web/main/nre-current-classification.pdf",
+  "documentLastModified": "Thu, 15 Oct 2026 01:29:26 GMT",
+  "documentEtag": "\"{E57010BC-9311-4A8F-BE7F-FAB314EEDDE5},1362\""
 }
