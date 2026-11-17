@@ -35,7 +35,7 @@ jobs:
               "?latitude=-40.84&longitude=145.12"
               "&hourly=precipitation"
               "&daily=precipitation_sum,temperature_2m_max,temperature_2m_min"
-              "&past_days=8&forecast_days=7"
+              "&past_days=8&forecast_days=9"
               "&timezone=Australia%2FHobart"
           )
           r = requests.get(url, timeout=60)
