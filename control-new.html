@@ -620,27 +620,28 @@ function render(){
 }
 
 function isoDate(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+var rainfallRefreshId=0;
 async function weather(){
-  var box=el("forecast"),forecastData=null;box.innerHTML="<div class='loading'>Loading Smithton rainfall…</div>";
+  var refreshId=++rainfallRefreshId;
+  var box=el("forecast");
+  box.innerHTML="<div class='loading'>Loading Smithton rainfall…</div>";
+  var url="https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&hourly=precipitation&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&past_days=2&forecast_days=8&timeformat=unixtime&timezone=Australia%2FHobart";
+  var forecastRequest=fetch(url,{cache:"no-store",signal:typeof AbortSignal.timeout==="function"?AbortSignal.timeout(20000):undefined})
+    .then(function(response){return response.ok?response.json():null;})
+    .catch(function(){return null;});
   try{
-    var url="https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&hourly=precipitation&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&past_days=2&forecast_days=8&timeformat=unixtime&timezone=Australia%2FHobart";
-    var response=await fetch(url,{cache:"no-store"});
-    if(!response.ok)throw new Error("weather service "+response.status);
-    var data=await response.json();
-    forecastData=data;
-    if(!data.hourly||!data.daily)throw new Error("incomplete weather data");
-
-    var nowParts=Object.fromEntries(new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Hobart",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).filter(function(p){return p.type!=="literal";}).map(function(p){return [p.type,p.value];}));
-    var todayKey=nowParts.year+"-"+nowParts.month+"-"+nowParts.day;
     function shiftDate(key, days){
       var d=new Date(key+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+days);
       return d.toISOString().slice(0,10);
     }
     function validRain(v){return typeof v==="number"&&isFinite(v)&&v>=0;}
-    var bomResponse=await fetch("./smithton-rainfall.json?ts="+Date.now(),{cache:"no-store"});
-    if(!bomResponse.ok)throw new Error("BOM recorded rainfall unavailable");
-    var bom=await bomResponse.json();
+    var bom={daily:{}};
+    try{
+      var bomResponse=await fetch("./smithton-rainfall.json?ts="+Date.now(),{cache:"no-store"});
+      if(bomResponse.ok)bom=await bomResponse.json();
+    }catch(error){console.warn("Smithton rainfall history:",error);}
     if(window.TOCSmithtonRainfall)bom=await window.TOCSmithtonRainfall.refreshLive(bom);
+    if(refreshId!==rainfallRefreshId)return;
     var observedByDate=bom.daily||{};
     var live=bom.live;
     if(!live||!validRain(live.rain_since_9am))throw new Error("BOM observed rain since 9am not available"+(bom.live_error?": "+bom.live_error:""));
@@ -661,6 +662,15 @@ async function weather(){
     previous7Total=sixRecorded+live.rain_since_9am;
     previous3Total=recordedTotal(2)+live.rain_since_9am;
     previous24Total=recordedTotal(1);
+    function mm(v){return isFinite(v)?v.toFixed(1)+" mm":"Unavailable";}
+
+    save();render();checkAlerts();
+    box.innerHTML=
+      "<div class='day observed-summary'><div class='date'>Live 7-day rainfall</div><div class='range'>6 completed days + current period to 9am</div><div class='rain'>"+mm(previous7Total)+"</div><div class='range'>"+mm(sixRecorded)+" recorded + "+mm(live.rain_since_9am)+" observed since 9am "+latest+"</div><div class='range'>BOM observation: "+new Date(observedAt).toLocaleString("en-AU",{timeZone:"Australia/Hobart"})+"</div><div class='range'>Live 3-day total: "+mm(previous3Total)+"</div></div>";
+    var data=await forecastRequest;
+    if(refreshId!==rainfallRefreshId)return;
+    try{
+      if(!data || !data.hourly || !data.daily)throw new Error("Forecast unavailable");
     function forecastBetween(start,end){
       var total=0,covered=0;
       for(var i=0;i<data.hourly.time.length;i++){
@@ -697,12 +707,7 @@ async function weather(){
       x.sevenDayTotal=seven.total;x.threeDayTotal=three.total;
       x.rainBreakdown=seven.recorded+" completed + "+seven.forecast+" projected days"+(i===0?" (includes observed rain)":"");
     });
-    function mm(v){return isFinite(v)?v.toFixed(1)+" mm":"Unavailable";}
-
-    save();render();checkAlerts();
-    box.innerHTML=
-      "<div class='day observed-summary'><div class='date'>Live 7-day rainfall</div><div class='range'>6 completed days + current period to 9am</div><div class='rain'>"+mm(previous7Total)+"</div><div class='range'>"+mm(sixRecorded)+" recorded + "+mm(live.rain_since_9am)+" observed since 9am "+latest+"</div><div class='range'>BOM observation: "+new Date(observedAt).toLocaleString("en-AU",{timeZone:"Australia/Hobart"})+"</div><div class='range'>Live 3-day total: "+mm(previous3Total)+"</div></div>"+
-      future.map(function(x){
+    box.insertAdjacentHTML("beforeend",future.map(function(x){
         var sevenDay=x.sevenDayTotal;
         var threeDay=x.threeDayTotal;
 
@@ -733,8 +738,12 @@ async function weather(){
         if(!isFinite(sevenDay)||!isFinite(threeDay)){rainfallColour="#e5e7eb";rainfallText="#374151";}
         var level=combinedRainfallAlert?"over":"under";
         return "<div class='day forecast-day "+level+"' style='background:"+(combinedRainfallAlert?"#c62828":rainfallColour)+";color:"+(combinedRainfallAlert?"#fff":rainfallText)+";border:2px solid "+(combinedRainfallAlert?"#c62828":rainfallColour)+"'><div class='date'>"+new Date(x.date+"T00:00:00").toLocaleDateString("en-AU",{weekday:"short",day:"numeric"})+" • to 9am</div><div class='rain'>"+mm(x.rain)+"</div><div class='range'>"+Math.round(x.min)+"° / "+Math.round(x.max)+"°C</div><div class='range'>"+x.rainBreakdown+"</div><div class='seven-day-total'>Projected 7-day total: <strong>"+mm(sevenDay)+"</strong></div><div style='margin-top:7px;padding:5px 6px;border-radius:6px;background:"+(combinedRainfallAlert?"#c62828":threeColour)+";color:"+(combinedRainfallAlert?"#fff":threeText)+";font-weight:700;font-size:11px;border:1px solid rgba(0,0,0,.12)'>Projected 3-day total: <strong>"+mm(threeDay)+"</strong> / 25 mm limit</div></div>";
-      }).join("");
+      }).join(""));
+    }catch(forecastError){
+      box.insertAdjacentHTML("beforeend","<div class='notice'>7-day forecast unavailable.</div>");
+    }
   }catch(e){
+    if(refreshId!==rainfallRefreshId)return;
     previous7Total=NaN;previous3Total=NaN;previous24Total=NaN;
     render();
     box.replaceChildren();
@@ -768,6 +777,8 @@ async function weather(){
       historicText.textContent="Last completed BOM reporting date in this file: "+bom.latest_date+" (to 9am). 24h: "+historicalMm(historicalTotal(1))+" · 3 days: "+historicalMm(historicalTotal(3))+" · 7 days: "+historicalMm(historicalTotal(7))+". These completed totals do not include rainfall since that 9am cutoff. Live reopening readiness awaits a fresh observation.";
       historic.appendChild(historicHeading);historic.appendChild(historicText);box.appendChild(historic);
     }
+    var forecastData=await forecastRequest;
+    if(refreshId!==rainfallRefreshId)return;
     if(forecastData&&forecastData.daily&&Array.isArray(forecastData.daily.time)){
       var notice=document.createElement("p");notice.textContent="Weather forecast remains available for planning only. Forecast amounts are not observed BOM rainfall and cannot verify environmental reopening conditions.";notice.className="hint";box.appendChild(notice);
       var forecastCount=0;
