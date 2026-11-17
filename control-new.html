@@ -626,9 +626,34 @@ async function weather(){
   box.rainfallRefreshId=refreshId;
   box.innerHTML="<div class='loading'>Loading Smithton rainfall…</div>";
   var url="https://api.open-meteo.com/v1/forecast?latitude=-40.84&longitude=145.12&hourly=precipitation&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&past_days=2&forecast_days=8&timeformat=unixtime&timezone=Australia%2FHobart";
-  var forecastRequest=fetch(url,{cache:"no-store",signal:typeof globalThis.AbortSignal?.timeout==="function"?AbortSignal.timeout(20000):undefined})
-    .then(function(response){return response.ok?response.json():null;})
-    .catch(function(){return null;});
+  async function loadForecast(){
+    var options={cache:"no-store"};
+    if(typeof globalThis.AbortSignal?.timeout==="function")options.signal=AbortSignal.timeout(8000);
+    try{
+      var snapshotResponse=await fetch("./weather.json",options);
+      if(!snapshotResponse.ok)throw new Error("Weather snapshot unavailable");
+      var snapshot=await snapshotResponse.json();
+      var age=Date.now()-Date.parse(snapshot._updated);
+      if(!(age>=0 && age<=24*3600000))throw new Error("Weather snapshot out of date");
+      // The hourly snapshot uses the fixed UTC offset supplied with this model run.
+      var offset=snapshot.utc_offset_seconds;
+      function unixTime(local){
+        return Date.parse((local.length===10?local+"T00:00":local)+"Z")/1000-offset;
+      }
+      snapshot.hourly.time=snapshot.hourly.time.map(unixTime);
+      snapshot.daily.time=snapshot.daily.time.map(unixTime);
+      if(!snapshot.hourly.time.length || !snapshot.hourly.time.every(Number.isFinite) ||
+         !snapshot.daily.time.every(Number.isFinite) ||
+         snapshot.hourly.precipitation.length!==snapshot.hourly.time.length)throw new Error("Incomplete weather snapshot");
+      return snapshot;
+    }catch(error){
+      try{
+        var response=await fetch(url,{cache:"no-store",signal:typeof globalThis.AbortSignal?.timeout==="function"?AbortSignal.timeout(8000):undefined});
+        return response.ok?await response.json():null;
+      }catch(networkError){return null;}
+    }
+  }
+  var forecastRequest=loadForecast();
   try{
     function shiftDate(key, days){
       var d=new Date(key+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+days);
