@@ -129,28 +129,63 @@ test("an older endpoint reading cannot overwrite a newer static reading", async 
 
 const page = fs.readFileSync(new URL("../control-new.html", import.meta.url), "utf8");
 const weatherSource = page.slice(page.indexOf("async function weather(){"), page.indexOf("function renderRiverHistory("));
-function element() { return { innerHTML: "", textContent: "", style: {}, children: [], appendChild(child) { this.children.push(child); }, replaceChildren() { this.children = []; } }; }
-async function weatherResult(base, observation, fail = false, daily = undefined) {
-  const forecast = element();
+function element() {
+  return {
+    markup: "", textContent: "", style: {}, children: [],
+    get innerHTML() { return this.markup + this.children.map(child => child.textContent + child.innerHTML).join(""); },
+    set innerHTML(value) { this.markup = value; this.children = []; },
+    appendChild(child) { this.children.push(child); },
+    replaceChildren() { this.children = []; this.markup = ""; }
+  };
+}
+function forecastData(updated = new Date(now).toISOString()) {
   const hourly = { time: [], precipitation: [] };
   for (let t = Date.parse("2026-10-15T00:00:00Z"); t <= Date.parse("2026-10-25T00:00:00Z"); t += 3600000) { hourly.time.push(t / 1000); hourly.precipitation.push(0); }
-  const data = { hourly, daily: { time: [], precipitation_sum: [], temperature_2m_max: [], temperature_2m_min: [] } };
+  const daily = { time: [], precipitation_sum: [], temperature_2m_max: [], temperature_2m_min: [] };
+  for (let t = Date.parse("2026-10-15T00:00:00+11:00"); t <= Date.parse("2026-10-25T00:00:00+11:00"); t += 86400000) {
+    daily.time.push(t / 1000); daily.precipitation_sum.push(1.2); daily.temperature_2m_max.push(18); daily.temperature_2m_min.push(9);
+  }
+  return { hourly, daily, _updated: updated };
+}
+async function weatherResult(base, observation, fail = false, daily = undefined, options = {}) {
+  const forecast = element();
+  forecast.innerHTML="<div class='loading'>Loading forecast…</div>";
+  const storage = options.storage || new Map();
+  let activeBase = base, activeObservation = observation, activeFail = fail;
   const sandbox = {
     Date: Clock, Intl, AbortController, setTimeout, clearTimeout,
     el: () => forecast, document: { createElement: element },
+    localStorage: {
+      getItem(key) { if (options.blockStorage) throw new Error("Storage disabled"); return storage.get(key) || null; },
+      setItem(key, value) { if (options.blockStorage) throw new Error("Storage disabled"); storage.set(key, value); }
+    },
     save() {}, render() {}, checkAlerts() {}, bayName: () => "Duck Bay", bayRainLimit: () => 40, DUCK_RAIN3_LIMIT: 25,
-    console: { error() {} }, previous7Total: NaN, previous3Total: NaN, previous24Total: NaN,
+    console: { error() {}, warn() {} }, previous7Total: NaN, previous3Total: NaN, previous24Total: NaN,
     fetch: async (url) => {
-      if (url.startsWith("https://api.open-meteo.com/")) return { ok: true, json: async () => data };
-      if (url.startsWith("./smithton-rainfall.json")) return { ok: true, json: async () => base };
-      if (fail) throw new Error("Network unavailable");
-      return { ok: true, json: async () => ({ station: "091292", live: observation, daily }) };
+      if (options.onFetch) options.onFetch(url, forecast);
+      if (url.startsWith("./weather.json")) {
+        if (options.snapshot) return { ok: true, json: async () => options.snapshot };
+        throw new Error("Snapshot unavailable");
+      }
+      if (url.startsWith("https://api.open-meteo.com/")) {
+        if (options.failForecast) throw new Error("Forecast offline");
+        return { ok: true, json: async () => forecastData() };
+      }
+      if (url.startsWith("./smithton-rainfall.json")) {
+        if (options.failHistory) throw new Error("History offline");
+        return { ok: true, json: async () => activeBase };
+      }
+      if (activeFail) throw new Error("Network unavailable");
+      return { ok: true, json: async () => ({ station: "091292", live: activeObservation, daily }) };
     }
   };
   sandbox.window = sandbox;
   vm.runInNewContext(browserSource + "\n" + weatherSource, sandbox);
   await sandbox.weather();
-  return { sandbox, forecast };
+  return { sandbox, forecast, storage, async again(nextBase, nextObservation, nextFail = false) {
+    activeBase = nextBase; activeObservation = nextObservation; activeFail = nextFail;
+    await sandbox.weather();
+  } };
 }
 test("weather rendering uses the fresh post-9am observation with existing measured totals", async () => {
   const { sandbox, forecast } = await weatherResult(baseline(), live());
@@ -160,11 +195,13 @@ test("weather rendering uses the fresh post-9am observation with existing measur
   assert.match(forecast.innerHTML, /Live 7-day rainfall/);
   assert.match(forecast.innerHTML, /21\.2 mm/);
 });
-test("failed live refresh after the 9am cutoff remains pending", async () => {
+test("failed live refresh retains the last complete rainfall display after 9am", async () => {
   const { sandbox, forecast } = await weatherResult(baseline(), null, true);
   assert.ok(Number.isNaN(sandbox.previous7Total));
-  assert.match(forecast.children[0].children[0].textContent, /LIVE RAINFALL PENDING/);
-  assert.match(forecast.children[0].children[1].textContent, /post-9am/);
+  assert.match(forecast.innerHTML, /Latest available weather — waiting for update/);
+  assert.match(forecast.innerHTML, /Latest available 7-day rainfall/);
+  assert.match(forecast.innerHTML, /9:00:00 am/);
+  assert.equal((forecast.innerHTML.match(/forecast-day /g) || []).length, 7);
 });
 test("weather can cross 9am even when the Pages file has not recorded today's completed day", async () => {
   const base = baseline();
@@ -179,9 +216,96 @@ test("a fresh live observation cannot fill a missing completed day", async () =>
   delete base.daily["2026-10-14"];
   const { sandbox, forecast } = await weatherResult(base, live());
   assert.ok(Number.isNaN(sandbox.previous7Total));
-  assert.match(forecast.children[0].children[1].textContent, /Missing completed BOM rainfall day/);
+  assert.match(forecast.innerHTML, /Current reopening readiness awaits complete readings/);
+  assert.match(forecast.innerHTML, /Latest completed BOM rainfall/);
+  assert.match(forecast.innerHTML, /Incomplete records/);
+  assert.match(forecast.innerHTML, /1.2 mm/);
 });
 test("the fixed Duck Bay thresholds remain 40mm over 7 days and 25mm over 3 days", () => {
   assert.match(page, /40 mm \/ 7-day and 25 mm \/ 3-day/);
   assert.match(page, /var DUCK_RAIN3_LIMIT=25/);
+});
+
+
+test("a failed update preserves the last successful totals and full seven-day outlook", async () => {
+  const result = await weatherResult(baseline(), live());
+  const incomplete = baseline(); delete incomplete.daily["2026-10-14"];
+  await result.again(incomplete, live("2026-10-16T09:40:00+11:00", "2.0"));
+  assert.ok(Number.isNaN(result.sandbox.previous7Total));
+  assert.match(result.forecast.innerHTML, /Latest available 7-day rainfall/);
+  assert.match(result.forecast.innerHTML, /21\.2 mm/);
+  assert.match(result.forecast.innerHTML, /9:30:00 am/);
+  assert.equal((result.forecast.innerHTML.match(/forecast-day /g) || []).length, 7);
+  assert.doesNotMatch(result.forecast.innerHTML, /Loading Smithton/);
+});
+test("a page reload paints saved totals and forecast before its first request", async () => {
+  const saved = await weatherResult(baseline(), live());
+  let firstPaint;
+  const result = await weatherResult({ daily: {} }, null, true, undefined, {
+    storage: saved.storage, failForecast: true, failHistory: true,
+    onFetch(url, box) { if (firstPaint === undefined) firstPaint = box.innerHTML; }
+  });
+  assert.match(firstPaint, /21\.2 mm/);
+  assert.equal((firstPaint.match(/forecast-day /g) || []).length, 7);
+  assert.match(result.forecast.innerHTML, /21\.2 mm/);
+  assert.ok(Number.isNaN(result.sandbox.previous7Total));
+});
+test("retained readings are replaced when complete fresh data arrives", async () => {
+  const result = await weatherResult(baseline(), live());
+  await result.again(baseline(), live("2026-10-16T09:40:00+11:00", "2.0"));
+  assert.equal(result.sandbox.previous7Total, 23.2);
+  assert.match(result.forecast.innerHTML, /Live 7-day rainfall/);
+  assert.doesNotMatch(result.forecast.innerHTML, /waiting for update/);
+  assert.match(result.forecast.innerHTML, /23\.2 mm/);
+});
+test("a repeated refresh leaves existing cards visible while requests are pending", async () => {
+  let checkExisting = false;
+  const result = await weatherResult(baseline(), live(), false, undefined, {
+    onFetch(url, box) { if (checkExisting) { assert.match(box.innerHTML, /21\.2 mm/); assert.doesNotMatch(box.innerHTML, /Loading/); } }
+  });
+  checkExisting = true;
+  await result.again(baseline(), live());
+});
+test("a forecast older than 24 hours remains visible through an upstream outage", async () => {
+  const stale = forecastData("2026-10-14T09:45:00+11:00");
+  const result = await weatherResult(baseline(), null, true, undefined, { snapshot: stale, failForecast: true });
+  assert.match(result.forecast.innerHTML, /Weather forecast last updated: 14\/10\/2026/);
+  assert.equal((result.forecast.innerHTML.match(/forecast-day /g) || []).length, 7);
+});
+test("an older hosted forecast cannot replace a newer saved forecast", async () => {
+  const saved = await weatherResult(baseline(), live());
+  const older = forecastData("2026-10-15T09:45:00+11:00");
+  const result = await weatherResult(baseline(), live(), false, undefined, { storage: saved.storage, snapshot: older, failForecast: true });
+  assert.match(result.forecast.innerHTML, /Weather forecast last updated: 16\/10\/2026/);
+});
+test("corrupt or unavailable browser storage does not prevent fresh weather", async () => {
+  for (const options of [{ storage: new Map([["toc-smithton-weather-v1", "{broken"]]) }, { blockStorage: true }]) {
+    const result = await weatherResult(baseline(), live(), false, undefined, options);
+    assert.equal(result.sandbox.previous7Total, 21.2);
+    assert.match(result.forecast.innerHTML, /Live 7-day rainfall/);
+  }
+});
+
+test("a delayed file or endpoint cannot roll the displayed rainfall backwards", async () => {
+  const result = await weatherResult(baseline(), live("2026-10-16T09:40:00+11:00", "2.0"));
+  const older = baseline(); older.live = live();
+  await result.again(older, null, true);
+  assert.equal(result.sandbox.previous7Total, 23.2);
+  assert.match(result.forecast.innerHTML, /9:40:00 am/);
+  assert.equal(JSON.parse(result.storage.get("toc-smithton-weather-v1")).rainfall.live.rain_since_9am, 2);
+});
+
+test("completed rainfall and forecast survive reloads even before the first complete live update", async () => {
+  const incomplete = baseline(); delete incomplete.daily["2026-10-16"]; incomplete.latest_date = "2026-10-15"; incomplete.live = null;
+  const first = await weatherResult(incomplete, live());
+  let firstPaint;
+  const next = await weatherResult(null, null, true, undefined, {
+    storage: first.storage, failHistory: true, failForecast: true,
+    onFetch(url, box) { if (firstPaint === undefined) firstPaint = box.innerHTML; }
+  });
+  assert.match(firstPaint, /Latest completed BOM rainfall — to 9am 2026-10-15/);
+  assert.match(firstPaint, /Latest 7-day rainfall/);
+  assert.match(firstPaint, /1.2 mm/);
+  assert.match(next.forecast.innerHTML, /Latest completed BOM rainfall/);
+  assert.ok(Number.isNaN(next.sandbox.previous7Total));
 });
